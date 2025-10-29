@@ -1,0 +1,129 @@
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 90%;
+  height: 75%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  margin: 0 auto;
+  padding: 20px;
+  padding-top: 0;
+}
+
+.settings-heading {
+  font-weight: bold;
+  font-size: 1.5em;
+  color: #333;
+  border-bottom: 2px solid #e8e8e8;
+  padding-bottom: 10px;
+  position: sticky;
+  top: -20px;
+  background-color: rgb(250, 249, 248);
+  z-index: 50;
+  padding: 10px 0;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 10px;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.settings-item label {
+  flex: 1;
+  font-size: 1em;
+  color: #555;
+  width: 30%;
+}
+
+.settings-item .input,
+.settings-item input {
+  flex: 1;
+  font-size: 1em;
+  color: #555;
+  width: 65%;
+}
+
+.settings-item input[type="text"],
+.settings-item input[type="number"],
+.settings-item select,
+.settings-item .select,
+.settings-item .text-input {
+  flex: 2;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: border-color 0.2s ease;
+}
+
+.settings-item input[type="text"]:focus,
+.settings-item input[type="number"]:focus,
+.settings-item select:focus {
+  border-color: #007bff;
+}
+
+.settings-item input[type="checkbox"] {
+  transform: scale(1.2);
+  margin-left: 10px;
+  align-self: center;
+}
+
+.settings-item-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.settings-item-checkbox label {
+  flex: initial;
+  margin-right: 10px;
+}
+
+.full-width-sticky {
+  width: 80%;
+  position: fixed;
+  display: flex;
+  justify-content: center;
+  bottom: 4%;
+  box-sizing: border-box;
+}
+
+.full-width-sticky .settingsSaveButton {
+  display: inline-block;
+  margin: 0 5px;
+}
+
+.settingsSaveButton {
+  height: 40px;
+  width: 300px;
+  margin: 0 20px;
+}
+
+.reset-setting {
+  cursor: pointer;
+  margin-left: 10px;
+  transition: transform 0.4s ease;
+  z-index: 40;
+}
+
+.reset-setting:hover {
+  transform: rotate(360deg);
+}
+
+.pulse {
+  animation: pulse 0.5s ease;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

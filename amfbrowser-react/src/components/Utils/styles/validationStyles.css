@@ -1,0 +1,19 @@
+#validationIconWrapper {
+  height: 40px;
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-right: 0;
+  margin-left: auto;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.validationIcon {
+  height: 30px;
+  width: 30px;
+  color: white;
+  transition: all 0.3s ease;
+}

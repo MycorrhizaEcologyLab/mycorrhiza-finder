@@ -1,0 +1,112 @@
+.amfinder-container {
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #eeeeee;
+  width: 90%;
+  border-radius: 20px;
+}
+
+.amfinder-buttons-container {
+  display: flex;
+  justify-content: space-evenly;
+  flex-flow: row;
+  align-items: center;
+  width: 80vw;
+}
+
+.amfinder-button {
+  width: 125px;
+  height: 125px;
+  border-radius: 10px;
+  background-color: rgb(102, 153, 0);
+  display: flex;
+  justify-content: center;
+  flex-flow: row;
+  align-items: center;
+  transition: 0.4s;
+  font-size: 1.4rem;
+  color: black;
+}
+
+.amfinder-button:hover {
+  background-color: #bad7f2;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.amfinder-func-forwards {
+  animation: flip 1s ease forwards;
+}
+
+.amfinder-func-backwards {
+  animation: flipback 1s ease backwards;
+}
+
+@keyframes flip {
+  0% {
+    transform: rotateX(0);
+    background-color: rgb(102, 153, 0);
+  }
+
+  45% {
+    transform: rotateX(90deg);
+    background-color: rgb(102, 153, 0);
+  }
+
+  55% {
+    transform: rotateX(90deg);
+    background-color: rgb(39, 94, 55);
+  }
+
+  100% {
+    transform: rotateX(0);
+    background-color: rgb(39, 94, 55);
+  }
+}
+
+@keyframes flipback {
+  0% {
+    transform: rotateX(0);
+    background-color: rgb(39, 94, 55);
+  }
+
+  45% {
+    transform: rotateX(90deg);
+    background-color: rgb(39, 94, 55);
+  }
+
+  55% {
+    transform: rotateX(90deg);
+    background-color: rgb(102, 153, 0);
+  }
+
+  100% {
+    transform: rotateX(0);
+    background-color: rgb(102, 153, 0);
+  }
+}
+
+/* ----------------- New styles ----------------- */
+
+.amfToolSubmitButton {
+  width: 150px;
+}
+
+.amfToolDivider {
+  transition: background-color 0.3s;
+}
+
+#filePathTooltip > div {
+  max-width: none;
+}
+
+.amfToolConnectorWrapper {
+  width: 100%;
+  height: 20%;
+  min-height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

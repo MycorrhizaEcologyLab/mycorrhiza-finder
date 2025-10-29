@@ -1,0 +1,50 @@
+#imageSelectionHeaderContainer {
+  display: flex;
+  height: 60px;
+  width: 100%;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-bottom-style: solid;
+  border-bottom-color: rgb(204, 202, 194);
+  border-bottom-width: 2px;
+}
+
+#imageSelectionButtonWrapper {
+  height: 100%;
+  width: 15%;
+  min-width: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.imageSelectionButton {
+  height: 40px;
+  width: 140px;
+}
+
+#imageSelectionNameWrapper {
+  height: 100%;
+  width: 70%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+#imageSelectionStatusWrapper {
+  height: 100%;
+  width: 15%;
+  min-width: 200px;
+  padding-right: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.annotationAndPredictionTableTick {
+  color: rgb(24, 118, 210);
+}
+
+#browserMainWindow .MuiTableContainer-root {
+  overflow-x: hidden;
+}

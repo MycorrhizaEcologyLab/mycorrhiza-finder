@@ -1,0 +1,61 @@
+#AnnotationsLeftSidebar,
+#AnnotationsRightSidebar {
+  background-color: rgb(244, 245, 250);
+  transition: width 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms;
+}
+
+.legendLongNameText {
+  transition:
+    width 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms,
+    opacity 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms;
+}
+
+#AnnotationsAndPredictionsButtonsWrapper {
+  transition: background-color 200ms linear;
+  border-bottom: 2px solid lightgray;
+}
+
+#PredictionsLeftSidebar,
+#PredictionsRightSidebar {
+  background-color: rgb(244, 245, 250);
+  transition: width 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms;
+}
+
+/* From old "AnnotationsGrid" folder */
+.annotation-tile {
+  border-radius: 10px;
+  margin: 2px;
+  cursor: pointer;
+  background-size: contain !important;
+}
+
+.question-comment-wrapper {
+  position: absolute;
+  z-index: 100;
+  background: white;
+  width: 200px;
+  border-radius: 5px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid black;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.question-comment-wrapper > * {
+  margin: 4px 0;
+}
+
+/* From old "PredictionsGrid" folder */
+.chart-div {
+  animation: 1s;
+}
+
+/* From old "ImageGrid" folder */
+.tile.center {
+  outline: 2px solid red;
+}
+
+.border-image {
+  background-color: black;
+}

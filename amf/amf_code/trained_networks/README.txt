@@ -1,0 +1,1 @@
+Copy the contents of _internal/trained_networks from published executables into this directory to run or rebuild locally.

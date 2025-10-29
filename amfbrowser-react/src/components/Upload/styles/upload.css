@@ -1,0 +1,17 @@
+.upload-container {
+  display: flex;
+  justify-content: center;
+  flex-flow: column;
+  align-items: center;
+  width: 90%;
+  min-height: 70vh;
+  background-color: #eeeeee;
+  margin: 20px 0;
+  border-radius: 20px;
+  box-shadow: 5px 5px 5px darkgrey;
+  padding: 10px 20px;
+}
+
+.upload-buttons-container {
+  display: flex;
+}
