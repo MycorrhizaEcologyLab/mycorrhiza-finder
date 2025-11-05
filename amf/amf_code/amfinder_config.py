@@ -35,7 +35,6 @@ Variables
 Functions
 ------------
 :function string_of_level: Returns the CNN name for the given prediction level.
-:function tsv_name: Return the TSV file corresponding to the current annotation level.
 :function human_redable_header: Human-readable annotation class labels.
 :function get: Retrieve the value associated with the given parameter ID.
 :function colonisation: Indicate whether the current level is level 1 (colonisation).
