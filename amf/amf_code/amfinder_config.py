@@ -38,7 +38,6 @@ Functions
 :function human_redable_header: Human-readable annotation class labels.
 :function get: Retrieve the value associated with the given parameter ID.
 :function colonisation: Indicate whether the current level is level 1 (colonisation).
-:function intra_struct: Indicate whether the current level is level 2 (structures).
 :function set: Assign a new value to the given parameter ID.
 :function training_subparser: Define the command-line parser used in training mode.
 :function prediction_subparser: Define the command-line parser used in prediction mode.
