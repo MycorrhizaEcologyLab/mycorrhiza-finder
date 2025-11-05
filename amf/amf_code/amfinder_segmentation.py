@@ -184,29 +184,3 @@ def preprocess(tile_list):
     """
 
     return np.array(tile_list, np.float32) / 255.0
-
-
-def mosaic(image, edge=None):
-
-    edge = edge if edge is not None else AmfConfig.get("tile_edge")
-
-    width, height = image.size
-    nrows = int(height // edge)
-    ncols = int(width // edge)
-
-    if nrows == 0 or ncols == 0:
-
-        AmfLog.warning("Tile size ({edge} pixels) is too large")
-        return None
-
-    else:
-
-        tiles = []
-
-        for r in range(nrows):
-
-            for c in range(ncols):
-
-                tiles.append(tile(image, r, c, edge))
-
-        return tiles

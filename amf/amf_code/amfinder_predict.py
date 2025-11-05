@@ -343,74 +343,6 @@ def predict_level1(image, nrows, ncols, model, temperature_factor, base):
     return table, class_changes
 
 
-# TODO: Save conv2d_outputs currently disabled. Reintegration necessary.
-# def save_conv2d_outputs(model, image, base):
-#     """
-#     Save outputs of each Conv2D layer.
-#     Note: currently only works for a single tile.
-#     """
-
-#     cmap = plt.get_cmap(AmfConfig.get("colormap"))
-#     submodels = AmfModel.get_feature_extractors(model)
-
-#     zipf = "{}_layer_outputs.zip".format(os.path.splitext(base)[0])
-#     zipf = os.path.join(AmfConfig.get("outdir"), zipf)
-
-#     with zf.ZipFile(zipf, "w") as z:
-
-#         for conv2d, submodel in submodels:
-
-#             tiles = [AmfSegm.tile(image, 0, 0)]  # TODO: generalise!
-#             batch = AmfSegm.preprocess(tiles)
-
-#             predictions = submodel.predict(batch)
-
-#             for i in range(predictions.shape[0]):
-
-#                 im = predictions[i]
-
-#                 for channel in range(im.shape[-1]):
-
-#                     tmp = cmap(im[:, :, channel])
-#                     tmp = Image.fromarray(np.uint8(tmp * 255))
-#                     tmp = tmp.convert("RGB")
-#                     bytes = io.BytesIO()
-#                     tmp.save(bytes, "JPEG", quality=100)
-#                     # Should add i in filename.
-#                     filename = "{}/channel_{}.jpg".format(conv2d.name, channel)
-#                     z.writestr(filename, bytes.getvalue())
-
-# TODO: Functionality currently disabled. Reintegration necessary.
-# def save_conv2d_kernels(model):
-#     """
-#     Save kernels for all convolutional layers.
-#     """
-
-#     cmap = plt.get_cmap(AmfConfig.get("colormap"))
-#     base = os.path.basename(AmfConfig.get("model"))
-#     zipf = "{}_kernels.zip".format(os.path.splitext(base)[0])
-#     zipf = os.path.join(AmfConfig.get("outdir"), zipf)
-
-#     with zf.ZipFile(zipf, "w") as z:
-
-#         iterations = 30
-#         learning_rate = 10.0
-
-#         for conv2d, submodel in AmfModel.get_feature_extractors(model):
-
-#             for filter_index in range(conv2d.output.shape[3]):
-
-#                 loss, img = AmfCalc.visualize_filter(submodel, filter_index)
-
-#                 tmp = Image.fromarray(np.uint8(img * 255))
-#                 tmp = tmp.convert("RGB")
-#                 bytes = io.BytesIO()
-#                 tmp.save(bytes, "JPEG", quality=100)
-#                 # Should add i in filename.
-#                 filename = "{}/filter_{}.jpg".format(conv2d.name, filter_index)
-#                 z.writestr(filename, bytes.getvalue())
-
-
 def prepare_metrics(
     path: str, tile_results_table: pd.DataFrame, level: int, include_hybrid: bool = True
 ) -> dict:
@@ -772,7 +704,6 @@ def run(input_images, postprocess=None):
         AmfLog.text(f"Image {base}")
 
         # Only updates tile edge if settings exist
-        # edge = AmfConfig.update_tile_edge(path)
         edge = AmfConfig.get("tile_edge")
 
         image = AmfSegm.load(path)

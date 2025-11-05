@@ -1,5 +1,5 @@
 import numpy as np
-import os 
+import os
 from sklearn.cluster import KMeans
 from collections import Counter
 from matplotlib.patches import Rectangle
@@ -10,7 +10,7 @@ import umap
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 from matplotlib.widgets import Button
-import cv2 
+import cv2
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
@@ -22,20 +22,20 @@ def return_layer_activations_preserve_spatial_test(model, images, layer_name, la
     return flattened_activation
 
 def test_save_activations_to_disk(
-    data_list, 
+    data_list,
     labels_list,
-    model, 
-    layer_name, 
-    layer_model, 
-    save_name, 
-    batch_size=100, 
-    reduce_non_col=1, 
+    model,
+    layer_name,
+    layer_model,
+    save_name,
+    batch_size=100,
+    reduce_non_col=1,
     reduce_no_root=1,
     random_seed = 100
 ):
     """
-    Processes multiple datasets as a single dataset, trims classes, and saves 
-    activations + indices to disk. By unifying the data first, the number of 
+    Processes multiple datasets as a single dataset, trims classes, and saves
+    activations + indices to disk. By unifying the data first, the number of
     colonized samples remains consistent.
 
     Parameters:
@@ -64,7 +64,7 @@ def test_save_activations_to_disk(
     idx_non_col   = np.where(combined_labels == NON_COLONIZED_CLASS)[0]
     idx_no_root   = np.where(combined_labels == NO_ROOT_CLASS)[0]
 
-    # 3. Shuffle only if we’re reducing those classes 
+    # 3. Shuffle only if we’re reducing those classes
     #    to get a random subset
     np.random.seed(random_seed)
     if reduce_non_col < 1.0:
@@ -120,13 +120,13 @@ def test_save_activations_to_disk(
         f"Preprocessed_data/activations/Test_activations/{save_name}_activations.npy",
         all_activations
     )
-    
+
     print(
         f"Activations saved to Preprocessed_data/activations/Test_activations/{save_name}_activations.npy"
     )
     print(
         f"Original reduced indices saved to Preprocessed_data/activations/Test_activations/{save_name}_original_reduced_indices.npy")
-    
+
 
 def umap_embeddings_from_disk(activations_file_name, n_components=2, random_state=100):
     """
@@ -153,13 +153,13 @@ def umap_embeddings_from_disk(activations_file_name, n_components=2, random_stat
     return reducer, embeddings
 
 def plot_clustered_umap(
-    embeddings, 
-    true_labels, 
-    predicted_labels, 
-    class_names, 
+    embeddings,
+    true_labels,
+    predicted_labels,
+    class_names,
     images=None,
     cluster_by='true_labels',
-    n_clusters=3):  
+    n_clusters=3):
 
     """
     1. KMeans on 2D embeddings.
@@ -185,7 +185,7 @@ def plot_clustered_umap(
     unique_clusters = np.unique(original_cluster_labels)
 
     # ------------------------------------------------
-    # 2. Sort clusters left->right by center.x 
+    # 2. Sort clusters left->right by center.x
     #    => rename them 0..1..2 in that order
     # ------------------------------------------------
     cluster_ids_sorted_by_x = sorted(unique_clusters, key=lambda c: centers[c, 0])
@@ -196,7 +196,7 @@ def plot_clustered_umap(
         new_label_map[old_id] = new_id
 
     # Re-labeled cluster assignments
-    cluster_labels = np.array([new_label_map[old_lbl] 
+    cluster_labels = np.array([new_label_map[old_lbl]
                                for old_lbl in original_cluster_labels])
 
     # Reorder centers to match new labeling
@@ -221,7 +221,7 @@ def plot_clustered_umap(
             'pred_label_counts': dict(pred_counts),
         }
 
-        # Decide which distribution to use for the "major label" 
+        # Decide which distribution to use for the "major label"
         # based on cluster_by
         if cluster_by == 'true_labels':
             ref_counts = true_counts
@@ -322,11 +322,11 @@ def plot_clustered_umap(
     for i in range(n_clusters):
         legend_handles.append(
             plt.Line2D(
-                [0], [0], 
-                color=custom_colors[i], 
-                marker='o', 
+                [0], [0],
+                color=custom_colors[i],
+                marker='o',
                 linestyle='None',
-                markersize=8, 
+                markersize=8,
                 label=f"Cluster {i} (Major: {major_labels[i]})"
             )
         )
@@ -377,36 +377,18 @@ def make_gradcam_heatmap(img_array, model, layer_name="C4", pred_index=None):
     heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap + 1e-16)
     return heatmap.numpy()
 
-def overlay_gradcam(original_img, heatmap, alpha=0.0001):
-    """
-    Overlay a Grad-CAM heatmap onto the original image.
-    - original_img: uint8 image, shape (H, W, 3) with values [0..255].
-    - heatmap: float32 array, shape (H, W) with values [0..1].
-    - alpha: blending factor for the heatmap.
-    Returns a uint8 image of the same shape as original_img.
-    """
-    # Rescale heatmap to [0..255] and apply a colormap
-    heatmap_255 = (heatmap * 255).astype('uint8')
-    heatmap_colored = cv2.applyColorMap(heatmap_255, cv2.COLORMAP_JET)
-    heatmap_colored = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
-
-    # Combine the heatmap with the original image
-    overlay = cv2.addWeighted(original_img, 1 - alpha, heatmap_colored, alpha, 0)
-    return overlay
-
-
 
 # -----------------------------------------------------
 # Main UMAP + interactive function
 # -----------------------------------------------------
 def umap_plot(
-    embeddings, 
-    true_labels, 
-    indices, 
-    images, 
-    index_labels, 
+    embeddings,
+    true_labels,
+    indices,
+    images,
+    index_labels,
     model,
-    predicted_labels=None, 
+    predicted_labels=None,
     p_index_labels=None
 ):
     """
@@ -423,7 +405,7 @@ def umap_plot(
     # --- 1) Create UMAP scatter plot ---
     fig, ax = plt.subplots(figsize=(6, 6))
     scatter = ax.scatter(
-        embeddings[:, 0], embeddings[:, 1], 
+        embeddings[:, 0], embeddings[:, 1],
         c=point_colors, alpha=0.6, edgecolors='none'
     )
     highlighted_point = ax.scatter([], [], s=40, edgecolor='black', facecolor='none', label="Selected Point")

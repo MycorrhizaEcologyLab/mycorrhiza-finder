@@ -31,12 +31,6 @@ images associated with tile annotations which label colonised root
 sections (CNN1) or intraradical hyphal structures (CNN2).
 Annotations are stored in an auxiliary ZIP archive.
 
-Class
-------------
-:class ImageDataGeneratorMO:
-    Custom data generator for multiple single-variable outputs.
-    Reference: https://github.com/keras-team/keras/issues/3761
-
 Functions
 ------------
 :function import_settings: Imports image settings from a ZIP archive.
@@ -45,7 +39,6 @@ Functions
 :function class_weights: Computes class weights
 :function get_callbacks: Configures Keras callbacks.
 :function save_model_architecture: Saves neural network architecture.
-:function print_memory_usage: Prints memory used to load training data.
 :function run: Runs a training session.
 """
 
@@ -221,31 +214,6 @@ class ReduceLROnPlateau:
             self.counter = 0
 
 
-# TODO: Compare ImagaDataGeneratorMO to current Pytorch code and reimplement - Used for CNN2!
-# class ImageDataGeneratorMO(ImageDataGenerator):
-# '''
-# Compare to original amfinder model code to obtain CNN2 functionality.
-# '''
-
-
-# Potentially depictable in logging
-def print_memory_usage():
-    """
-    Prints the amount of memory used to load training data.
-    """
-
-    process = psutil.Process(os.getpid())
-    mb = process.memory_info().rss / (1024 * 1024)
-    print(f"* Total memory used: {mb} Mb.")
-
-
-img_index = 0
-
-# On the fly data augmentaion.
-# TODO: Redefine on the fly data augmentation entirely.
-# Compare to def data_augm(tile) in old script.
-
-
 def run(input_files, flag, train_active_learning=False):
     """
     Creates or loads a convolutional neural network, and trains it
@@ -306,8 +274,6 @@ def run(input_files, flag, train_active_learning=False):
     train_dataset = AmfLoad.CustomNormalisedDataset(x_train, y_train)
     val_dataset = AmfLoad.CustomNormalisedDataset(x_val, y_val)
 
-    # print_memory_usage()
-
     # Initialise variables to prepare training and validation datasets
     if AmfConfig.get("level") == 1:
         labels = np.stack(
@@ -333,32 +299,6 @@ def run(input_files, flag, train_active_learning=False):
         )
 
         return 500
-
-        # TODO: This function needs to be rewritten for PyTorch.
-        # AM fungal structures (arbuscules, vesicles, hyphae).
-        # ConvNet II has multiple outputs. ImageDataGenerator is not suitable.
-        # Reference: https://github.com/keras-team/keras/issues/3761
-        # if AmfConfig.get("data_augm"):
-        #     t_gen = ImageDataGeneratorMO(
-        #         rescale=1.0 / 255,
-        #         horizontal_flip=True,
-        #         vertical_flip=True,
-        #         brightness_range=[0.75, 1.25],
-        #         preprocessing_function=data_augm,
-        #     )
-        # else:
-        #     t_gen = ImageDataGeneratorMO(rescale=1.0 / 255)
-
-        # v_gen = ImageDataGeneratorMO(rescale=1.0 / 255)
-
-        # # Reshape one-hot data in a way suitable for ImageDataGeneratorMO:
-        # # [[a1 v1 h1]...[aN vN hN]] -> [[a1...aN] [v1...vN] [h1...hN]]
-        # nclasses = len(AmfConfig.get("header"))  # (= 4)
-        # yt = [np.array([x[i] for x in yt]) for i in range(nclasses)]
-        # yc = [np.array([x[i] for x in yc]) for i in range(nclasses)]
-
-    # Validation dataset
-    # val_dataset = AmfLoad.CustomDataset(x_val, y_val)
 
     # Initialising relevant variables
     bs = AmfConfig.get("batch_size")

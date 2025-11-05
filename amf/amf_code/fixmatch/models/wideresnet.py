@@ -7,22 +7,6 @@ import torch.nn.functional as F
 logger = logging.getLogger(__name__)
 
 
-def mish(x):
-    """Mish: A Self Regularized Non-Monotonic Neural Activation Function (https://arxiv.org/abs/1908.08681)"""
-    return x * torch.tanh(F.softplus(x))
-
-
-class PSBatchNorm2d(nn.BatchNorm2d):
-    """How Does BN Increase Collapsed Neural Network Filters? (https://arxiv.org/abs/2001.11216)"""
-
-    def __init__(self, num_features, alpha=0.1, eps=1e-05, momentum=0.001, affine=True, track_running_stats=True):
-        super().__init__(num_features, eps, momentum, affine, track_running_stats)
-        self.alpha = alpha
-
-    def forward(self, x):
-        return super().forward(x) + self.alpha
-
-
 class BasicBlock(nn.Module):
     def __init__(self, in_planes, out_planes, stride, drop_rate=0.0, activate_before_residual=False):
         super(BasicBlock, self).__init__()
@@ -115,11 +99,3 @@ class WideResNet(nn.Module):
         out = F.adaptive_avg_pool2d(out, 1)
         out = out.view(-1, self.channels)
         return self.fc(out)
-
-
-def build_wideresnet(depth, widen_factor, dropout, num_classes):
-    logger.info(f"Model: WideResNet {depth}x{widen_factor}")
-    return WideResNet(depth=depth,
-                      widen_factor=widen_factor,
-                      drop_rate=dropout,
-                      num_classes=num_classes)

@@ -1,5 +1,4 @@
-"""Some helper functions for PyTorch, including:
-- get_mean_and_std: calculate the mean and std value of dataset.
+"""Some helper functions for PyTorch.
 """
 
 import logging
@@ -13,30 +12,11 @@ import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "get_mean_and_std",
     "accuracy",
     "AverageMeter",
     "get_confusion_matrix",
     "get_per_class_accuracies",
 ]
-
-
-def get_mean_and_std(dataset):
-    """Compute the mean and std value of dataset."""
-    dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=1, shuffle=False, num_workers=0
-    )
-
-    mean = torch.zeros(3)
-    std = torch.zeros(3)
-    logger.info("==> Computing mean and std..")
-    for inputs, targets in dataloader:
-        for i in range(3):
-            mean[i] += inputs[:, i, :, :].mean()
-            std[i] += inputs[:, i, :, :].std()
-    mean.div_(len(dataset))
-    std.div_(len(dataset))
-    return mean, std
 
 
 def get_confusion_matrix(outputs, targets, to_cpu=True):

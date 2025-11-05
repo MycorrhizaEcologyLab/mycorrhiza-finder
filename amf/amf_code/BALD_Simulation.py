@@ -18,7 +18,7 @@ from tqdm import tqdm
 # from torchsummary import summary
 from torchinfo import summary
 from copy import deepcopy
-from acquisition_functions import get_batchbald_batch, get_bald_batch
+from acquisition_functions import get_batchbald_batch
 
 
 def add_dropout_layers(model: nn.Module, p: float = 0.25) -> nn.Module:

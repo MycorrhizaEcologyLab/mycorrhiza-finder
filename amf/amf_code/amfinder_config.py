@@ -35,11 +35,9 @@ Variables
 Functions
 ------------
 :function string_of_level: Returns the CNN name for the given prediction level.
-:function tsv_name: Return the TSV file corresponding to the current annotation level.
 :function human_redable_header: Human-readable annotation class labels.
 :function get: Retrieve the value associated with the given parameter ID.
 :function colonisation: Indicate whether the current level is level 1 (colonisation).
-:function intra_struct: Indicate whether the current level is level 2 (structures).
 :function set: Assign a new value to the given parameter ID.
 :function training_subparser: Define the command-line parser used in training mode.
 :function prediction_subparser: Define the command-line parser used in prediction mode.
@@ -308,14 +306,6 @@ def string_of_level():
     return "col" if PAR["level"] == 1 else "myc"
 
 
-def tsv_name():
-    """
-    Return the TSV file corresponding to the current annotation level.
-    """
-
-    return string_of_level() + ".tsv"
-
-
 def human_readable_header():
     """
     Return the human-readable header of the current annotation level.
@@ -366,14 +356,6 @@ def colonisation():
     """
 
     return get("level") == 1
-
-
-def intra_struct():
-    """
-    Indicate whether the current level is level 2 (AM fungal structures).
-    """
-
-    return get("level") == 2
 
 
 def find_files_in_directory(directory, convert_tiff=False):
@@ -1680,35 +1662,6 @@ def abspath(files):
     return [os.path.abspath(x) for x in files]
 
 
-# TODO this is unused, check we can remove
-def update_tile_edge(path):
-    """
-    Import image settings (currently tile edge).
-
-    :param path: path to the input image.
-    """
-
-    image_name = os.path.splitext(os.path.basename(path))[0]
-    if get("use_db"):
-        conn = connect("amf")
-        with conn, conn.cursor() as crsr:
-            id = get_enabled(crsr, image_name)
-
-            if id != None:
-                tile_edge = get_tile_edge(crsr, id)
-                set("tile_edge", tile_edge[0])
-    else:
-        dirname = os.path.split(path)[0]
-        settings_path = f"{image_name}_settings.json"
-
-        if settings_path in os.listdir(dirname):
-            with open(dirname + "/" + settings_path) as json_file:
-                x = json.load(json_file)
-                set("tile_edge", x["tile_edge"])
-
-    return get("tile_edge")
-
-
 def get_input_files():
     """
     Filter input file list and keep valid JPEG or TIFF images.
@@ -1719,26 +1672,6 @@ def get_input_files():
     valid_types = ["image/jpeg", "image/tiff", "image/png"]
     images = [x for x in raw_list if mimetypes.guess_type(x)[0] in valid_types]
     AmfLog.text(f"Input images: {len(images)}")
-    return images
-
-
-def get_relative_files(root):
-    """
-    Filter input file list and keep valid JPEG or PNG images.
-    Return the paths relative to the root directory.
-    """
-    # Define patterns for JPEG and PNG files
-    patterns = ["*.jpg", "*.jpeg", "*.png"]
-    images = []
-
-    # Walk through the directory
-    for pattern in patterns:
-        # Use glob to find all files matching the pattern
-        for path in glob.glob(os.path.join(root, "**", pattern), recursive=True):
-            # Make the path relative to root
-            relative_path = os.path.relpath(path, start=root)
-            images.append(relative_path)
-
     return images
 
 

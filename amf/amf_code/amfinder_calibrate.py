@@ -91,37 +91,6 @@ def softmax(x):
     return e_x / e_x.sum(axis=1, keepdims=1)
 
 
-def get_bin_info(conf, pred, true, bin_size=0.1):
-    """
-    Get accuracy, confidence and elements in bin information for all the bins.
-
-    Args:
-        conf (numpy.ndarray): list of confidences
-        pred (numpy.ndarray): list of predictions
-        true (numpy.ndarray): list of true labels
-        bin_size: (float): size of one bin (0,1)
-
-    Returns:
-        (acc, conf, len_bins): tuple containing all the necessary info for reliability diagrams.
-    """
-
-    upper_bounds = np.arange(bin_size, 1 + bin_size, bin_size)
-
-    accuracies = []
-    confidences = []
-    bin_lengths = []
-
-    for conf_thresh in upper_bounds:
-        acc, avg_conf, len_bin = compute_acc_bin(
-            conf_thresh - bin_size, conf_thresh, conf, pred, true
-        )
-        accuracies.append(acc)
-        confidences.append(avg_conf)
-        bin_lengths.append(len_bin)
-
-    return accuracies, confidences, bin_lengths
-
-
 def compute_acc_bin(conf_thresh_lower, conf_thresh_upper, conf, pred, true):
     """
     # Computes accuracy and average confidence for bin
