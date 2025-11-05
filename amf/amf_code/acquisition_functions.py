@@ -1,5 +1,5 @@
 # Credits to https://github.com/BlackHC/BatchBALD
-__all__ = ['compute_conditional_entropy', 'compute_entropy', 'CandidateBatch', 'get_batchbald_batch', 'get_bald_batch']
+__all__ = ['compute_conditional_entropy', 'compute_entropy', 'CandidateBatch', 'get_batchbald_batch']
 
 
 import math
@@ -98,21 +98,3 @@ def get_batchbald_batch(
         candidate_scores.append(candidate_score.item())
 
     return CandidateBatch(candidate_scores, candidate_indices)
-
-
-
-
-def get_bald_batch(log_probs_N_K_C: torch.Tensor, batch_size: int, dtype=None, device=None) -> CandidateBatch:
-    N, K, C = log_probs_N_K_C.shape
-
-    batch_size = min(batch_size, N)
-
-    candidate_indices = []
-    candidate_scores = []
-
-    scores_N = -compute_conditional_entropy(log_probs_N_K_C)
-    scores_N += compute_entropy(log_probs_N_K_C)
-
-    candiate_scores, candidate_indices = torch.topk(scores_N, batch_size)
-
-    return CandidateBatch(candiate_scores.tolist(), candidate_indices.tolist())

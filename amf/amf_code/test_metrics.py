@@ -133,103 +133,6 @@ class TestMetrics:
             self.metrics_collector.add_class_metric(f"{class_name}", "Recall", rec)
             self.metrics_collector.add_class_metric(f"{class_name}", "F1 Score", f1)
 
-    # TODO this is unused, assess functionality before reintegrating
-    def get_example_predictions(self):
-        """
-        Gets the predictions in each class with the highest certainty to the correct
-        and incorrect class and plots them as separate rows of images
-        """
-
-        predicted_classes = np.argmax(self.predictions, axis=1)
-        predicted_confidences = np.max(self.predictions, axis=1)
-
-        # Initialize lists to store examples
-        high_confidence_correct_examples = []
-        high_confidence_incorrect_examples = []  # Renamed for clarity
-
-        for class_index in range(self.predictions.shape[1]):
-            # Indices and confidences for the current actual class
-            actual_class_indices = np.where(self.y_test_labels == class_index)[0]
-
-            # High confidence CORRECT examples
-            correct_indices = actual_class_indices[
-                predicted_classes[actual_class_indices] == class_index
-            ]
-            if len(correct_indices) > 0:
-                correct_confidences = predicted_confidences[correct_indices]
-                high_conf_index = correct_indices[np.argmax(correct_confidences)]
-                high_confidence_correct_examples.append(
-                    (
-                        self.x_test[high_conf_index],
-                        class_index,
-                        self.predictions[high_conf_index],
-                    )
-                )
-
-            # High confidence INCORRECT examples
-            incorrect_indices = actual_class_indices[
-                predicted_classes[actual_class_indices] != class_index
-            ]
-            if len(incorrect_indices) > 0:
-                incorrect_confidences = predicted_confidences[incorrect_indices]
-                high_incorrect_conf_index = incorrect_indices[
-                    np.argmax(incorrect_confidences)
-                ]
-                predicted_class_incorrect = predicted_classes[high_incorrect_conf_index]
-                high_confidence_incorrect_examples.append(
-                    (
-                        self.x_test[high_incorrect_conf_index],
-                        class_index,
-                        self.predictions[high_incorrect_conf_index],
-                        predicted_class_incorrect,
-                    )
-                )
-
-        num_examples = min(
-            len(high_confidence_correct_examples),
-            len(high_confidence_incorrect_examples),
-        )
-        fig, axes = plt.subplots(2, num_examples, figsize=(20, 8), squeeze=False)
-
-        for i in range(num_examples):
-            # Plot high-confidence CORRECT examples
-            (
-                img_correct,
-                class_index_correct,
-                probs_correct,
-            ) = high_confidence_correct_examples[i]
-            ax = axes[0, i]
-            ax.imshow(
-                img_correct.squeeze(), cmap="gray"
-            )  # No need for conversion; images are already in 0-1 range
-            ax.set_title(
-                f"Correct: {self.class_names[class_index_correct]}\nConf: {np.max(probs_correct):.2f}"
-            )
-            ax.axis("off")
-
-            # Plot high-confidence INCORRECT examples
-            (
-                img_incorrect,
-                class_index_incorrect,
-                probs_incorrect,
-                predicted_class_incorrect,
-            ) = high_confidence_incorrect_examples[i]
-            ax = axes[1, i]
-            ax.imshow(
-                img_incorrect.squeeze(), cmap="gray"
-            )  # No need for conversion; images are already in 0-1 range
-            ax.set_title(
-                f"Label: {self.class_names[class_index_incorrect]}\nPred: {self.class_names[predicted_class_incorrect]}\nConf: {np.max(probs_incorrect):.2f}"
-            )
-            ax.axis("off")
-
-        plt.tight_layout()
-        save_path = os.path.join(self.results_dir, "example_predictions.png")
-        plt.savefig(save_path)
-        # self.metrics_collector.add_image(
-        #     "example_predictions.png", save_path
-        # )
-
     def get_perfile_metrics(self, colonised_only=False):
         """
         Gets the metrics separately for each file
@@ -817,15 +720,6 @@ class TestMetrics:
                     self.results_dir, f"incorrect_{self.class_names[class_index]}.png"
                 )
                 plt.savefig(save_path)
-
-    def get_path_to_test(file_path, folder="test"):
-        # Find the position of 'val' in the path
-        pos = file_path.find(f"/{folder}/")
-        if pos != -1:
-            # Include the directory itself by adding the length of 'val' and the slashes
-            return file_path[: pos + len(folder) + 1]
-        else:
-            return "The specified value was not found in the path."
 
     def get_num_tiles_per_confidence(self):
 
