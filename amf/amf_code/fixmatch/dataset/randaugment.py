@@ -36,6 +36,22 @@ def Contrast(img, v, max_v, bias=0):
     return PIL.ImageEnhance.Contrast(img).enhance(v)
 
 
+def CutoutAbs(img, v, **kwarg):
+    w, h = img.size
+    x0 = np.random.uniform(0, w)
+    y0 = np.random.uniform(0, h)
+    x0 = int(max(0, x0 - v / 2.))
+    y0 = int(max(0, y0 - v / 2.))
+    x1 = int(min(w, x0 + v))
+    y1 = int(min(h, y0 + v))
+    xy = (x0, y0, x1, y1)
+    # gray
+    color = (127, 127, 127)
+    img = img.copy()
+    PIL.ImageDraw.Draw(img).rectangle(xy, color)
+    return img
+
+
 def Equalize(img, **kwarg):
     return PIL.ImageOps.equalize(img)
 
