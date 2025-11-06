@@ -1186,89 +1186,6 @@ def add_prediction_subparser(subparsers):
     return
 
 
-def add_diagnostic_subparser(subparsers):
-    """
-    Defines arguments used in diagnostic mode.
-
-    :param subparsers: subparser generator.
-    """
-
-    parser = subparsers.add_parser(
-        "diagnose",
-        help="Runs AMFinder in diagnostic mode.",
-        formatter_class=RawTextHelpFormatter,
-    )
-
-    parser.add_argument(
-        "-l",
-        "--use-csvs",
-        action="store_const",
-        dest="use_db",
-        const=False,
-        help="Use CSVs instead of DB.",
-    )
-
-    x = PAR["model"]
-    parser.add_argument(
-        "-net",
-        "--network",
-        action="store",
-        dest="model",
-        metavar="pth",
-        type=str,
-        default=x,
-        help="name of the pre-trained model to use for diagnostic for AM."
-        "\ndefault value: {}".format(x),
-    )
-
-    x = PAR["model_erm"]
-    parser.add_argument(
-        "-neterm",
-        "--network_erm",
-        action="store",
-        dest="model_erm",
-        metavar="pth",
-        type=str,
-        default=x,
-        help="name of the pre-trained model to use for diagnostic for ErM."
-        "\ndefault value: {}".format(x),
-    )
-
-    x = PAR["input_files"]
-    parser.add_argument(
-        "-i",
-        "--images",
-        type=str,
-        action="store",
-        required=True,
-        help="Directory of images to process.",
-    )
-
-    x = PAR["outdir"]
-    parser.add_argument(
-        "-o",
-        "--outdir",
-        action="store",
-        dest="outdir",
-        default=x,
-        help="folder where to save trained model and CNN architecture."
-        "\ndefault: {}".format(x),
-    )
-
-    x = PAR["colonisation_type"]
-    parser.add_argument(
-        "-ct",
-        "--colonisation_type",
-        action="store",
-        dest="colonisation_type",
-        type=str,
-        default=x,
-        help="Choosing between Abuscular and Ericoid colonisation.",
-    )
-
-    return
-
-
 def add_conversion_subparser(subparsers):
 
     parser = subparsers.add_parser(
@@ -1428,7 +1345,7 @@ def add_tif_conversion_subparser(subparsers):
 
 def add_calibrate_subparser(subparsers):
     """
-    Defines arguments used in diagnostic mode.
+    Defines arguments used in calibration mode.
 
     :param subparsers: subparser generator.
     """
@@ -1539,7 +1456,6 @@ def build_arg_parser():
     add_training_subparser(subparsers)
     add_prediction_subparser(subparsers)
     add_test_subparser(subparsers)
-    add_diagnostic_subparser(subparsers)
     add_conversion_subparser(subparsers)
     add_calibrate_subparser(subparsers)
     add_colonisation_subparser(subparsers)
@@ -1968,16 +1884,6 @@ def initialize():
         # if an outdir has not been specified, create one in the default loc
         if par.outdir is None:
             results_dir = create_results_dir("colonisation_results")
-            set("outdir", results_dir)
-
-    elif par.run_mode == "diagnose":
-
-        set("model", par.model)
-        set("model_erm", par.model_erm)
-        set("outdir", par.outdir)
-
-        if par.outdir == None:
-            results_dir = create_results_dir("diagnose")
             set("outdir", results_dir)
 
     elif par.run_mode == "convert":

@@ -63,7 +63,6 @@ where `<action>` is either:
 - `colonisation`: calculates the percentage colonisation in a set of annotations,
 - `tifconvert`: converts TIFs to JPGs or PNGs
 - `test`: produce output performance metrics of the model on the test data,
-- `diagnose`: produce diagnosis metrics for evaluating certain predictions.
 
 `<path_to_folder>` is the paths to the folder containing images of the roots.
 Details about `<parameters>` are given in the following sections.
@@ -200,21 +199,6 @@ Unless specified by the `outdir` parameter, the test outputs are saved to the us
 - **class_metrics_after_manual_labelling** - this includes the metrics for the model if we were to relabel every file under a certain confidence level with the correct label. There are excels for each confidence step 0-1 in 0.1 intervals. This emulates manual labelling of low confidence predictions.
 - **tile_class_changes.csv** - this gives an overview of the classes that were changed if contextual predictions were used.
 - **num_tiles_per_threshold.csv** - this gives the percentage of tiles in the test set that has the maximum confidence below a certain threshold, with thresholds of 0-1 in 0.1 step intervals.
-
-### Diagnostic mode
-
-NOTE: diagnose needs further development work for productive use and as such is not included in the UI.
-
-Diagnose can be used to compare predictions and annotations and output statistic regarding their differences. The settings are as follows.
-
-| Short     | Long                  | Description                                              | Default value            |
-| --------- | --------------------- | -------------------------------------------------------- | ------------------------ |
-| `-l`      | `--use-csvs`          | Use CSVs instead of DB.                                  | False                    |
-| `-net`    | `--network`           | Name of pre-trained model to use for diagnostic for AM.  | am_252_efficientnet.pth  |
-| `-neterm` | `--network_erm`       | Name of pre-trained model to use for diagnostic for ErM. | erm_126_efficientnet.pth |
-| `-i`      | `--images`            | **Mandatory**. Directory of images to process.           | None (required argument) |
-| `-o`      | `--outdir`            | Folder where to save trained model and CNN architecture. | None                     |
-| `-ct`     | `--colonisation_type` | Choosing between Abuscular and Ericoid colonisation.     | am                       |
 
 ### Calibration mode
 
