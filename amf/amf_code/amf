@@ -33,7 +33,6 @@ import amfinder_convert_image_type as AmfConvertImageType
 import amfinder_predict as AmfPredict
 import amfinder_test as AmfTest
 import amfinder_bald as AmfBald
-import amfinder_diagnose as AmfDiagnose
 import amfinder_colonisation as AmfColonisation
 import amfinder_calibrate as AmfCalibrate
 import amfinder_collapse_classes as AmfCollapse
@@ -134,10 +133,6 @@ def main():
     elif run_mode == "tifconversion":
         input_files = AmfConfig.get_input_files()
         AmfConvertImageType.run(input_files)
-
-    elif run_mode == "diagnose":
-        input_files = AmfConfig.get_input_files()
-        AmfDiagnose.run(input_files)
 
     elif run_mode == "calibrate":
         input_files = AmfConfig.get_input_files()

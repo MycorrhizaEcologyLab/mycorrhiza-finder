@@ -42,7 +42,6 @@ import pandas as pd
 
 import amfinder_log as AmfLog
 import amfinder_config as AmfConfig
-import amfinder_diagnose as AmfDiagnose
 
 
 NROWS = None
@@ -104,7 +103,7 @@ def preds_to_python_annot(path, preds):
         preds = preds.drop(columns=["ContextualLabel"])
 
     # Get the predictions for automatic conversion
-    preds_without_coord = AmfDiagnose.remove_coordinates(preds)
+    preds_without_coord = preds.drop(["row", "col"], axis=1)
     preds_numpy = preds_without_coord.to_numpy()
 
     # Filter out any preds below the threshold

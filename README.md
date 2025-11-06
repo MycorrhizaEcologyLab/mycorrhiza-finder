@@ -24,7 +24,7 @@ Detailed installation instructions for Linux, Mac and Windows can be found [here
 
 The purpose of MycorrhizaFinder is to enable the identification and quantification of Arbuscular and Ericoid colonisation in root specimens. As such, the tool can be split into two main areas of functionality:
 
-1. MycorrhizaFinder Tool - this allows users to calculate predictions using an AI network which tile an image, and for each tile, output probabilities for each tile that it belongs to one of n classes. Moreover, users can use this functionality to train and diagnose new networks, and also automatically convert predictions into annotations, which are tiled images that have been assigned a label per tile, and other functionalities that are specified below.
+1. MycorrhizaFinder Tool - this allows users to calculate predictions using an AI network which tile an image, and for each tile, output probabilities for each tile that it belongs to one of n classes. Moreover, users can use this functionality to train new networks, and also automatically convert predictions into annotations, which are tiled images that have been assigned a label per tile, and other functionalities that are specified below.
 2. Browser - this section of the tool allows users to view predictions made by MycorrhizaFinder, convert these into annotations and manually add/edit annotations to a tiled image.
 
 The usual functionality of the tool is via the UI - this has exhaustive user documentation which can be found at doc/mycorrhiza-finder-user-documentation.pdf. However, you can run the MF tool functionalities directly from the console, which is useful for development purposes. This functionality is outlined in [develop](DEVELOP.md).
