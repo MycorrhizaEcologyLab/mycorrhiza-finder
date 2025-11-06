@@ -11,28 +11,14 @@ import DoneIcon from "@mui/icons-material/Done";
 const columns = [
   {
     id: "cnn1_annotations_exist",
-    label: "CNN 1 Annotations",
+    label: "Annotations",
     minWidth: 140,
     align: "center",
     format: (value) => value.toString(),
   },
   {
     id: "cnn1_predictions_exist",
-    label: "CNN 1 Predictions",
-    minWidth: 140,
-    align: "center",
-    format: (value) => value.toString(),
-  },
-  {
-    id: "cnn2_annotations_exist",
-    label: "CNN 2 Annotations",
-    minWidth: 140,
-    align: "center",
-    format: (value) => value.toString(),
-  },
-  {
-    id: "cnn2_predictions_exist",
-    label: "CNN 2 Predictions",
+    label: "Predictions",
     minWidth: 140,
     align: "center",
     format: (value) => value.toString(),

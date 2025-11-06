@@ -154,7 +154,6 @@ const AmfUpload = () => {
             return;
           }
 
-          // TODO can also extend to CNN2 annotations - toggle is already in place for this but CNN2 is disabled
           let cnn1Values = [];
           try {
             if (isAnnotations) {
@@ -205,7 +204,6 @@ const AmfUpload = () => {
                 fileName: imageName,
                 imageReferenceId: null,
                 cnnOneValues: cnn1Values,
-                cnnTwoValues: [],
                 colonisationType: colonisationType,
                 tileEdge: tileEdge,
                 enabled: true,
@@ -274,7 +272,6 @@ const AmfUpload = () => {
                 fileName: imageName,
                 imageReferenceId: null,
                 cnnOneValues: cnn1Values,
-                cnnTwoValues: [],
                 colonisationType: colonisationType,
                 tileEdge: tileEdge,
               };

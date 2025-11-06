@@ -10,16 +10,13 @@ import PrimaryButton from "../../Utils/PrimaryButton";
 import NumericField from "../../Utils/NumericField";
 
 const AnnotationsAndPredictionsCentralPane = ({
-  level,
   icons,
   selectedTile,
   colorMapping,
   colorMappingTransparent,
   setTileValueWithIcon,
   cnn1Annotations,
-  cnn2Annotations,
   cnn1Predictions,
-  cnn2Predictions,
   iconSize,
   selectIcons,
   setSelectedOverlay,
@@ -192,9 +189,8 @@ const AnnotationsAndPredictionsCentralPane = ({
             selectedTile={selectedTile}
             colorMapping={colorMapping}
             onClick={setTileValueWithIcon}
-            gridData={level === "CNN 1" ? cnn1Annotations : cnn2Annotations}
+            gridData={cnn1Annotations}
             size={iconSize}
-            isCnn1={level === "CNN 1"}
             selectIcons={selectIcons}
             setSelectedOverlay={setSelectedOverlay}
             handleModeChange={handleModeChange}
@@ -354,15 +350,11 @@ const AnnotationsAndPredictionsCentralPane = ({
                   <AnnotationsViewer
                     key="annotations-viewer"
                     selectedTile={selectedTile}
-                    isCnn1={level === "CNN 1"}
                     gridDataCnn1={cnn1Annotations}
-                    gridDataCnn2={cnn2Annotations}
                     numRows={numRows}
                     numCols={numCols}
                     setSelectedTile={setSelectedTile}
-                    colorMapping={
-                      level === "CNN 1" ? colorMappingTransparent : colorMapping
-                    }
+                    colorMapping={colorMappingTransparent}
                     gridSize={gridSize}
                     gridFontSize={gridFontSize}
                     topLeftTile={topLeftTile}
@@ -382,9 +374,7 @@ const AnnotationsAndPredictionsCentralPane = ({
                   <PredictionsViewer
                     key="predictions-viewer"
                     selectedTile={selectedTile}
-                    gridData={
-                      level === "CNN 1" ? cnn1Predictions : cnn2Predictions
-                    }
+                    gridData={cnn1Predictions}
                     numRows={numRows}
                     numCols={numCols}
                     setSelectedTile={setSelectedTile}
@@ -438,7 +428,6 @@ const AnnotationsAndPredictionsCentralPane = ({
             <PrimaryButton
               sx={{ width: "200px", margin: "5px" }}
               onClick={() => setShowImageOverview(true)}
-              disabled={level !== "CNN 1"}
             >
               Show image overview
             </PrimaryButton>

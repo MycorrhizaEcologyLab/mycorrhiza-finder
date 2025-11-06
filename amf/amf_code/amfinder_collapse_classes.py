@@ -145,7 +145,6 @@ def collapse_classes(path):
             AmfLog.ERR_INVALID_DATA,
         )
 
-        level = AmfConfig.get("level")
         colonisation_type = AmfConfig.get("colonisation_type")
 
         conn = connect("amf")
@@ -162,7 +161,7 @@ def collapse_classes(path):
 
             if existing_entries[id]["cnn1_annotations_exist"]:
                 csv = download_entries_as_csv(
-                    crsr, id, str(level), "Annotations", colonisation_type
+                    crsr, id, "Annotations", colonisation_type
                 )
                 out = collapse_annots(io.StringIO(csv))
                 cnn1results = out.values.tolist()
@@ -170,7 +169,6 @@ def collapse_classes(path):
                     imageReferenceId=id,
                     colonisationType=colonisation_type,
                     cnnOneValues=cnn1results,
-                    cnnTwoValues=[],
                 )
                 # save_annotations_to_db(crsr, values)
                 return

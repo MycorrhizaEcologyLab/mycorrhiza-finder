@@ -28,7 +28,7 @@ Neural network training.
 
 Trains a convolutional neural network with a set of ink-stained root
 images associated with tile annotations which label colonised root
-sections (CNN1) or intraradical hyphal structures (CNN2).
+sections.
 Annotations are stored in an auxiliary ZIP archive.
 
 Functions
@@ -90,63 +90,35 @@ def class_weights(y, weight_type="inverse_freq", beta=0.9999, epsilon=1e-6):
 
     print(f"[{AmfConfig.invite()}] Class weights")
 
-    if AmfConfig.colonisation():
+    # Sum along axis 0 to count class occurrences (shape: (C,))
+    class_counts = torch.sum(y, axis=0)
+    total_samples = y.shape[0]
+    final_class_weights = []
+    if weight_type == "inverse_freq":
+        # Inverse frequency weighting (handle zero counts)
+        class_weights = total_samples / (class_counts.float() + epsilon)
+        class_weights[class_counts == 0] = (
+            0.0  # Assign 0 weight to classes with no samples
+        )
+        final_class_weights = class_weights
 
-        # Sum along axis 0 to count class occurrences (shape: (C,))
-        class_counts = torch.sum(y, axis=0)
-        total_samples = y.shape[0]
-        final_class_weights = []
-        if weight_type == "inverse_freq":
-            # Inverse frequency weighting (handle zero counts)
-            class_weights = total_samples / (class_counts.float() + epsilon)
-            class_weights[class_counts == 0] = (
-                0.0  # Assign 0 weight to classes with no samples
-            )
-            final_class_weights = class_weights
+    elif weight_type == "effective_num":
+        # Effective number of samples weighting (handle zero counts)
+        effective_num = (1 - beta) / (1 - beta ** (class_counts.float() + epsilon))
+        effective_num[class_counts == 0] = (
+            0.0  # Assign 0 weight to classes with no samples
+        )
+        final_class_weights = effective_num
 
-        elif weight_type == "effective_num":
-            # Effective number of samples weighting (handle zero counts)
-            effective_num = (1 - beta) / (1 - beta ** (class_counts.float() + epsilon))
-            effective_num[class_counts == 0] = (
-                0.0  # Assign 0 weight to classes with no samples
-            )
-            final_class_weights = effective_num
-
-        else:
-            raise ValueError(
-                "Invalid weight_type. Choose from ['inverse_freq', 'effective_num']."
-            )
-
-        return [
-            dict(enumerate(final_class_weights)),
-            final_class_weights,
-        ]  # class wegiths as a dict and array respectively.
-
-    else:  # TODO: this is for CNN2, not considered for the time being and handled as an error.
-        AmfLog.error(
-            "CNN2 functionality currently unavailable.", AmfLog.ERR_INVALID_MODEL_SHAPE
+    else:
+        raise ValueError(
+            "Invalid weight_type. Choose from ['inverse_freq', 'effective_num']."
         )
 
-        # class_weights = [
-        #     compute_class_weight("balanced", classes=np.unique_headers(y), y=y)
-        #     for y in one_hot_labels
-        # ]
-
-        # sums = [np.bincount(x) for x in one_hot_labels]
-        # for cls, ws, sums in zip(AmfConfig.get("header"), class_weights, sums):
-
-        #     print(
-        #         "    - ConvNet %s: %d active (weight: %.2f), "
-        #         "%d inactive (weight: %.2f)." % (cls, sums[1], ws[1], sums[0], ws[0])
-        #     )
-
-        # # Output format: {'A': {0: wA0, 1: wA1}, 'V': {0: wV0, 1:wV1}, ...}
-        # # where wA0, w1A, wV0, and wV1 are weights (cf. compute_class_weight).
-        # return {
-        #     x: dict(enumerate(y))
-        #     for x, y in zip(AmfConfig.get("header"), class_weights)
-        # }
-
+    return [
+        dict(enumerate(final_class_weights)),
+        final_class_weights,
+    ]  # class wegiths as a dict and array respectively.
 
 # PyTorch implementation of earlier Keras functionality for early stopping.
 
@@ -221,12 +193,6 @@ def run(input_files, flag, train_active_learning=False):
 
     :param input_files: List of input images to train with.
     """
-    if AmfConfig.get("level") == 2 and AmfConfig.get("colonisation_type") == "erm":
-        AmfLog.error(
-            "There is no CNN2 functionality for ErM colonisation, so fail.",
-            AmfLog.ERR_INVALID_ANNOTATION_LEVEL,
-        )
-
     if flag:
         mlflow.start_run()
 
@@ -275,30 +241,19 @@ def run(input_files, flag, train_active_learning=False):
     val_dataset = AmfLoad.CustomNormalisedDataset(x_val, y_val)
 
     # Initialise variables to prepare training and validation datasets
-    if AmfConfig.get("level") == 1:
-        labels = np.stack(
-            [full_dataset.labels[i] for i in range(len(full_dataset.labels))]
-        )
-        labels = torch.from_numpy(labels)
-        labels = labels.type(torch.float32)
-        weights = class_weights(labels, "effective_num")
-        class_weights_tensor = torch.tensor(weights[1], dtype=torch.float32).to(device)
-        AmfLog.text(f"Weights: {weights}")
-        loss_func = nn.CrossEntropyLoss(weight=class_weights_tensor)
-        # Root segmentation (colonized vs non-colonized vs background).
-        # ConvNet I has a standard, single input/single output architecture,
-        # and can use ImageDataGenerator.
-        # train_dataset = AmfLoad.CustomDataset(x_train, y_train)
-
-    else:
-        # weights = torch.tensor(class_weights(y_train, len(class_names))[1], , dtype=torch.float32) # weights to counteract class imbalance
-        # loss_func = nn.BCELoss()
-        AmfLog.error(
-            "Data augmentation functionality is currently unavailable for CNN2",
-            AmfLog.ERR_INVALID_MODEL_SHAPE,
-        )
-
-        return 500
+    labels = np.stack(
+        [full_dataset.labels[i] for i in range(len(full_dataset.labels))]
+    )
+    labels = torch.from_numpy(labels)
+    labels = labels.type(torch.float32)
+    weights = class_weights(labels, "effective_num")
+    class_weights_tensor = torch.tensor(weights[1], dtype=torch.float32).to(device)
+    AmfLog.text(f"Weights: {weights}")
+    loss_func = nn.CrossEntropyLoss(weight=class_weights_tensor)
+    # Root segmentation (colonized vs non-colonized vs background).
+    # ConvNet I has a standard, single input/single output architecture,
+    # and can use ImageDataGenerator.
+    # train_dataset = AmfLoad.CustomDataset(x_train, y_train)
 
     # Initialising relevant variables
     bs = AmfConfig.get("batch_size")

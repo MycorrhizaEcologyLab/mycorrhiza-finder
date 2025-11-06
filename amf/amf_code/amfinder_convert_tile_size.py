@@ -53,21 +53,9 @@ def initialize_size(path):
     return tile_size
 
 
-def rescale_annot(annots):
+def rescale_annot(annotation_data):
     """
     Scale Python annotations, 1x to 4x.
-    """
-    if AmfConfig.get("level") == 1:
-
-        return rescale_python_annot_1(annots)
-
-    else:
-        raise (NotImplementedError)
-
-
-def rescale_python_annot_1(annotation_data):
-    """
-    Scale Python annotations, 1x to 4x, for CNN1
     """
     annotation_data = pd.read_csv(
         annotation_data
@@ -372,7 +360,6 @@ def convert_tile_size(path, tile_size):
     image_name = os.path.splitext(os.path.basename(path))[0]
 
     if AmfConfig.get("use_db"):
-        level = AmfConfig.get("level")
         colonisation_type = AmfConfig.get("colonisation_type")
 
         conn = connect("amf")
@@ -389,7 +376,7 @@ def convert_tile_size(path, tile_size):
 
             if existing_entries[id]["cnn1_annotations_exist"]:
                 csv = download_entries_as_csv(
-                    crsr, id, str(level), "Annotations", colonisation_type
+                    crsr, id, "Annotations", colonisation_type
                 )
                 out = rescale_annot(io.StringIO(csv))
                 cnn1results = out.values.tolist()
@@ -398,7 +385,6 @@ def convert_tile_size(path, tile_size):
                     colonisationType=colonisation_type,
                     tileEdge=tile_size * SCALING_FACTOR,
                     cnnOneValues=cnn1results,
-                    cnnTwoValues=[],
                 )
                 save_annotations_to_db(crsr, values)
                 return
@@ -449,12 +435,6 @@ def run(input_images):
             AmfLog.error(
                 f"Only support AM Colonisation for converting tile size, not {AmfConfig.get('colonisation_type')}. Cancel operation.",
                 AmfLog.ERR_INVALID_DATA,
-            )
-
-        if AmfConfig.get("level") == 2:
-            AmfLog.error(
-                "Tile size conversion functionality is currently unavailable for CNN2",
-                AmfLog.ERR_INVALID_MODEL,
             )
 
         for path in input_images:

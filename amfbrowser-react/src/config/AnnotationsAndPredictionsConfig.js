@@ -29,14 +29,6 @@ const headerToValueMapCnn1Erm = new Map([
   ["Question", "?"],
 ]);
 
-// headerToValueMapCnn2
-export const headerToValueMapCnn2 = new Map([
-  ["Arbuscule", "A"],
-  ["Vesicle", "V"],
-  ["Hyphopodium", "H"],
-  ["Hyphae", "IH"],
-]);
-
 // colorMappingCnn1
 export const getColorMappingCnn1 = (colonisationType) => {
   return colonisationType === "am" ? colorMappingCnn1Am : colorMappingCnn1Erm;
@@ -96,15 +88,6 @@ const colorMappingCnn1TransparentErm = new Map([
   ["?", "rgb(255,165,0, 0.6)"],
 ]);
 
-// colorMappingCnn2
-export const colorMappingCnn2 = new Map([
-  ["A", "#0055FF"],
-  ["V", "#FF00FF"],
-  ["H", "#31FF12"],
-  ["IH", "#FFA500"],
-  ["I", "#FFA500"],
-]);
-
 // headerMapCnn1
 export const getHeaderMapCnn1 = (colonisationType) => {
   return colonisationType === "am" ? headerMapCnn1Am : headerMapCnn1Erm;
@@ -133,9 +116,6 @@ const headerMapCnn1Erm = [
   "Question",
 ];
 
-// headerMapCnn2
-export const headerMapCnn2 = ["Arbuscule", "Vesicle", "Hyphopodium", "Hyphae"];
-
 // valueMapCnn1
 export const getValueMapCnn1 = (colonisationType) => {
   return colonisationType === "am" ? valueMapCnn1Am : valueMapCnn1Erm;
@@ -154,16 +134,6 @@ const valueMapCnn1Erm = [
   "HD+",
   "?",
 ];
-
-// valueMapCnn2
-export const valueMapCnn2 = ["A", "V", "H", "IH"];
-
-export const headerToKeyBindingsMapCnn2 = new Map([
-  ["A", "A"],
-  ["V", "V"],
-  ["H", "H"],
-  ["IH", "I"],
-]);
 
 export const getKeyBindingsCnn1 = (colonisationType) => {
   return colonisationType === "am"

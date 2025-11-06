@@ -415,22 +415,6 @@ def run(input_images):
     :param save: indicate whether results should be saved or returned.
     """
 
-    if AmfConfig.get("level") == 2 and AmfConfig.get("colonisation_type") == "erm":
-        AmfLog.error(
-            "There is no CNN2 functionality for ErM colonisation, so fail.",
-            AmfLog.ERR_INVALID_ANNOTATION_LEVEL,
-        )
-
-        return 500
-
-    if AmfConfig.get("level") == 2:
-        AmfLog.error(
-            "Test functionality is currently unavailable for CNN2",
-            AmfLog.ERR_INVALID_MODEL,
-        )
-
-        return 500
-
     model = AmfModel.load()
 
     # Assign correct device, depending on cpu or gpu

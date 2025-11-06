@@ -959,7 +959,6 @@ def import_annotations(path, is_bald_folder=False):
         image_name = os.path.splitext(os.path.basename(path))[0]
 
         if AmfConfig.get("use_db"):
-            level = AmfConfig.get("level")
             colonisation_type = AmfConfig.get("colonisation_type")
 
             conn = connect("amf")
@@ -984,7 +983,7 @@ def import_annotations(path, is_bald_folder=False):
                 assert existing_entries[id]["cnn1_annotations_exist"]
 
                 csv = download_entries_as_csv(
-                    crsr, id, str(level), "Annotations", colonisation_type
+                    crsr, id, "Annotations", colonisation_type
                 )
                 output = pd.read_csv(io.StringIO(csv), sep=",")
 
@@ -1013,12 +1012,7 @@ def import_annotations(path, is_bald_folder=False):
             directory = os.path.dirname(path)
             files = os.listdir(directory)
 
-            annotation_type = (
-                "cnn_1_annotations"
-                if AmfConfig.get("level") == 1
-                else "cnn_2_annotations"
-            )
-            regex_pattern = f"{image_name}_.+{annotation_type}.+"
+            regex_pattern = f"{image_name}_.+cnn_1_annotations.+"
 
             # Collect matching annotation files
             matching_annotations = [

@@ -30,12 +30,10 @@ Builds the convolutional neural networks used by AMFinder.
 
 Functions
 ------------
-:class ConvolutionalBlocks: Builds the Convolutional Backbone of CNN1 and CNN2
+:class ConvolutionalBlocks: Builds the Convolutional Backbone of CNN1
 :class FCLayers: Builds fully connected/dropout layers.
 :class CNN1: Builds CNN1 as a class
-:class CNN2: Builds CNN2 as a class
 :function create_cnn1: Builds a network for root segmentation.
-:function create_cnn2: Builds a network for AM fungal structure prediction.
 :function load: main function, to be called from outside.
 """
 
@@ -210,7 +208,6 @@ class ConvolutionalBlocks(nn.Module):
 
 class FCLayers(nn.Module):
 
-    # TODO: Leaving the activation argument as a comment as it could be required for CNN2
     def __init__(self, fc_in_size, label="RS", output_size=1):  # activation='sigmoid'):
         super(FCLayers, self).__init__()
 
@@ -225,17 +222,6 @@ class FCLayers(nn.Module):
 
         # Initialise weights
         self._initialise_weights()
-
-        # TODO: Tweak activation selection as option for cnn2 for the future
-        # Activation selection
-        # if activation == 'sigmoid':
-        #     self.activation = nn.Sigmoid()
-        # elif activation == 'softmax':
-        #     self.activation = nn.Softmax(dim=1)
-        # elif activation == 'relu':
-        #     self.activation = nn.ReLU()
-        # else:
-        #     raise ValueError("Unsupported activation function. Available functions: 'sigmoid, 'softmax', 'relu'.")
 
     def forward(self, x):
         # First pass through fc1
@@ -279,25 +265,6 @@ class CNN1(nn.Module):
         return self.fc(x[1])
 
 
-class CNN2(nn.Module):
-    def __init__(self):
-        super(CNN2, self).__init__()
-        self.conv = ConvolutionalBlocks()
-        self.fc = [
-            FCLayers(
-                fc_in_size=self.conv.flatten_size,
-                label=x,
-                output_size=1,
-                activation="softmax",
-            )
-            for x in AmfConfig.get("header")
-        ]
-
-    def forward(self, x):
-        x = self.conv(x)
-        return [fc(x[1]) for fc in self.fc]
-
-
 def create_cnn1():
     """
     Builds a single-label, multi-class classifier to discriminate
@@ -305,18 +272,6 @@ def create_cnn1():
     """
 
     model = CNN1()
-
-    return model
-
-
-def create_cnn2():
-    """
-    Builds a multi-label, single-class classifier to identify
-    arbuscules (A), vesicles (V), hyphopodia (H), and
-    intraradical hyphae (IH) for AM roots.
-    """
-
-    model = CNN2()
 
     return model
 
@@ -420,8 +375,6 @@ def load(name=None):
             # TODO: ResNeXt has the same model.__class__.__name__ as ResNet. Change to map correctly.
             if model_name in ["CNN1", "ResNet", "ResNeXt", "EfficientNet"]:
                 AmfLog.text(f"Model type: {model_name}")
-                AmfLog.text(f"Classes: {AmfConfig.get_class_documentation()}.")
-                AmfConfig.set("level", 1)
                 return model
 
         else:
@@ -434,56 +387,52 @@ def load(name=None):
         # Initialise a new network if no valid model was found
         if AmfConfig.get("run_mode") == "train":
 
-            if AmfConfig.get("level") == 1:
-                pt_flag = AmfConfig.get("pre_trained")
-                num_classes = len(AmfConfig.get("header"))
+            pt_flag = AmfConfig.get("pre_trained")
+            num_classes = len(AmfConfig.get("header"))
 
-                if AmfConfig.get("model_type") == "cnn1":
-                    if pt_flag:
-                        AmfLog.error(
-                            "Pre-trained weights are unanavailable for CNN1. Please proceed with pre_trained=False",
-                            exit_code=AmfLog.ERR_NO_PRETRAINED_MODEL,
-                        )
-                    else:
-                        model = create_cnn1()
-
-                elif AmfConfig.get("model_type") == "resnet":
-                    model = create_resnet50(
-                        num_classes=num_classes, pre_trained=pt_flag
-                    )
-
-                elif AmfConfig.get("model_type") == "resnext":
-                    model = create_resnext50(
-                        num_classes=num_classes, pre_trained=pt_flag
-                    )
-
-                elif AmfConfig.get("model_type") == "efficientnet":
-                    model = create_efficientnetb5(
-                        num_classes=num_classes, pre_trained=pt_flag
-                    )
-
-                elif AmfConfig.get("model_type") == "efficientnetv2":
-                    model = create_efficientnet_v2_m(
-                        num_classes=num_classes, pre_trained=pt_flag
-                    )
-
-                else:
+            if AmfConfig.get("model_type") == "cnn1":
+                if pt_flag:
                     AmfLog.error(
-                        "Invalid model type. Please choose one of the following model types: 'cnn1', 'resnet', 'resnext', 'efficientnet' or 'efficientnetv2'.",
-                        exit_code=AmfLog.ERR_INVALID_MODEL,
+                        "Pre-trained weights are unanavailable for CNN1. Please proceed with pre_trained=False",
+                        exit_code=AmfLog.ERR_NO_PRETRAINED_MODEL,
                     )
+                else:
+                    model = create_cnn1()
 
-                model_name = AmfConfig.get(
-                    "model_type"
-                )  # Get class name of loaded model
-                AmfLog.text(
-                    f"Initialise new network. Selected model type: {model_name}. Pre-Trained Flag: {pt_flag}"
+            elif AmfConfig.get("model_type") == "resnet":
+                model = create_resnet50(
+                    num_classes=num_classes, pre_trained=pt_flag
                 )
 
-                return model
+            elif AmfConfig.get("model_type") == "resnext":
+                model = create_resnext50(
+                    num_classes=num_classes, pre_trained=pt_flag
+                )
+
+            elif AmfConfig.get("model_type") == "efficientnet":
+                model = create_efficientnetb5(
+                    num_classes=num_classes, pre_trained=pt_flag
+                )
+
+            elif AmfConfig.get("model_type") == "efficientnetv2":
+                model = create_efficientnet_v2_m(
+                    num_classes=num_classes, pre_trained=pt_flag
+                )
 
             else:
-                return create_cnn2()
+                AmfLog.error(
+                    "Invalid model type. Please choose one of the following model types: 'cnn1', 'resnet', 'resnext', 'efficientnet' or 'efficientnetv2'.",
+                    exit_code=AmfLog.ERR_INVALID_MODEL,
+                )
+
+            model_name = AmfConfig.get(
+                "model_type"
+            )  # Get class name of loaded model
+            AmfLog.text(
+                f"Initialise new network. Selected model type: {model_name}. Pre-Trained Flag: {pt_flag}"
+            )
+
+            return model
 
         else:  # missing pre-trained model in prediction mode.
             AmfLog.error(

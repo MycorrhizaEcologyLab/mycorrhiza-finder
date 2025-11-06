@@ -303,14 +303,6 @@ def run(input_files):
 
     :param input_files: List of input images to train with.
     """
-    if AmfConfig.get("level") == 2:
-        AmfLog.error(
-            "Calibration functionality is currently unavailable for CNN2",
-            AmfLog.ERR_INVALID_MODEL,
-        )
-
-        return 500
-
     # Trained model
     model = AmfModel.load()
 

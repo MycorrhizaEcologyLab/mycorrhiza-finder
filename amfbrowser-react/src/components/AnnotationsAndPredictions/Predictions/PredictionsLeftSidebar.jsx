@@ -29,8 +29,6 @@ const SidebarDivider = () => (
 );
 
 const PredictionsLeftSidebar = ({
-  level,
-  setLevel,
   colorMapping,
   icons,
   keyBindings,
@@ -61,14 +59,6 @@ const PredictionsLeftSidebar = ({
           Settings
         </div>
       </DrawerHeader>
-      <SidebarDivider />
-      <SidebarRadioGroup
-        label="Model"
-        value={level}
-        onChange={(e) => setLevel(e.target.value)}
-        options={["CNN 1", "CNN 2"]}
-        disabledOptions={["CNN 2"]}
-      />
       <SidebarDivider />
 
       {/* Legend */}

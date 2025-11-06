@@ -134,9 +134,8 @@ def save_model_architecture(model, device, tile_size):
     :param model: Model to save.
     """
 
-    cnn = "CNN%d" % (AmfConfig.get("level"))
-    path_summary = os.path.join(AmfConfig.get("outdir"), f"{cnn}_summary.txt")
-    path_graph = os.path.join(AmfConfig.get("outdir"), f"{cnn}_graph")
+    path_summary = os.path.join(AmfConfig.get("outdir"), f"CNN1_summary.txt")
+    path_graph = os.path.join(AmfConfig.get("outdir"), f"CNN1_graph")
     input_tensor = torch.randn(1, 3, tile_size, tile_size).to(device)
 
     with open(path_summary, "w") as sf:
@@ -155,17 +154,15 @@ def save_settings(path):
     :param z: ZIP archive.
     """
 
-    # Level 2 predictions require settings.json.
-    if AmfConfig.get("level") == 1:
-        directory = os.path.dirname(path)
-        image_name = os.path.splitext(os.path.basename(path))[0]
-        json_file_path = os.path.join(directory, f"{image_name}_settings.json")
+    directory = os.path.dirname(path)
+    image_name = os.path.splitext(os.path.basename(path))[0]
+    json_file_path = os.path.join(directory, f"{image_name}_settings.json")
 
-        settings = {"tile_edge": AmfConfig.get("tile_edge")}
+    settings = {"tile_edge": AmfConfig.get("tile_edge")}
 
-        # Write settings to the JSON file
-        with open(json_file_path, "w") as file:
-            json.dump(settings, file)
+    # Write settings to the JSON file
+    with open(json_file_path, "w") as file:
+        json.dump(settings, file)
 
 
 def save_metrics(metrics_collector, path):
@@ -226,7 +223,6 @@ def prediction_table(results, path):
         image_name = os.path.splitext(os.path.basename(path))[0]
 
         if AmfConfig.get("use_db"):
-            # TODO only implemented for CNN1, needs to be extended for CNN2
             conn = connect("amf")
             with conn, conn.cursor() as crsr:
                 cnn1results = results.values.tolist()
@@ -235,7 +231,6 @@ def prediction_table(results, path):
                     colonisationType=AmfConfig.get("colonisation_type"),
                     tileEdge=AmfConfig.get("tile_edge"),
                     cnnOneValues=cnn1results,
-                    cnnTwoValues=[],
                 )
                 save_predictions_to_db(crsr, values)
 

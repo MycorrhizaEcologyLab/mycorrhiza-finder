@@ -10,7 +10,6 @@ const AnnotationsAndPredictionsButtonsContainer = ({
   onClick,
   gridData,
   size,
-  isCnn1,
   selectIcons,
   onQuestionClick,
   onQuestionNext,
@@ -45,7 +44,6 @@ const AnnotationsAndPredictionsButtonsContainer = ({
               gridData={gridData}
               selectedTile={selectedTile}
               showAnnotations={showAnnotations}
-              isCnn1={isCnn1}
               size={size}
               iconFontSize={iconFontSize}
               colorMapping={colorMapping}
@@ -59,7 +57,6 @@ const AnnotationsAndPredictionsButtonsContainer = ({
                 gridData={gridData}
                 selectedTile={selectedTile}
                 showAnnotations={showAnnotations}
-                isCnn1={isCnn1}
                 size={size}
                 iconFontSize={iconFontSize}
                 colorMapping={colorMapping}
@@ -70,7 +67,6 @@ const AnnotationsAndPredictionsButtonsContainer = ({
                 gridData={gridData}
                 selectedTile={selectedTile}
                 showAnnotations={showAnnotations}
-                isCnn1={isCnn1}
                 size={size}
                 iconFontSize={iconFontSize}
                 colorMapping={colorMapping}
@@ -80,7 +76,7 @@ const AnnotationsAndPredictionsButtonsContainer = ({
           )}
         </div>
 
-        {isCnn1 && showAnnotations && (
+        {showAnnotations && (
           <div
             className="questionButtonArea flexRow"
             style={{

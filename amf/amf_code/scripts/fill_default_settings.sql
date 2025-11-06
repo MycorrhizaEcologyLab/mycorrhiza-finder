@@ -7,7 +7,6 @@ INSERT INTO public.Settings (key, value_type, value, default_value) VALUES
     ('vfrac', 'float', '0.2', '0.2'),
     ('dataAugm', 'boolean', 'false', 'false'),
     ('summary', 'boolean', 'false', 'false'),
-    ('level', 'integer', '1', '1'),
     ('threshold', 'float', '0.5', '0.5'),
     ('useDb', 'boolean', 'true', 'true'),
     ('aggregateTiles', 'boolean', 'false', 'false'),

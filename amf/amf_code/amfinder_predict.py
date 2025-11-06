@@ -23,12 +23,11 @@
 # IN THE SOFTWARE.
 
 """
-Predicts fungal colonisation (level 1 model) and intraradical hyphal structures (CNN2).
+Predicts fungal colonisation.
 
 Functions
 ------------
 
-:function predict_level2: CNN2 predictions.
 :function predict_level1: level 1 model predictions.
 :function run: main prediction function.
 """
@@ -100,77 +99,6 @@ def process_row_1(model, image, nrows, ncols, r, temperature_factor):
     return pd.DataFrame(output.cpu().numpy())
 
 
-def predict_level2(path, image, nrows, ncols, model):
-    """
-    Identifies AM fungal structures in colonised root segments.
-
-    :param path: path to the input image.
-    :param image: input image (to extract tiles).
-    :param nrows: row count.
-    :param ncols: column count.
-    :para model: CNN2 model used for predictions.
-    """
-
-    image_name = os.path.splitext(os.path.basename(path))[0]
-    directory = os.path.dirname(path)
-    files = os.listdir(directory)
-
-    annotation_type = "cnn_1_annotations"
-    regex_pattern = f"{image_name}_.+{annotation_type}"
-
-    # Collect matching annotation files
-    matching_annotations = [file for file in files if re.match(regex_pattern, file)]
-
-    # Ensure exactly one matching annotation file exists
-    if len(matching_annotations) != 1:
-        AmfLog.error(
-            f"The dir {directory} does not contain "
-            "stage 1 annotations (fungal colonisation)",
-            AmfLog.ERR_MISSING_ANNOTATIONS,
-        )
-        raise ValueError(
-            f"Expected exactly one annotation file, found: {len(matching_annotations)}"
-        )
-
-    annotations = pd.read_csv(os.path.join(directory, matching_annotations[0]))
-
-    # Retrieve tiles corresponding to arbuscular colonised root segments.
-    colonised = annotations.loc[annotations["AMColonised"] == 1, ["row", "col"]]
-    colonised = [x for x in colonised.values.tolist()]
-
-    # Create tile batches.
-    batches = zip_longest(*(iter(colonised),) * 25)
-    nbatches = len(colonised) // 25 + int(len(colonised) % 25 != 0)
-
-    def process_batch(batch, b):
-        batch = [x for x in batch if x is not None]
-        # First, extract all tiles from the batch.
-        row = [AmfSegm.tile(image, x[0], x[1]) for x in batch]
-        row = AmfSegm.preprocess(row)
-        # Returns three prediction tables (one per class).
-        prd = model.predict(row, batch_size=25, verbose=0)
-        # Converts to a table of predictions.
-        ap = prd[0].tolist()
-        vp = prd[1].tolist()
-        hp = prd[2].tolist()
-        ip = prd[3].tolist()
-        dat = [[a[0], v[0], h[0], i[0]] for a, v, h, i in zip(ap, vp, hp, ip)]
-        # AmfMapping.generate(cams, model, row, batch)
-        res = [[x[0], x[1], y[0], y[1], y[2], y[3]] for (x, y) in zip(batch, dat)]
-        AmfLog.progress_bar(b, nbatches, indent=1)
-        return pd.DataFrame(res)
-
-    AmfLog.progress_bar(0, nbatches, indent=1)
-    results = [process_batch(x, b) for x, b in zip(batches, range(1, nbatches + 1))]
-
-    table = None
-    if len(results) > 0:
-        table = pd.concat(results, ignore_index=True)
-        table.columns = table_header()
-
-    return table
-
-
 def apply_contextual_confidence(table, image, model, base):
     """
     Apply contextual confidence to improve predictions for low confidence tiles.
@@ -203,7 +131,7 @@ def apply_contextual_confidence(table, image, model, base):
         AmfLog.info(
             f"Found 0 predictions that are under the context threshold of {contextual_confidence_threshold}, so don't make any changes."
         )
-        return table
+        return table, pd.DataFrame()
 
     AmfLog.info(
         f"Found {len(low_confidence_indices)} predictions that are under the context threshold of {contextual_confidence_threshold}. Applying contextual refinement"
@@ -344,7 +272,7 @@ def predict_level1(image, nrows, ncols, model, temperature_factor, base):
 
 
 def prepare_metrics(
-    path: str, tile_results_table: pd.DataFrame, level: int, include_hybrid: bool = True
+    path: str, tile_results_table: pd.DataFrame, include_hybrid: bool = True
 ) -> dict:
 
     tile_results_table.drop("ContextualLabel", axis=1, inplace=True)
@@ -355,7 +283,6 @@ def prepare_metrics(
     Args:
         path (str): full image path
         tile_results_table (pd.DataFrame): DataFrame of individual tile results
-        level: results level 1 or 2
 
     Returns:
         dict: summary metrics for this image
@@ -366,10 +293,7 @@ def prepare_metrics(
         "file": filename,
     }
 
-    if (level == 1) or (level == 2):
-        col_headers = AmfConfig.get("header")
-    else:
-        raise ValueError("Unknown level")
+    col_headers = AmfConfig.get("header")
 
     class_predictions = tile_results_table.loc[:, col_headers].idxmax(axis=1)
     class_totals = class_predictions.value_counts()
@@ -380,96 +304,94 @@ def prepare_metrics(
             results_dict[col] = 0
 
     # Calculate % colonised for different classes
-    if level == 1:
+    col_type = AmfConfig.get("colonisation_type")
 
-        col_type = AmfConfig.get("colonisation_type")
+    if col_type == "am":
+        # Save number of root tilesclasses in results_dict
+        # Takes the numer of tiles for each class from results_dict and sums them up, substracts background images and unreadable
+        # The first two values of results_dict are exclude, since they are defined as strings
+        total_root_tiles = (
+            sum(value for _, value in list(results_dict.items())[2:])
+            - results_dict[col_headers[2]]  # Remove class Background
+            - results_dict[col_headers[3]]  # Remove class Unreadable
+        )
 
-        if col_type == "am":
-            # Save number of root tilesclasses in results_dict
-            # Takes the numer of tiles for each class from results_dict and sums them up, substracts background images and unreadable
-            # The first two values of results_dict are exclude, since they are defined as strings
-            total_root_tiles = (
-                sum(value for _, value in list(results_dict.items())[2:])
-                - results_dict[col_headers[2]]  # Remove class Background
-                - results_dict[col_headers[3]]  # Remove class Unreadable
-            )
+        # Ensures that the Hybrid class is included in or excluded from the percentage calculation depending on the include_hybrid parameter
+        hybrid_addition = results_dict[col_headers[5]] if include_hybrid else 0
 
-            # Ensures that the Hybrid class is included in or excluded from the percentage calculation depending on the include_hybrid parameter
-            hybrid_addition = results_dict[col_headers[5]] if include_hybrid else 0
+        # Calculate % AM colonised as a ratio to all root tiles
+        results_dict["am_colonised_percentage"] = (
+            100
+            * (results_dict[col_headers[0]] + hybrid_addition)
+            / total_root_tiles
+        )
 
-            # Calculate % AM colonised as a ratio to all root tiles
-            results_dict["am_colonised_percentage"] = (
-                100
-                * (results_dict[col_headers[0]] + hybrid_addition)
-                / total_root_tiles
-            )
+        # Calculate % DSE colonised as a ratio to all root tiles
+        results_dict["dse_colonised_percentage"] = (
+            100
+            * (results_dict[col_headers[4]] + hybrid_addition)
+            / total_root_tiles
+        )
 
-            # Calculate % DSE colonised as a ratio to all root tiles
-            results_dict["dse_colonised_percentage"] = (
-                100
-                * (results_dict[col_headers[4]] + hybrid_addition)
-                / total_root_tiles
-            )
+        # Calculate % total colonised as a ratio to all root tiles
+        results_dict["total_colonised_percentage"] = (
+            results_dict["am_colonised_percentage"]
+            + results_dict["dse_colonised_percentage"]
+            - 100 * (hybrid_addition / total_root_tiles)
+        )
 
-            # Calculate % total colonised as a ratio to all root tiles
-            results_dict["total_colonised_percentage"] = (
-                results_dict["am_colonised_percentage"]
-                + results_dict["dse_colonised_percentage"]
-                - 100 * (hybrid_addition / total_root_tiles)
-            )
+    else:
+        total_root_tiles = (
+            sum(value for _, value in list(results_dict.items())[2:])
+            - results_dict[col_headers[4]]  # Remove class Background
+            - results_dict[col_headers[5]]  # Remove class Main root
+            - results_dict[col_headers[6]]  # Remove class Unreadable
+        )
 
-        else:
-            total_root_tiles = (
-                sum(value for _, value in list(results_dict.items())[2:])
-                - results_dict[col_headers[4]]  # Remove class Background
-                - results_dict[col_headers[5]]  # Remove class Main root
-                - results_dict[col_headers[6]]  # Remove class Unreadable
-            )
+        # Ensures that the Hybrid class is included in or excluded from the percentage calculation depending on the include_hybrid parameter
+        hybriderm_addition = results_dict[col_headers[8]]
+        hybriddse_addition = results_dict[col_headers[9]]
 
-            # Ensures that the Hybrid class is included in or excluded from the percentage calculation depending on the include_hybrid parameter
-            hybriderm_addition = results_dict[col_headers[8]]
-            hybriddse_addition = results_dict[col_headers[9]]
+        # Calculate % blue coils colonised as a ratio to all root tiles
+        results_dict["BlueCoils_colonised_percentage"] = (
+            100 * (results_dict[col_headers[0]]) / total_root_tiles
+        )
 
-            # Calculate % blue coils colonised as a ratio to all root tiles
-            results_dict["BlueCoils_colonised_percentage"] = (
-                100 * (results_dict[col_headers[0]]) / total_root_tiles
-            )
+        # Calculate % brown coils colonised as a ratio to all root tiles
+        results_dict["BrownCoils_colonised_percentage"] = (
+            100 * (results_dict[col_headers[1]]) / total_root_tiles
+        )
 
-            # Calculate % brown coils colonised as a ratio to all root tiles
-            results_dict["BrownCoils_colonised_percentage"] = (
-                100 * (results_dict[col_headers[1]]) / total_root_tiles
-            )
+        # Calculate % type two colonised as a ratio to all root tiles
+        results_dict["TypeTwo_colonised_percentage"] = (
+            100 * (results_dict[col_headers[2]]) / total_root_tiles
+        )
 
-            # Calculate % type two colonised as a ratio to all root tiles
-            results_dict["TypeTwo_colonised_percentage"] = (
-                100 * (results_dict[col_headers[2]]) / total_root_tiles
-            )
+        # Calculate % DSE colonised as a ratio to all root tiles
+        results_dict["dse_colonised_percentage"] = (
+            100
+            * (results_dict[col_headers[7]] + hybriddse_addition)
+            / total_root_tiles
+        )
 
-            # Calculate % DSE colonised as a ratio to all root tiles
-            results_dict["dse_colonised_percentage"] = (
-                100
-                * (results_dict[col_headers[7]] + hybriddse_addition)
-                / total_root_tiles
-            )
+        # Calculate % total colonised as a ratio to all root tiles
+        results_dict["total_colonised_percentage"] = (
+            results_dict["BlueCoils_colonised_percentage"]
+            + results_dict["BrownCoils_colonised_percentage"]
+            + results_dict["TypeTwo_colonised_percentage"]
+            + 100 * (hybriderm_addition / total_root_tiles)
+        )
 
-            # Calculate % total colonised as a ratio to all root tiles
-            results_dict["total_colonised_percentage"] = (
-                results_dict["BlueCoils_colonised_percentage"]
-                + results_dict["BrownCoils_colonised_percentage"]
-                + results_dict["TypeTwo_colonised_percentage"]
-                + 100 * (hybriderm_addition / total_root_tiles)
-            )
+    # Calculate bootstrap distribution and confidence intervals
+    AmfLog.info("Calculating bootstrap distribution")
+    bootstr_dist = bootstrap_distribution(tile_results_table)
+    AmfLog.info("Calculating confidence intervals")
+    results_dict = add_conf_intervals(bootstr_dist, results_dict, include_hybrid)
 
-        # Calculate bootstrap distribution and confidence intervals
-        AmfLog.info("Calculating bootstrap distribution")
-        bootstr_dist = bootstrap_distribution(tile_results_table)
-        AmfLog.info("Calculating confidence intervals")
-        results_dict = add_conf_intervals(bootstr_dist, results_dict, include_hybrid)
-
-        # Retrieve cumulative count distribution for max probabilities per tile
-        AmfLog.info("Calculating number of tiles per confidence level")
-        count_distribution_dict = get_num_tiles_per_confidence(tile_results_table)
-        results_dict.update(count_distribution_dict)
+    # Retrieve cumulative count distribution for max probabilities per tile
+    AmfLog.info("Calculating number of tiles per confidence level")
+    count_distribution_dict = get_num_tiles_per_confidence(tile_results_table)
+    results_dict.update(count_distribution_dict)
 
     return results_dict
 
@@ -639,22 +561,6 @@ def run(input_images, postprocess=None):
     :param save: indicate whether results should be saved or returned.
     """
 
-    if AmfConfig.get("level") == 2 and AmfConfig.get("colonisation_type") == "erm":
-        AmfLog.error(
-            "There is no CNN2 for ErM colonisation, so fail.",
-            AmfLog.ERR_INVALID_ANNOTATION_LEVEL,
-        )
-
-        return 500
-
-    if AmfConfig.get("level") == 2:
-        AmfLog.error(
-            "Currently CNN2 predictions are not supported",
-            AmfLog.ERR_INVALID_MODEL,
-        )
-
-        return 500
-
     AmfLog.info(f"Number of test images: {len(input_images)}")
 
     model = AmfModel.load()
@@ -720,21 +626,13 @@ def run(input_images, postprocess=None):
 
         else:
 
-            if AmfConfig.get("level") == 1:
-                # run the model and make predictions on a single test image
-                # and produce a table of predictions including the position of the
-                # tile corresponding to those predictions.
-                table, class_changes = predict_level1(
-                    image, nrows, ncols, model, temperature_factor, base
-                )
-                class_changes_total.append(class_changes)
-
-            else:
-                AmfLog.error(
-                    "Level 2 predictions are currently not supported.",
-                    exit_code=AmfLog.ERR_INVALID_ANNOTATION_LEVEL,
-                )
-                # table = predict_level2(path, image, nrows, ncols, model)
+            # run the model and make predictions on a single test image
+            # and produce a table of predictions including the position of the
+            # tile corresponding to those predictions.
+            table, class_changes = predict_level1(
+                image, nrows, ncols, model, temperature_factor, base
+            )
+            class_changes_total.append(class_changes)
 
             # Save results or use continuation for further processing.
             if postprocess is None:
@@ -742,9 +640,7 @@ def run(input_images, postprocess=None):
                 # None was cams, reuse for super-resolution.
                 AmfSave.prediction_table(table, path)
                 AmfLog.info("Preparing metrics for prediction output")
-                these_metrics = prepare_metrics(
-                    path, table, level=AmfConfig.get("level")
-                )
+                these_metrics = prepare_metrics(path, table)
                 collated_metrics.append(these_metrics)
 
             else:
