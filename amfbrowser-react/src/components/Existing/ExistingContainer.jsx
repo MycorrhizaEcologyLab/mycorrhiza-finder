@@ -66,7 +66,6 @@ export default function ExistingContainer() {
   const onDownload = async (id, cnn, type, timestamp) => {
     const csvFile = await PredictionsApi.downloadEntries(
       id,
-      cnn,
       type,
       colonisationType,
     );
