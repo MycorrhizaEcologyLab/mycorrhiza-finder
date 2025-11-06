@@ -3,9 +3,7 @@ import TiledAnnotationsGrid from "./TiledAnnotationsGrid";
 
 const AnnotationsViewer = ({
   selectedTile,
-  isCnn1,
   gridDataCnn1,
-  gridDataCnn2,
   numRows,
   numCols,
   setSelectedTile,
@@ -37,7 +35,7 @@ const AnnotationsViewer = ({
 
   const renderVisibleTiles = useMemo(() => {
     const tiles = [];
-    const gridData = isCnn1 ? gridDataCnn1 : gridDataCnn2;
+    const gridData = gridDataCnn1;
 
     for (let x = 0; x < 10; x++) {
       for (let y = 0; y < 10; y++) {
@@ -45,7 +43,7 @@ const AnnotationsViewer = ({
         const currentCol = (topLeftTile.col + y + numCols) % numCols;
         const key = `${currentRow}.${currentCol}`;
 
-        const disabled = !isCnn1 && gridDataCnn1.get(key) !== "AM+";
+        const disabled = false;
         const tileValue = gridData.get(key);
 
         tiles.push({
@@ -58,28 +56,23 @@ const AnnotationsViewer = ({
     }
 
     return tiles;
-  }, [topLeftTile, isCnn1, gridDataCnn1, gridDataCnn2, numRows, numCols]);
+  }, [topLeftTile, gridDataCnn1, numRows, numCols]);
 
   return (
     <div
       onMouseDown={() => {
-        if (isCnn1) {
-          setDragActivated(true);
-          setSelectedTile({ row: focusedTile?.row, col: focusedTile?.col });
-        }
+        setDragActivated(true);
+        setSelectedTile({ row: focusedTile?.row, col: focusedTile?.col });
       }}
       onMouseUp={() => {
-        if (isCnn1) {
-          setDragActivated(false);
-          setSelectedTile({ row: focusedTile?.row, col: focusedTile?.col });
-        }
+        setDragActivated(false);
+        setSelectedTile({ row: focusedTile?.row, col: focusedTile?.col });
       }}
     >
       <TiledAnnotationsGrid
         tiles={renderVisibleTiles}
         selectedTile={selectedTile}
         setSelectedTile={setSelectedTile}
-        isCnn1={isCnn1}
         colorMapping={colorMapping}
         gridSize={gridSize}
         gridFontSize={gridFontSize}

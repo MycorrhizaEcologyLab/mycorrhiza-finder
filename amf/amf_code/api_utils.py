@@ -236,27 +236,6 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
                     ),
                 )
 
-    # Only applicable for AM colonisation
-    if (
-        values.colonisationType == "am"
-        and values.cnnTwoValues
-        and len(values.cnnTwoValues) != 0
-    ):
-        delete_query = "DELETE FROM cnn2annotationsam WHERE imagereferenceid=%s"
-        crsr.execute(delete_query, (image_id,))
-
-        insert_values_query = (
-            """INSERT INTO cnn2annotationsam"""
-            + """(
-        imagereferenceid, rownum, colnum, arbuscule, vesicle, hyphopodium, hypha)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)"""
-        )
-        for row in values.cnnTwoValues:
-            crsr.execute(
-                insert_values_query,
-                (image_id, row[0], row[1], row[2], row[3], row[4], row[5]),
-            )
-
     print("Saved Image Reference ID: ", image_id)
     return image_id
 
@@ -267,9 +246,8 @@ def save_predictions_to_db(crsr, values: PredictionValues):
 
     This function first checks if the provided image reference ID exists in the database.
     If it does not exist, it inserts a new record into the `imagereference` table.
-    The function then handles the insertion of CNN prediction data for both level one
-    two predictions, deleting any existing data for the specified image reference ID
-    before inserting the new predictions.
+    The function then handles the insertion of CNN prediction data, deleting any existing data
+    for the specified image reference ID before inserting the new predictions.
 
     Parameters:
     crsr (cursor): The database cursor used to execute SQL queries.
@@ -378,32 +356,6 @@ def save_predictions_to_db(crsr, values: PredictionValues):
                         row[12],
                     ),
                 )
-
-    # Only applicable for AM colonisation
-    if (
-        values.colonisationType == "am"
-        and values.cnnTwoValues
-        and len(values.cnnTwoValues) != 0
-    ):
-        delete_query = (
-            "DELETE FROM cnn2predictions"
-            + values.colonisationType
-            + " WHERE imagereferenceid=%s"
-        )
-        crsr.execute(delete_query, (image_id,))
-
-        insert_values_query = (
-            """INSERT INTO cnn2predictions"""
-            + values.colonisationType
-            + """(
-        imagereferenceid, rownum, colnum, arbuscule, vesicle, hyphopodium, hypha)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)"""
-        )
-        for row in values.cnnTwoValues:
-            crsr.execute(
-                insert_values_query,
-                (image_id, row[0], row[1], row[2], row[3], row[4], row[5]),
-            )
 
 
 def get_images(crsr):
@@ -531,32 +483,9 @@ def _get_existing_entries_for_image(crsr, colonisation_type, images):
         crsr.execute(cnn1_annotations_exist_query, (id,))
         cnn1_annotations_exist = crsr.fetchone()[0]
 
-        # CNN2 only applicable for AM colonisation
-        if colonisation_type == "am":
-            cnn2_predictions_exist_query = (
-                "SELECT EXISTS(SELECT 1 FROM cnn2predictions"
-                + colonisation_type
-                + " WHERE ImageReferenceId=%s)"
-            )
-            crsr.execute(cnn2_predictions_exist_query, (id,))
-            cnn2_predictions_exist = crsr.fetchone()[0]
-
-            cnn2_annotations_exist_query = (
-                "SELECT EXISTS(SELECT 1 FROM cnn2annotations"
-                + colonisation_type
-                + " WHERE ImageReferenceId=%s)"
-            )
-            crsr.execute(cnn2_annotations_exist_query, (id,))
-            cnn2_annotations_exist = crsr.fetchone()[0]
-        else:
-            cnn2_predictions_exist = False
-            cnn2_annotations_exist = False
-
         if (
             cnn1_annotations_exist
             or cnn1_predictions_exist
-            or cnn2_annotations_exist
-            or cnn2_predictions_exist
         ):
             output[id] = {
                 "timestamp": timestamp,
@@ -564,20 +493,17 @@ def _get_existing_entries_for_image(crsr, colonisation_type, images):
                 "tileEdge": tileEdge,
                 "updatedAt": updatedAt,
                 "cnn1_predictions_exist": cnn1_predictions_exist,
-                "cnn2_predictions_exist": cnn2_predictions_exist,
                 "cnn1_annotations_exist": cnn1_annotations_exist,
-                "cnn2_annotations_exist": cnn2_annotations_exist,
             }
 
     return output
 
 
-def download_entries_as_csv(crsr, id, cnn, type, colonisation_type):
+def download_entries_as_csv(crsr, id, type, colonisation_type):
     output = io.StringIO()
 
     fetch_values_query = (
-        "SELECT * FROM Cnn"
-        + cnn
+        "SELECT * FROM Cnn1"
         + type
         + colonisation_type
         + " WHERE ImageReferenceId=%s"
@@ -593,77 +519,74 @@ def download_entries_as_csv(crsr, id, cnn, type, colonisation_type):
     output = io.StringIO()
     writer = csv.writer(output)
 
-    if cnn == "1":
-        if colonisation_type == "am":
-            if type.lower() == "annotations":
-                writer.writerow(
-                    [
-                        "row",
-                        "col",
-                        "AMColonised",
-                        "Uncolonised",
-                        "Background",
-                        "Unreadable",
-                        "DSE",
-                        "Hybrid",
-                        "Question",
-                        "QuestionComment",
-                    ]
-                )
-            else:
-                writer.writerow(
-                    [
-                        "row",
-                        "col",
-                        "AMColonised",
-                        "Uncolonised",
-                        "Background",
-                        "Unreadable",
-                        "DSE",
-                        "Hybrid",
-                        "ContextualLabel",
-                    ]
-                )
+    if colonisation_type == "am":
+        if type.lower() == "annotations":
+            writer.writerow(
+                [
+                    "row",
+                    "col",
+                    "AMColonised",
+                    "Uncolonised",
+                    "Background",
+                    "Unreadable",
+                    "DSE",
+                    "Hybrid",
+                    "Question",
+                    "QuestionComment",
+                ]
+            )
         else:
-            if type.lower() == "annotations":
-                writer.writerow(
-                    [
-                        "row",
-                        "col",
-                        "BlueCoils",
-                        "BrownCoils",
-                        "TypeTwo",
-                        "Uncolonised",
-                        "Background",
-                        "MainRoot",
-                        "Unreadable",
-                        "DSE",
-                        "HybridErm",
-                        "HybridDse",
-                        "Question",
-                        "QuestionComment",
-                    ]
-                )
-            else:
-                writer.writerow(
-                    [
-                        "row",
-                        "col",
-                        "BlueCoils",
-                        "BrownCoils",
-                        "TypeTwo",
-                        "Uncolonised",
-                        "Background",
-                        "MainRoot",
-                        "Unreadable",
-                        "DSE",
-                        "HybridErm",
-                        "HybridDse",
-                        "ContextualLabel",
-                    ]
-                )
+            writer.writerow(
+                [
+                    "row",
+                    "col",
+                    "AMColonised",
+                    "Uncolonised",
+                    "Background",
+                    "Unreadable",
+                    "DSE",
+                    "Hybrid",
+                    "ContextualLabel",
+                ]
+            )
     else:
-        writer.writerow(["row", "col", "Arbuscule", "Vesicle", "Hyphopodium", "Hypha"])
+        if type.lower() == "annotations":
+            writer.writerow(
+                [
+                    "row",
+                    "col",
+                    "BlueCoils",
+                    "BrownCoils",
+                    "TypeTwo",
+                    "Uncolonised",
+                    "Background",
+                    "MainRoot",
+                    "Unreadable",
+                    "DSE",
+                    "HybridErm",
+                    "HybridDse",
+                    "Question",
+                    "QuestionComment",
+                ]
+            )
+        else:
+            writer.writerow(
+                [
+                    "row",
+                    "col",
+                    "BlueCoils",
+                    "BrownCoils",
+                    "TypeTwo",
+                    "Uncolonised",
+                    "Background",
+                    "MainRoot",
+                    "Unreadable",
+                    "DSE",
+                    "HybridErm",
+                    "HybridDse",
+                    "ContextualLabel",
+                ]
+            )
     for row in out:
         writer.writerow([x for x in row])
 

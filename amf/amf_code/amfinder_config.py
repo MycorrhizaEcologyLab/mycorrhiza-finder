@@ -29,15 +29,13 @@ Read command-line arguments and store user settings.
 
 Variables
 ------------
-:HEADERS: Table headers for the different annotation levels.
+:HEADERS: Table headers for the different models.
 :PAR: User settings.
 
 Functions
 ------------
-:function string_of_level: Returns the CNN name for the given prediction level.
 :function human_redable_header: Human-readable annotation class labels.
 :function get: Retrieve the value associated with the given parameter ID.
-:function colonisation: Indicate whether the current level is level 1 (colonisation).
 :function set: Assign a new value to the given parameter ID.
 :function training_subparser: Define the command-line parser used in training mode.
 :function prediction_subparser: Define the command-line parser used in prediction mode.
@@ -109,67 +107,49 @@ def create_results_dir(label: str = ""):
 
 
 HEADERS = {
-    "am": [
-        ["AMColonised", "Uncolonised", "Background", "Unreadable", "DSE", "Hybrid"],
-        ["Arbuscule", "Vesicle", "Hyphopodium", "Hypha"],
-    ],
+    "am": ["AMColonised", "Uncolonised", "Background", "Unreadable", "DSE", "Hybrid"],
     "erm": [
-        [
-            "BlueCoils",
-            "BrownCoils",
-            "TypeTwo",
-            "Uncolonised",
-            "Background",
-            "MainRoot",
-            "Unreadable",
-            "DSE",
-            "HybridErm",
-            "HybridDse",
-        ],
-        [],
-    ],
+        "BlueCoils",
+        "BrownCoils",
+        "TypeTwo",
+        "Uncolonised",
+        "Background",
+        "MainRoot",
+        "Unreadable",
+        "DSE",
+        "HybridErm",
+        "HybridDse",
+    ]
 }
 
 HUMAN_HEADERS = {
-    "am": [
-        ["AM+", "N-", "Background", "Unreadable", "DSE", "Hybrid"],
-        ["Arb", "Ves", "Hyp", "IH"],
-    ],
+    "am": ["AM+", "N-", "Background", "Unreadable", "DSE", "Hybrid"],
     "erm": [
-        [
-            "BlueCoils",
-            "BrownCoils",
-            "TypeTwo",
-            "Uncolonised",
-            "Background",
-            "MainRoot",
-            "Unreadable",
-            "DSE",
-            "HybridErm",
-            "HybridDse",
-        ],
-        [],
+        "BlueCoils",
+        "BrownCoils",
+        "TypeTwo",
+        "Uncolonised",
+        "Background",
+        "MainRoot",
+        "Unreadable",
+        "DSE",
+        "HybridErm",
+        "HybridDse",
     ],
 }
 DESCRIPTIONS = {
-    "am": [
-        ["amcolonised", "non-colonised", "background", "unreadable", "dse", "hybrid"],
-        ["arbuscules", "vesicles", "hyphopodia", "intraradical hyphae"],
-    ],
+    "am": ["amcolonised", "non-colonised", "background", "unreadable", "dse", "hybrid"],
     "erm": [
-        [
-            "BlueCoils",
-            "BrownCoils",
-            "TypeTwo",
-            "Uncolonised",
-            "Background",
-            "MainRoot",
-            "Unreadable",
-            "DSE",
-            "HybridErm",
-            "HybridDse",
-        ],
-        [],
+        "BlueCoils",
+        "BrownCoils",
+        "TypeTwo",
+        "Uncolonised",
+        "Background",
+        "MainRoot",
+        "Unreadable",
+        "DSE",
+        "HybridErm",
+        "HybridDse",
     ],
 }
 
@@ -178,8 +158,6 @@ PAR = {
     "use_db": True,
     # Set main run mode
     "run_mode": None,
-    # Define level of model
-    "level": 1,
     # Set device to CPU or GPU
     "device": "automatic",
     # Pick network (AM)
@@ -229,7 +207,7 @@ PAR = {
     "patience_r": 5,
     "outdir": None,
     # Specify classes
-    "header": HEADERS["am"][0],
+    "header": HEADERS["am"],
     # Several monitoring functions
     "monitors": {
         "early_stopping": None,
@@ -238,8 +216,8 @@ PAR = {
     # Whether to carry out Arbusucular or Ericoid processes
     "colonisation_type": "am",
     "class_names": {
-        "am": HEADERS["am"][0],
-        "erm": HEADERS["erm"][0],
+        "am": HEADERS["am"],
+        "erm": HEADERS["erm"],
     },
     # Dict to store tiles in when tiling an image for the front end
     "tiles": {},
@@ -283,35 +261,12 @@ def invite():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
 
-def get_class_documentation():
-    """
-    Return class documentation.
-    """
-    data = [
-        [f"{x} ({y})" for x, y in zip(b, a)]
-        for b, a in zip(
-            HUMAN_HEADERS[PAR["colonisation_type"]],
-            DESCRIPTIONS[PAR["colonisation_type"]],
-        )
-    ]
-
-    return ", ".join(data[PAR["level"] - 1])
-
-
-def string_of_level():
-    """
-    Return the name corresponding to the current annotation level.
-    """
-
-    return "col" if PAR["level"] == 1 else "myc"
-
-
 def human_readable_header():
     """
-    Return the human-readable header of the current annotation level.
+    Return the human-readable header of the current model.
     """
 
-    return HUMAN_HEADERS[PAR["colonisation_type"]][PAR["level"] - 1]
+    return HUMAN_HEADERS[PAR["colonisation_type"]]
 
 
 def get(id):
@@ -348,14 +303,6 @@ def get(id):
 
         AmfLog.warning(f"Unknown parameter {id}")
         return None
-
-
-def colonisation():
-    """
-    Indicate whether the current level is level 1 (colonisation).
-    """
-
-    return get("level") == 1
 
 
 def find_files_in_directory(directory, convert_tiff=False):
@@ -401,20 +348,9 @@ def set(id, value, create=False):
 
             PAR[id] = value
 
-            if id == "level":
-                # Update header and class names accordingly
-                PAR["header"] = HEADERS[PAR["colonisation_type"]][
-                    int(value == 2)
-                ]  # Ensures 0 or 1
+            if id == "colonisation_type":
 
-                PAR["class_names"] = {
-                    "am": HEADERS["am"][int(value == 2)],
-                    "erm": HEADERS["erm"][int(value == 2)],
-                }
-
-            elif id == "colonisation_type":
-
-                PAR["header"] = HEADERS[value][(PAR["level"] == 2)]
+                PAR["header"] = HEADERS[value]
 
             elif id == "collapse":
 
@@ -760,26 +696,6 @@ def add_training_subparser(subparsers):
         default=x,
         help="Proportion of tiles used for validation."
         "\ndefault value: {}%%".format(x),
-    )
-
-    level = parser.add_mutually_exclusive_group()
-
-    level.add_argument(
-        "-1",
-        "--CNN1",
-        action="store_const",
-        dest="level",
-        const=1,
-        help="Train for root colonisation (default)",
-    )
-
-    level.add_argument(
-        "-2",
-        "--CNN2",
-        action="store_const",
-        dest="level",
-        const=2,
-        help="Train for fungal hyphal structures.",
     )
 
     x = None  # by default, do not fine-tune
@@ -1382,26 +1298,6 @@ def add_conversion_subparser(subparsers):
         help="threshold for conversion: {}".format(x),
     )
 
-    level = parser.add_mutually_exclusive_group()
-
-    level.add_argument(
-        "-1",
-        "--CNN1",
-        action="store_const",
-        dest="level",
-        const=1,
-        help="Convert root colonisation predictions (default)",
-    )
-
-    level.add_argument(
-        "-2",
-        "--CNN2",
-        action="store_const",
-        dest="level",
-        const=2,
-        help="Convert fungal hyphal structure predictions.",
-    )
-
     x = PAR["input_files"]
     parser.add_argument(
         "-i",
@@ -1740,7 +1636,6 @@ def set_train_config(trainConfig: TrainConfig):
     set("model_erm", trainConfig.modelErm)
     set("model_type", trainConfig.modelType)
     set("pre_trained", trainConfig.preTrained)
-    set("level", trainConfig.level)
     set("vfrac", trainConfig.vfrac)
     set("data_augm", trainConfig.dataAugm)
     set("summary", trainConfig.summary)
@@ -1863,7 +1758,7 @@ def set_convert_config(convertConfig: ConvertConfig):
         convertConfig (ConvertConfig): Configuration object containing conversion parameters.
 
     This function defines the necessary settings for annotations conversion,
-    including input files, colonisation type, level, threshold, and output directory.
+    including input files, colonisation type, threshold, and output directory.
     """
     set("run_mode", "convert")
     set_device(convertConfig.device)
@@ -1872,7 +1767,6 @@ def set_convert_config(convertConfig: ConvertConfig):
     set("use_db", convertConfig.useDb)
     set("aggregate_tiles", convertConfig.aggregateTiles)
     set("colonisation_type", convertConfig.colonisationType)
-    set("level", convertConfig.level)
     set("threshold", convertConfig.threshold)
     set("tile_edge", convertConfig.tileEdge)
     set("use_contextual_confidence", convertConfig.useContextualConfidence)
@@ -2007,7 +1901,6 @@ def initialize():
         set("model_erm", par.model_erm)
         set("model_type", par.model_type)
         set("pre_trained", par.pre_trained)
-        set("level", par.level)
         set("vfrac", par.vfrac)
         set("data_augm", par.data_augm)
         set("summary", par.summary)
@@ -2089,7 +1982,6 @@ def initialize():
 
     elif par.run_mode == "convert":
 
-        set("level", par.level)
         set("threshold", par.threshold)
         set("aggregate_tiles", par.aggregate_tiles)
         set("tile_edge", par.edge)

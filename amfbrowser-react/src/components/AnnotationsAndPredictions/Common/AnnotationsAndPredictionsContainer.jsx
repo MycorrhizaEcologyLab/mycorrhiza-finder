@@ -22,16 +22,11 @@ import { calcStdDev, indexOfMax } from "../../Utils/utils";
 import Modal from "../../Utils/Modal";
 import {
   getHeaderToValueMapCnn1,
-  headerToValueMapCnn2,
   getColorMappingCnn1,
   getColorMappingCnn1Transparent,
-  colorMappingCnn2,
   getHeaderMapCnn1,
-  headerMapCnn2,
   getValueMapCnn1,
-  valueMapCnn2,
   getKeyBindingsCnn1,
-  headerToKeyBindingsMapCnn2,
 } from "../../../config/AnnotationsAndPredictionsConfig";
 import "../styles/AnnotationsAndPredictionsStyles.css";
 
@@ -94,7 +89,6 @@ const AnnotationsAndPredictionsContainer = () => {
 
   // state from AnnotationsLeftSidebar
   const [mode, setMode] = useState("Select");
-  const [level, setLevel] = useState("CNN 1");
 
   const [showImageOverview, setShowImageOverview] = useState(false); // To potentially move to AnnotationsAndPredictionsCentralPane
 
@@ -106,9 +100,7 @@ const AnnotationsAndPredictionsContainer = () => {
   const [focusedTile, setFocusedTile] = useState({ row: 0, col: 0 });
 
   const [cnn1Annotations, setCnn1Annotations] = useState(new Map());
-  const [cnn2Annotations, setCnn2Annotations] = useState(new Map());
   const [cnn1Predictions, setCnn1Predictions] = useState(new Map());
-  const [cnn2Predictions, setCnn2Predictions] = useState(new Map());
 
   const [selectIcons, setSelectIcons] = useState(true);
   const [selectedOverlay, setSelectedOverlay] = useState(null);
@@ -226,98 +218,6 @@ const AnnotationsAndPredictionsContainer = () => {
       clear: () => setCnn1Predictions(new Map()),
     }),
     [setCnn1Predictions],
-  );
-
-  const checkAndSetCnn2Annotations = (prevMap, key, values) => {
-    const existingValue = prevMap.get(key) || [];
-    if (Array.isArray(existingValue)) {
-      existingValue.push(...values);
-    }
-    return new Map(prevMap).set(key, existingValue);
-  };
-
-  const cnn2AnnotationActions = useMemo(
-    () => ({
-      set: (key, value) =>
-        setCnn2Annotations((prevMap) => {
-          const existingValue = prevMap.get(key) || [];
-          if (Array.isArray(existingValue)) {
-            existingValue.push(value);
-          }
-          return new Map(prevMap).set(key, existingValue);
-        }),
-      setBulk: (map) =>
-        setCnn2Annotations(() => {
-          const nextMap = new Map(map);
-          return nextMap;
-        }),
-      setValues: (key, value) =>
-        setCnn2Annotations((prevMap) => {
-          return checkAndSetCnn2Annotations(prevMap, key, value);
-        }),
-      remove: (key) =>
-        setCnn2Annotations((prevMap) => {
-          const nextMap = new Map(prevMap);
-          nextMap.delete(key);
-          return nextMap;
-        }),
-
-      removeValue: (key, value) =>
-        setCnn2Annotations((prevMap) => {
-          const existingValues = prevMap.get(key) || [];
-          if (existingValues) {
-            const idx = existingValues.indexOf(value);
-            if (idx !== -1) {
-              existingValues.splice(idx, 1);
-            }
-            return new Map(prevMap).set(key, existingValues);
-          }
-          return prevMap;
-        }),
-
-      clear: () => setCnn2Annotations(new Map()),
-    }),
-    [setCnn2Annotations],
-  );
-
-  const cnn2PredictionActions = useMemo(
-    () => ({
-      set: (key, value) =>
-        setCnn2Predictions((prevMap) => {
-          const existingValue = prevMap.get(key) || [];
-          if (Array.isArray(existingValue)) {
-            existingValue.push(value);
-          }
-          return new Map(prevMap).set(key, existingValue);
-        }),
-      setBulk: (map) =>
-        setCnn2Predictions(() => {
-          const nextMap = new Map(map);
-          return nextMap;
-        }),
-      remove: (key) =>
-        setCnn2Predictions((prevMap) => {
-          const nextMap = new Map(prevMap);
-          nextMap.delete(key);
-          return nextMap;
-        }),
-
-      removeValue: (key, value) =>
-        setCnn2Predictions((prevMap) => {
-          const existingValues = prevMap.get(key) || [];
-          if (existingValues) {
-            const idx = existingValues.indexOf(value);
-            if (idx !== -1) {
-              existingValues.splice(idx, 1);
-            }
-            return new Map(prevMap).set(key, existingValues);
-          }
-          return prevMap;
-        }),
-
-      clear: () => setCnn2Predictions(new Map()),
-    }),
-    [setCnn2Predictions],
   );
 
   const tileImageActions = useMemo(
@@ -638,148 +538,112 @@ const AnnotationsAndPredictionsContainer = () => {
         : `${selectedTile.row}.${selectedTile.col}`;
 
       if (!questionCommentOpen) {
-        if (level === "CNN 1") {
-          if (colonisationType === "am") {
-            switch (e.key.toUpperCase()) {
-              case "A":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, "AM+")
-                  : toggleValueCnn1("AM+", currentKey);
-                break;
-              case "N":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, "N-")
-                  : toggleValueCnn1("N-", currentKey);
-                break;
-              case "H":
-              case "X":
-              case "D":
-              case "U":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, e.key.toUpperCase())
-                  : toggleValueCnn1(e.key.toUpperCase(), currentKey);
-                break;
-              case "?":
-              case "/":
-                e.preventDefault();
-                setQuestionTile(currentKey);
-                break;
-              case "DELETE":
-                e.preventDefault();
-                if (cnn1Annotations.get(currentKey) === "?") {
-                  setQuestionTile(currentKey);
-                } else {
-                  cnn1AnnotationActions.remove(currentKey);
-                }
-                break;
-              case "*":
-                e.preventDefault();
-                fillBackgroundTiles();
-                break;
-              default:
-                break;
-            }
-          } else {
-            switch (e.key.toUpperCase()) {
-              case "H":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, "HE+")
-                  : toggleValueCnn1("HE+", currentKey);
-                break;
-              case "B":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, "Bl+")
-                  : toggleValueCnn1("Bl+", currentKey);
-                break;
-              case "R":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, "Br+")
-                  : toggleValueCnn1("Br+", currentKey);
-                break;
-              case "Y":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, "HD+")
-                  : toggleValueCnn1("HD+", currentKey);
-                break;
-              case "T":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, "T+")
-                  : toggleValueCnn1("T+", currentKey);
-                break;
-              case "N":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, "N-")
-                  : toggleValueCnn1("N-", currentKey);
-                break;
-              case "M":
-              case "X":
-              case "D":
-              case "U":
-                e.preventDefault();
-                dragActivated
-                  ? cnn1AnnotationActions.set(currentKey, e.key.toUpperCase())
-                  : toggleValueCnn1(e.key.toUpperCase(), currentKey);
-                break;
-              case "?":
-              case "/":
-                e.preventDefault();
-                setQuestionTile(currentKey);
-                break;
-              case "DELETE":
-                e.preventDefault();
-                if (cnn1Annotations.get(currentKey) === "?") {
-                  setQuestionTile(currentKey);
-                } else {
-                  cnn1AnnotationActions.remove(currentKey);
-                }
-                break;
-              case "*":
-                e.preventDefault();
-                fillBackgroundTiles();
-                break;
-              default:
-                break;
-            }
-          }
-        } else if (
-          level !== "CNN 1" &&
-          cnn1Annotations.get(currentKey) === "AM+"
-        ) {
-          let currentValueCnn2 = cnn2Annotations.get(currentKey);
+        if (colonisationType === "am") {
           switch (e.key.toUpperCase()) {
-            case "I":
-              e.preventDefault();
-              if (currentValueCnn2?.includes("IH")) {
-                cnn2AnnotationActions.removeValue(currentKey, "IH");
-              } else {
-                cnn2AnnotationActions.set(currentKey, "IH");
-              }
-              break;
             case "A":
-            case "V":
-            case "H":
               e.preventDefault();
-              if (currentValueCnn2?.includes(e.key.toUpperCase())) {
-                cnn2AnnotationActions.removeValue(
-                  currentKey,
-                  e.key.toUpperCase(),
-                );
-              } else {
-                cnn2AnnotationActions.set(currentKey, e.key.toUpperCase());
-              }
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, "AM+")
+                : toggleValueCnn1("AM+", currentKey);
+              break;
+            case "N":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, "N-")
+                : toggleValueCnn1("N-", currentKey);
+              break;
+            case "H":
+            case "X":
+            case "D":
+            case "U":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, e.key.toUpperCase())
+                : toggleValueCnn1(e.key.toUpperCase(), currentKey);
+              break;
+            case "?":
+            case "/":
+              e.preventDefault();
+              setQuestionTile(currentKey);
               break;
             case "DELETE":
               e.preventDefault();
-              cnn2AnnotationActions.remove(currentKey);
+              if (cnn1Annotations.get(currentKey) === "?") {
+                setQuestionTile(currentKey);
+              } else {
+                cnn1AnnotationActions.remove(currentKey);
+              }
+              break;
+            case "*":
+              e.preventDefault();
+              fillBackgroundTiles();
+              break;
+            default:
+              break;
+          }
+        } else {
+          switch (e.key.toUpperCase()) {
+            case "H":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, "HE+")
+                : toggleValueCnn1("HE+", currentKey);
+              break;
+            case "B":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, "Bl+")
+                : toggleValueCnn1("Bl+", currentKey);
+              break;
+            case "R":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, "Br+")
+                : toggleValueCnn1("Br+", currentKey);
+              break;
+            case "Y":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, "HD+")
+                : toggleValueCnn1("HD+", currentKey);
+              break;
+            case "T":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, "T+")
+                : toggleValueCnn1("T+", currentKey);
+              break;
+            case "N":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, "N-")
+                : toggleValueCnn1("N-", currentKey);
+              break;
+            case "M":
+            case "X":
+            case "D":
+            case "U":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, e.key.toUpperCase())
+                : toggleValueCnn1(e.key.toUpperCase(), currentKey);
+              break;
+            case "?":
+            case "/":
+              e.preventDefault();
+              setQuestionTile(currentKey);
+              break;
+            case "DELETE":
+              e.preventDefault();
+              if (cnn1Annotations.get(currentKey) === "?") {
+                setQuestionTile(currentKey);
+              } else {
+                cnn1AnnotationActions.remove(currentKey);
+              }
+              break;
+            case "*":
+              e.preventDefault();
+              fillBackgroundTiles();
               break;
             default:
               break;
@@ -801,11 +665,8 @@ const AnnotationsAndPredictionsContainer = () => {
     };
   }, [
     selectedTile,
-    level,
     cnn1Annotations,
-    cnn2Annotations,
     cnn1AnnotationActions,
-    cnn2AnnotationActions,
     showAnnotations,
     showPredictions,
     cnn1Predictions,
@@ -1136,29 +997,10 @@ const AnnotationsAndPredictionsContainer = () => {
         cnn1Values.push(out);
       });
 
-      let cnn2Values = [];
-      cnn2Annotations.forEach((value, key) => {
-        //  Only save annotation if key is AM+
-        if (cnn1Annotations.get(key) === "AM+") {
-          const out = new Array(6).fill(0);
-          const splitKey = key.split(".");
-          out[0] = parseInt(splitKey[0]);
-          out[1] = parseInt(splitKey[1]);
-          value.forEach((val, idx) => {
-            let populated_index = valueMapCnn2.indexOf(val);
-            if (populated_index !== -1) {
-              out[populated_index + 2] = 1;
-            }
-          });
-          cnn2Values.push(out);
-        }
-      });
-
       let body = {
         imageReferenceId, // Derived from the pathname
         fileName: selectedImageName, // Taken from GlobalContextProvider
         cnnOneValues: cnn1Values,
-        cnnTwoValues: cnn2Values,
         colonisationType: colonisationType,
         tileEdge: tileEdge,
         enabled: true,
@@ -1213,36 +1055,19 @@ const AnnotationsAndPredictionsContainer = () => {
           setSelectedOverlay(icon);
         }
       } else {
-        if (level === "CNN 1") {
-          let currentValue = cnn1Annotations.get(currentKey);
-          if (icon === "?") {
-            setQuestionTile(currentKey);
-          } else {
-            if (currentValue === "?") {
-              removeQuestionMark(currentKey);
-            }
-            if (currentValue === icon) {
-              // If value is already matching pressed icon, then remove
-              cnn1AnnotationActions.remove(currentKey);
-            } else {
-              // Otherwise set
-              cnn1AnnotationActions.set(currentKey, icon);
-            }
-          }
+        let currentValue = cnn1Annotations.get(currentKey);
+        if (icon === "?") {
+          setQuestionTile(currentKey);
         } else {
-          let currentValue = cnn2Annotations.get(currentKey);
-          if (cnn1Annotations.get(currentKey) === "AM+") {
-            if (currentValue?.includes(icon)) {
-              // If values already include pressed icon, remove that value
-              selectIcons
-                ? cnn2AnnotationActions.removeValue(currentKey, icon)
-                : setSelectedOverlay(null);
-            } else {
-              // Otherwise add to list
-              selectIcons
-                ? cnn2AnnotationActions.set(currentKey, icon)
-                : setSelectedOverlay(icon);
-            }
+          if (currentValue === "?") {
+            removeQuestionMark(currentKey);
+          }
+          if (currentValue === icon) {
+            // If value is already matching pressed icon, then remove
+            cnn1AnnotationActions.remove(currentKey);
+          } else {
+            // Otherwise set
+            cnn1AnnotationActions.set(currentKey, icon);
           }
         }
       }
@@ -1288,23 +1113,7 @@ const AnnotationsAndPredictionsContainer = () => {
       }
     });
 
-    let cnn2AnnotationsMap = new Map();
-    cnn2Predictions.forEach((value, key) => {
-      if (value.length > 0) {
-        const copyValue = [...value];
-        copyValue.shift();
-        const predictions = copyValue.map((s) => s[1]);
-        const maxIdx = indexOfMax(predictions);
-        // Only set annotation if prediction value is above threshold - by definition this can only happen for maximum one label
-        if (predictions[maxIdx] >= settings?.threshold) {
-          const label = value[maxIdx + 1][0];
-          cnn2AnnotationsMap.set(key, headerToValueMapCnn1.get(label));
-        }
-      }
-    });
-
     cnn1AnnotationActions.setBulk(cnn1AnnotationsMap);
-    cnn2AnnotationActions.setBulk(cnn2AnnotationsMap);
 
     // Navigate to existing annotation page
     navigate(
@@ -1365,16 +1174,14 @@ const AnnotationsAndPredictionsContainer = () => {
 
   const onQuestionClick = () => {
     const currentKey = `${selectedTile.row.toString()}.${selectedTile.col.toString()}`;
-    if (level === "CNN 1") {
-      if (!selectIcons) {
-        if (selectedOverlay === "?") {
-          setSelectedOverlay(null);
-        } else {
-          setSelectedOverlay("?");
-        }
+    if (!selectIcons) {
+      if (selectedOverlay === "?") {
+        setSelectedOverlay(null);
       } else {
-        setQuestionTile(currentKey);
+        setSelectedOverlay("?");
       }
+    } else {
+      setQuestionTile(currentKey);
     }
   };
 
@@ -1411,43 +1218,28 @@ const AnnotationsAndPredictionsContainer = () => {
           return r;
         }, []);
         if (indexes.length > 0) {
-          if (cnn === 1) {
-            let tileValue = headerToValueMapCnn1.get(headerMapCnn1[indexes[0]]);
-            if (tileValue === "?") {
-              setQuestionTile(key);
-              // In this case, download question comment as well and set if non-empty
-              // Check length is 10 for AM or 14 for ErM to make sure we are fetching question comment
-              if (
-                colonisationType === "am"
-                  ? value.length === 10
-                  : value.length === 14
-              ) {
-                const questionComment = value[value.length - 1];
-                // Set if non-empty and non null
-                if (questionComment !== null && questionComment !== "") {
-                  questionMarkCommentActions.set(key, questionComment);
-                }
+          let tileValue = headerToValueMapCnn1.get(headerMapCnn1[indexes[0]]);
+          if (tileValue === "?") {
+            setQuestionTile(key);
+            // In this case, download question comment as well and set if non-empty
+            // Check length is 10 for AM or 14 for ErM to make sure we are fetching question comment
+            if (
+              colonisationType === "am"
+                ? value.length === 10
+                : value.length === 14
+            ) {
+              const questionComment = value[value.length - 1];
+              // Set if non-empty and non null
+              if (questionComment !== null && questionComment !== "") {
+                questionMarkCommentActions.set(key, questionComment);
               }
             }
-            annotationsMap.set(key, tileValue);
-          } else {
-            let tileValues = [];
-            indexes.forEach((val, idx) =>
-              tileValues.push(headerToValueMapCnn2.get(headerMapCnn2[val])),
-            );
-            annotationsMap = checkAndSetCnn2Annotations(
-              annotationsMap,
-              key,
-              tileValues,
-            );
           }
+          annotationsMap.set(key, tileValue);
         }
       });
 
-      // Ensure only one state update
-      cnn === 1
-        ? cnn1AnnotationActions.setBulk(annotationsMap)
-        : cnn2AnnotationActions.setBulk(annotationsMap);
+      cnn1AnnotationActions.setBulk(annotationsMap);
     }
   };
 
@@ -1488,22 +1280,15 @@ const AnnotationsAndPredictionsContainer = () => {
         confidenceMetricMap.set(key, highestValue);
 
         let output = [];
-        if (cnn === 1) {
-          // Directly add predictions for each class
-          labels.forEach((value, idx) => {
-            output.push([headerMapCnn1[idx], value]);
-          });
-          predictionsMap.set(key, {
-            predictions: output,
-            annotations: null,
-            contextualLabel: convertedContextualLabel,
-          });
-        } else {
-          labels.forEach((value, idx) => {
-            output.push([headerMapCnn2[idx], value]);
-          });
-          cnn2PredictionActions.set(key, output);
-        }
+        // Directly add predictions for each class
+        labels.forEach((value, idx) => {
+          output.push([headerMapCnn1[idx], value]);
+        });
+        predictionsMap.set(key, {
+          predictions: output,
+          annotations: null,
+          contextualLabel: convertedContextualLabel,
+        });
       });
 
       // Sort the keys by std dev and store in array
@@ -1561,14 +1346,6 @@ const AnnotationsAndPredictionsContainer = () => {
       "1",
       colonisationType,
     );
-    let annotationsCnn2 = null;
-    if (colonisationType === "am") {
-      annotationsCnn2 = await PredictionsApi.fetchAnnotationsById(
-        id,
-        "2",
-        colonisationType,
-      );
-    }
     const predictionsCnn1 = await PredictionsApi.fetchPredictionsById(
       id,
       "1",
@@ -1579,7 +1356,6 @@ const AnnotationsAndPredictionsContainer = () => {
 
     initialSetAnnotations(annotationsCnn1, 1);
     initialSetPredictions(predictionsCnn1, 1);
-    initialSetAnnotations(annotationsCnn2, 2);
   };
 
   const captureScreenshot = () => {
@@ -1640,17 +1416,12 @@ const AnnotationsAndPredictionsContainer = () => {
         <>
           <AnnotationsAndPredictionsWindow
             colorMappingCnn1={colorMappingCnn1}
-            colorMappingCnn2={colorMappingCnn2}
             headerToValueMapCnn1={headerToValueMapCnn1}
-            headerToValueMapCnn2={headerToValueMapCnn2}
             keyBindingsCnn1={keyBindingsCnn1}
-            keyBindingsCnn2={headerToKeyBindingsMapCnn2}
             selectedTile={selectedTile}
             setTileValueWithIcon={setTileValueWithIcon}
             cnn1Annotations={cnn1Annotations}
-            cnn2Annotations={cnn2Annotations}
             cnn1Predictions={cnn1Predictions}
-            cnn2Predictions={cnn2Predictions}
             iconSize={iconSize}
             selectIcons={selectIcons}
             setSelectedOverlay={setSelectedOverlay}
@@ -1663,8 +1434,6 @@ const AnnotationsAndPredictionsContainer = () => {
             //showAnnotations={showAnnotations}
             mode={mode}
             setMode={setMode}
-            level={level}
-            setLevel={setLevel}
             maxGridSize={maxGridSize}
             setSelectedTile={setSelectedTile}
             numRows={numRows}
@@ -1755,11 +1524,7 @@ const AnnotationsAndPredictionsContainer = () => {
               selectedImage={selectedImage}
               numRows={numRows}
               numCols={numCols}
-              colorMapping={
-                level === "CNN 1"
-                  ? colorMappingCnn1Transparent
-                  : colorMappingCnn2
-              }
+              colorMapping={colorMappingCnn1Transparent}
               gridData={showAnnotations ? cnn1Annotations : cnn1Predictions}
               selectedTile={selectedTile}
               setSelectedTile={setSelectedTile}

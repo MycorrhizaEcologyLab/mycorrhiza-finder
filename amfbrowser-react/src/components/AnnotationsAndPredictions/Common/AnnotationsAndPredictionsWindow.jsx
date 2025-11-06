@@ -7,18 +7,13 @@ import PredictionsRightSidebar from "../Predictions/PredictionsRightSidebar";
 
 const AnnotationsAndPredictionsWindow = ({
   colorMappingCnn1,
-  colorMappingCnn2,
   colorMappingCnn1Transparent,
   headerToValueMapCnn1,
-  headerToValueMapCnn2,
   keyBindingsCnn1,
-  keyBindingsCnn2,
   selectedTile,
   setTileValueWithIcon,
   cnn1Annotations,
-  cnn2Annotations,
   cnn1Predictions,
-  cnn2Predictions,
   iconSize,
   selectIcons,
   setSelectedOverlay,
@@ -29,8 +24,6 @@ const AnnotationsAndPredictionsWindow = ({
   iconFontSize,
   headerToCountsMapCnn1,
   mode,
-  level,
-  setLevel,
   maxGridSize,
   setSelectedTile,
   numRows,
@@ -90,40 +83,29 @@ const AnnotationsAndPredictionsWindow = ({
       {showAnnotations && (
         <AnnotationsLeftSidebar
           mode={mode}
-          level={level}
-          setLevel={setLevel}
           headerToCountsMapCnn1={headerToCountsMapCnn1}
-          colorMapping={level === "CNN 1" ? colorMappingCnn1 : colorMappingCnn2}
-          icons={
-            level === "CNN 1" ? headerToValueMapCnn1 : headerToValueMapCnn2
-          }
+          colorMapping={colorMappingCnn1}
+          icons={headerToValueMapCnn1}
           handleModeChange={handleModeChange}
-          keyBindings={level === "CNN 1" ? keyBindingsCnn1 : keyBindingsCnn2}
+          keyBindings={keyBindingsCnn1}
         />
       )}
       {showPredictions && (
         <PredictionsLeftSidebar
-          level={level}
-          setLevel={setLevel}
-          colorMapping={level === "CNN 1" ? colorMappingCnn1 : colorMappingCnn2}
-          icons={
-            level === "CNN 1" ? headerToValueMapCnn1 : headerToValueMapCnn2
-          }
-          keyBindings={level === "CNN 1" ? keyBindingsCnn1 : keyBindingsCnn2}
+          colorMapping={colorMappingCnn1}
+          icons={headerToValueMapCnn1}
+          keyBindings={keyBindingsCnn1}
         />
       )}
 
       <AnnotationsAndPredictionsCentralPane
-        level={level}
-        icons={level === "CNN 1" ? headerToValueMapCnn1 : headerToValueMapCnn2}
+        icons={headerToValueMapCnn1}
         selectedTile={selectedTile}
         colorMappingTransparent={colorMappingCnn1Transparent}
-        colorMapping={level === "CNN 1" ? colorMappingCnn1 : colorMappingCnn2}
+        colorMapping={colorMappingCnn1}
         setTileValueWithIcon={setTileValueWithIcon}
         cnn1Annotations={cnn1Annotations}
-        cnn2Annotations={cnn2Annotations}
         cnn1Predictions={cnn1Predictions}
-        cnn2Predictions={cnn2Predictions}
         iconSize={iconSize}
         selectIcons={selectIcons}
         setSelectedOverlay={setSelectedOverlay}

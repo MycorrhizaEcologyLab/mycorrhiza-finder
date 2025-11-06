@@ -13,12 +13,10 @@ class BaseValues(BaseModel):
 
 class AnnotationValues(BaseValues):
     cnnOneValues: List[List[Union[int, str]]]
-    cnnTwoValues: List[List[int]]
 
 
 class PredictionValues(BaseValues):
     cnnOneValues: List[List[Union[float, str, None]]]
-    cnnTwoValues: List[List[float]]
 
 
 class BaseConfig(BaseModel):
@@ -61,7 +59,6 @@ class TrainConfig(BaseConfig):
     modelErm: Optional[str] = "250411_126_ErM_EfficientNet_82.pth"
     modelType: Optional[str] = "cnn1"
     preTrained: Optional[bool] = False
-    level: Optional[int] = 1
     vfrac: Optional[float] = 0.2
     dataAugm: Optional[bool] = False
     summary: Optional[bool] = False
@@ -93,7 +90,6 @@ class CalibrateConfig(BaseConfig):
 
 
 class ConvertConfig(BaseConfig):
-    level: Optional[int] = 1
     threshold: Optional[float] = 0.5
     aggregateTiles: Optional[bool] = False
     useContextualConfidence: Optional[bool] = True
@@ -134,7 +130,6 @@ class Settings(BaseModel):
     modelErm: Optional[str] = "250411_126_ErM_EfficientNet_82.pth"
     modelType: Optional[str] = "cnn1"
     preTrained: Optional[bool] = False
-    level: Optional[int] = 1
     vfrac: Optional[float] = 0.2
     dataAugm: Optional[bool] = False
     summary: Optional[bool] = False
@@ -151,7 +146,6 @@ class Settings(BaseModel):
     )
     semiSupervised: Optional[bool] = False
     fixmatchResultsDirectory: Optional[str] = ""
-    level: Optional[int] = 1
     threshold: Optional[float] = 0.5
     aggregateTiles: Optional[bool] = False
     convertImageFileType: Optional[str] = "jpg"

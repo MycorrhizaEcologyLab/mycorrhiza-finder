@@ -128,18 +128,6 @@ def fetch_annotations_cnn1(name: str = "", id: str = "", colonisation_type: str 
         return fetch_items(crsr, name, id, "Annotations", "1", colonisation_type)
 
 
-@app.get("/fetch-predictions-cnn-2")
-def fetch_predictions_cnn2(name: str = "", id: str = "", colonisation_type: str = "am"):
-    with conn, conn.cursor() as crsr:
-        return fetch_items(crsr, name, id, "Predictions", "2", colonisation_type)
-
-
-@app.get("/fetch-annotations-cnn-2")
-def fetch_annotations_cnn2(name: str = "", id: str = "", colonisation_type: str = "am"):
-    with conn, conn.cursor() as crsr:
-        return fetch_items(crsr, name, id, "Annotations", "2", colonisation_type)
-
-
 @app.post("/save-annotations")
 def save_annotations(annotations: AnnotationValues):
     with conn, conn.cursor() as crsr:
@@ -171,9 +159,9 @@ def check_for_id(id: str = "", colonisation_type: str = "am"):
 
 
 @app.get("/download-entries")
-def download(id, cnn, type, colonisation_type: str = "am"):
+def download(id, type, colonisation_type: str = "am"):
     with conn, conn.cursor() as crsr:
-        return download_entries_as_csv(crsr, id, cnn, type, colonisation_type)
+        return download_entries_as_csv(crsr, id, type, colonisation_type)
 
 
 @app.delete("/delete-image-reference/{id}")
@@ -362,7 +350,7 @@ def check_if_settings_exists(crsr):
     crsr.execute(
         """
         SELECT EXISTS (
-            SELECT FROM information_schema.tables 
+            SELECT FROM information_schema.tables
             WHERE  table_schema = 'public'
             AND    table_name   = %s
         );

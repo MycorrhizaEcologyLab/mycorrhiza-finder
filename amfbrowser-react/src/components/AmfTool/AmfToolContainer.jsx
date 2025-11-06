@@ -67,7 +67,6 @@ export default function AmfToolContainer() {
       epochs: settings.epochs,
       model: settings.model,
       modelErm: settings.modelErm,
-      level: settings.level,
       vfrac: settings.vfrac,
       dataAugm: settings.dataAugm,
       summary: settings.summary,
@@ -170,7 +169,6 @@ export default function AmfToolContainer() {
 
     let body = {
       inputFiles: amfToolFilePath,
-      level: settings.level,
       threshold: settings.threshold,
       colonisationType: colonisationType,
       useDb: settings.useDb,

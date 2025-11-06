@@ -3,7 +3,6 @@ const AnnotationsAndPredictionsButtons = ({
   gridData,
   selectedTile,
   showAnnotations,
-  isCnn1,
   size,
   iconFontSize,
   colorMapping,
@@ -21,11 +20,7 @@ const AnnotationsAndPredictionsButtons = ({
           let isSelected = false;
           // Only show selected for annotations
           if (showAnnotations) {
-            if (isCnn1) {
-              isSelected = value === selectedValue;
-            } else {
-              isSelected = selectedValue?.includes(value);
-            }
+            isSelected = value === selectedValue;
           }
           return (
             <div

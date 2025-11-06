@@ -58,7 +58,7 @@ python amf <action> --images <path_to_folder> <parameters>
 where `<action>` is either:
 
 - `train`: neural network training,
-- `predict`: prediction of fungal colonisation (CNN1) and intraradical hyphal structures (CNN2),
+- `predict`: prediction of fungal colonisation,
 - `convert`: automatic conversion of predictions to annotations,
 - `colonisation`: calculates the percentage colonisation in a set of annotations,
 - `tifconvert`: converts TIFs to JPGs or PNGs
@@ -111,7 +111,7 @@ Training outputs are saved to the user directory unless the `outdir` parameter i
 
 ### Prediction mode
 
-This mode is used to predict fungal colonisation (CNN1) and intraradical hyphal structures (CNN2).
+This mode is used to predict fungal colonisation.
 
 | Short     | Long                                | Description                                                              | Default value                              |
 | --------- | ----------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------ |
@@ -152,7 +152,6 @@ This mode is used to convert `amf predict` predictions (i.e. probabilities) to a
 | `-l`    | `--use-csvs`                  | Use CSVs instead of DB.                                                                            | False                |
 | `-th`   | `--threshold`                 | Threshold for conversion.                                                                          | 0.5                  |
 | `-1`    | `--CNN1`                      | Convert root colonisation predictions (default).                                                   | N/A                  |
-| `-2`    | `--CNN2`                      | Convert fungal hyphal structure predictions.                                                       | N/A                  |
 | `-i`    | `--images`                    | Directory of the plant root images to process.                                                     | None (default empty) |
 | `-ct`   | `--colonisation_type`         | Choosing between Arbuscular and Ericoid colonisation.                                              | am                   |
 | `-agg`  | `--aggregate`                 | Argument to trigger tile upscaling by factor of 2.                                                 | False                |

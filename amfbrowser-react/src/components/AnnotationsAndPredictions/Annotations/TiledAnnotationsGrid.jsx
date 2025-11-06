@@ -5,7 +5,6 @@ const TiledAnnotationsGrid = ({
   tiles,
   selectedTile,
   setSelectedTile,
-  isCnn1,
   colorMapping,
   gridSize,
   gridFontSize,
@@ -38,7 +37,6 @@ const TiledAnnotationsGrid = ({
             tile={tile}
             setSelectedTile={setSelectedTile}
             tileWidth={tileWidth}
-            isCnn1={isCnn1}
             colorMapping={colorMapping}
             gridFontSize={gridFontSize}
             selectedOverlay={selectedOverlay}

@@ -209,18 +209,6 @@ const AmfSettings = () => {
               resetToDefault={resetToDefault}
             />
             <SettingsItemSelect
-              name="level"
-              displayName="Level"
-              defaultValue={"One"}
-              value={settings.level}
-              options={[
-                { value: 1, label: "One" },
-                { value: 2, label: "Two" },
-              ]}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemSelect
               name="tileEdge"
               displayName="Tile Edge"
               defaultValue={252}

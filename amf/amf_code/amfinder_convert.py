@@ -81,9 +81,9 @@ def initialize_size(path):
     return tile_size
 
 
-def preds_to_python_annot_1(path, preds):
+def preds_to_python_annot(path, preds):
     """
-    Convert level 1 predictions to Python annotations.
+    Convert predictions to Python annotations.
     If useContextualConfidence is True, use the ContextualLabel column when available.
     """
     use_contextual_confidence = AmfConfig.get("use_contextual_confidence")
@@ -146,56 +146,6 @@ def preds_to_python_annot_1(path, preds):
     return pd.concat([coord, conv], axis=1)
 
 
-def preds_to_python_annot_2(path, preds):
-    """
-    Convert level 2 predictions to Python annotations.
-    """
-
-    # Only one file, nothing special to choose.
-    preds = io.StringIO(preds)
-    preds = pd.read_csv(preds)
-
-    # Get the predictions for automatic conversion.
-    coord = preds[["row", "col"]]
-    preds = AmfDiagnose.remove_coordinates(preds)
-    preds = preds.to_numpy()
-
-    # Perform the conversion, ignoring ties.
-    conv = np.zeros_like(preds)
-    conv[preds >= AmfConfig.get("threshold")] = 1
-
-    conv = conv.astype(np.uint8)
-
-    print(
-        os.path.basename(path)
-        + "\t"
-        + "\t".join([str(x) for x in np.sum(conv, axis=0)])
-    )
-
-    header = AmfConfig.get("header")
-    conv = pd.DataFrame(data=conv, columns=header)
-
-    # Generate the final table.
-    final = pd.concat([coord, conv], axis=1)
-
-    # Remove the columns without annotations
-    final = final.loc[(final[header].sum(axis=1) != 0),]
-
-    return final
-
-
-def preds_to_python_annot(path, preds):
-    """
-    Convert predictions to Python annotations.
-    """
-    if AmfConfig.get("level") == 1:
-
-        return preds_to_python_annot_1(path, preds)
-
-    else:
-        return preds_to_python_annot_2(path, preds)
-
-
 def update_archive(out, prev_path):
     """
     Save annotations in Python format to csv.
@@ -210,7 +160,6 @@ def create_annotations(path, tile_size):
     image_name = os.path.splitext(os.path.basename(path))[0]
 
     if AmfConfig.get("use_db"):
-        level = AmfConfig.get("level")
         colonisation_type = AmfConfig.get("colonisation_type")
 
         conn = connect("amf")
@@ -232,7 +181,7 @@ def create_annotations(path, tile_size):
                 return
             elif existing_entries[id]["cnn1_predictions_exist"]:
                 csv = download_entries_as_csv(
-                    crsr, id, str(level), "Predictions", colonisation_type
+                    crsr, id, "Predictions", colonisation_type
                 )
                 out = preds_to_python_annot(path, io.StringIO(csv))
                 cnn1results = out.values.tolist()
@@ -241,7 +190,6 @@ def create_annotations(path, tile_size):
                     colonisationType=colonisation_type,
                     tileEdge=tile_size,
                     cnnOneValues=cnn1results,
-                    cnnTwoValues=[],
                 )
                 save_annotations_to_db(crsr, values)
                 return
@@ -284,22 +232,6 @@ def create_annotations(path, tile_size):
 def run(input_images):
     print("Running conversion of predictions to annotations")
     print("Image\t" + "\t".join(AmfConfig.human_readable_header()))
-
-    if AmfConfig.get("level") == 2 and AmfConfig.get("colonisation_type") == "erm":
-        AmfLog.error(
-            "There is no CNN2 functionality for ErM colonisation, so fail.",
-            AmfLog.ERR_INVALID_ANNOTATION_LEVEL,
-        )
-
-        return 500
-
-    if AmfConfig.get("level") == 2:
-        AmfLog.error(
-            "Currently CNN2 conversion is not supported",
-            AmfLog.ERR_INVALID_MODEL,
-        )
-
-        return 500
 
     for path in input_images:
         tile_size = initialize_size(path)

@@ -21,12 +21,8 @@ const PredictionAndAnnotationSelection = ({
     if (key && existingPredsAndAnnots) {
       let selectedRow = existingPredsAndAnnots[key];
       if (selectedRow) {
-        let hasExistingAnnotations =
-          selectedRow.cnn1_annotations_exist ||
-          selectedRow.cnn2_annotations_exist;
-        let hasExistingPredictions =
-          selectedRow.cnn1_predictions_exist ||
-          selectedRow.cnn2_predictions_exist;
+        let hasExistingAnnotations = selectedRow.cnn1_annotations_exist;
+        let hasExistingPredictions = selectedRow.cnn1_predictions_exist;
 
         setHasExistingAnnotations(hasExistingAnnotations);
         setHasExistingPredictions(hasExistingPredictions);

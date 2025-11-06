@@ -84,32 +84,6 @@ CREATE TABLE IF NOT EXISTS public.Cnn1AnnotationsErm
     CONSTRAINT FK_Annotation_ImageReferenceId_Erm    FOREIGN KEY (ImageReferenceId) REFERENCES public.ImageReference(Id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.Cnn2PredictionsAm
-(
-    ImageReferenceId    bigint  NOT NULL,
-    RowNum              integer NOT NULL,
-    ColNum              integer NOT NULL,
-    Arbuscule           numeric,
-    Vesicle             numeric,
-    Hyphopodium         numeric,
-    Hypha               numeric,
-    CONSTRAINT PK_row_col_predictions_cnn2_am      PRIMARY KEY (ImageReferenceId, RowNum, ColNum),
-    CONSTRAINT FK_Prediction_ImageReferenceId_Am   FOREIGN KEY (ImageReferenceId) REFERENCES public.ImageReference(Id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.Cnn2AnnotationsAm
-(
-    ImageReferenceId    bigint  NOT NULL,
-    RowNum              integer NOT NULL,
-    ColNum              integer NOT NULL,
-    Arbuscule           numeric,
-    Vesicle             numeric,
-    Hyphopodium         numeric,
-    Hypha               numeric,
-    CONSTRAINT PK_row_col_annotations_cnn2_am      PRIMARY KEY (ImageReferenceId, RowNum, ColNum),
-    CONSTRAINT FK_Annotation_ImageReferenceId_Am   FOREIGN KEY (ImageReferenceId) REFERENCES public.ImageReference(Id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS public.Settings (
     id              SERIAL PRIMARY KEY,
     key             TEXT UNIQUE,
@@ -122,12 +96,6 @@ ALTER TABLE IF EXISTS public.Cnn1PredictionsAm
     OWNER to postgres;
 
 ALTER TABLE IF EXISTS public.Cnn1AnnotationsAm
-    OWNER to postgres;
-
-ALTER TABLE IF EXISTS public.Cnn2PredictionsAm
-    OWNER to postgres;
-
-ALTER TABLE IF EXISTS public.Cnn2AnnotationsAm
     OWNER to postgres;
 
 ALTER TABLE IF EXISTS public.Cnn1PredictionsErm

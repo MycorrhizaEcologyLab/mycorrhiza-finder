@@ -31,8 +31,6 @@ const SidebarDivider = () => (
 
 const AnnotationsLeftSidebar = ({
   mode,
-  level,
-  setLevel,
   headerToCountsMapCnn1,
   colorMapping,
   icons,
@@ -74,14 +72,6 @@ const AnnotationsLeftSidebar = ({
         value={mode}
         onChange={handleModeChange}
         options={["Select", "Overlay"]}
-      />
-      <SidebarDivider />
-      <SidebarRadioGroup
-        label="Model"
-        value={level}
-        onChange={(e) => setLevel(e.target.value)}
-        options={["CNN 1", "CNN 2"]}
-        disabledOptions={colonisationType === "am" ? [] : ["CNN 2"]}
       />
       <SidebarDivider />
 
@@ -143,7 +133,7 @@ const AnnotationsLeftSidebar = ({
                 key={key + "-count"}
                 style={{ width: "35px", fontSize: "13px", textAlign: "right" }}
               >
-                {level === "CNN 1" ? headerToCountsMapCnn1.get(value) : ""}
+                {headerToCountsMapCnn1.get(value)}
               </div>
             </div>
           );
