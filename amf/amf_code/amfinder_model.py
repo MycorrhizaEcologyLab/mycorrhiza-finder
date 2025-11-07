@@ -45,8 +45,8 @@ import torch.nn as nn
 import torch.nn.init as init
 from torchvision import models
 
-import amfinder_log as AmfLog
 import amfinder_config as AmfConfig
+import amfinder_log as AmfLog
 
 
 class ConvolutionalBlocks(nn.Module):
@@ -130,7 +130,6 @@ class ConvolutionalBlocks(nn.Module):
         self._initialise_weights()
 
     def forward(self, x):
-
         # Keep the input for return
         input_layer = x
         # x = x.permute(0, 3, 1, 2)
@@ -207,7 +206,6 @@ class ConvolutionalBlocks(nn.Module):
 
 
 class FCLayers(nn.Module):
-
     def __init__(self, fc_in_size, label="RS", output_size=1):  # activation='sigmoid'):
         super(FCLayers, self).__init__()
 
@@ -354,7 +352,6 @@ def load(name=None):
             path = name
 
     else:
-
         path = (
             AmfConfig.get("model")
             if colonisation_type == "am"
@@ -366,7 +363,7 @@ def load(name=None):
 
         AmfLog.text(f"Model for {colonisation_type} colonisation: {path}")
         model = torch.load(path, map_location=torch.device(AmfConfig.get("device")))
-        AmfLog.text(f"Model load successful")
+        AmfLog.text("Model load successful")
 
         # Check model name
         if isinstance(model, torch.nn.Module):
@@ -386,7 +383,6 @@ def load(name=None):
     else:
         # Initialise a new network if no valid model was found
         if AmfConfig.get("run_mode") == "train":
-
             pt_flag = AmfConfig.get("pre_trained")
             num_classes = len(AmfConfig.get("header"))
 
@@ -400,14 +396,10 @@ def load(name=None):
                     model = create_cnn1()
 
             elif AmfConfig.get("model_type") == "resnet":
-                model = create_resnet50(
-                    num_classes=num_classes, pre_trained=pt_flag
-                )
+                model = create_resnet50(num_classes=num_classes, pre_trained=pt_flag)
 
             elif AmfConfig.get("model_type") == "resnext":
-                model = create_resnext50(
-                    num_classes=num_classes, pre_trained=pt_flag
-                )
+                model = create_resnext50(num_classes=num_classes, pre_trained=pt_flag)
 
             elif AmfConfig.get("model_type") == "efficientnet":
                 model = create_efficientnetb5(
@@ -425,9 +417,7 @@ def load(name=None):
                     exit_code=AmfLog.ERR_INVALID_MODEL,
                 )
 
-            model_name = AmfConfig.get(
-                "model_type"
-            )  # Get class name of loaded model
+            model_name = AmfConfig.get("model_type")  # Get class name of loaded model
             AmfLog.text(
                 f"Initialise new network. Selected model type: {model_name}. Pre-Trained Flag: {pt_flag}"
             )

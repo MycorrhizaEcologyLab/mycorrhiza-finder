@@ -46,8 +46,7 @@ import random
 
 random.seed(42)
 import numpy as np
-import amfinder_log as AmfLog
-import amfinder_model as AmfModel
+
 import amfinder_config as AmfConfig
 
 

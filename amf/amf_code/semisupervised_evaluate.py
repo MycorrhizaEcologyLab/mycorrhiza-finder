@@ -1,11 +1,14 @@
+import os
+from types import SimpleNamespace
+
+import matplotlib
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, SequentialSampler
-from types import SimpleNamespace
 import yaml
-import os
-import fixmatch.models.wideresnet as models
+from torch.utils.data import DataLoader, SequentialSampler
+from tqdm import tqdm
+
 from fixmatch.utils import (
     AverageMeter,
     accuracy,
@@ -13,17 +16,15 @@ from fixmatch.utils import (
     get_per_class_accuracies,
 )
 
-from tqdm import tqdm
-import matplotlib
-
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import math
-import amfinder_config as AmfConfig
-import amfinder_model as AmfModel
-import amfinder_log as AmfLog
+
+import matplotlib.pyplot as plt
 import pandas as pd
 
+import amfinder_config as AmfConfig
+import amfinder_log as AmfLog
+import amfinder_model as AmfModel
 from fixmatch.dataset.amf_fixmatch import get_amf
 
 # TODO note that these should be updated to mean and std of channels in dataset you are using
@@ -268,7 +269,6 @@ def run():
 
 
 def get_perfile_metrics(actual_labels, predicted_labels, filenames):
-
     split_files = [
         filename.split("/")[-1].split("_Default_Extended")[0] for filename in filenames
     ]

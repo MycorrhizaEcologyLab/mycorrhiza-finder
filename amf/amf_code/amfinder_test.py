@@ -5,28 +5,27 @@
 # Evaluates the model on the test roots to obtain metrics.
 
 import os
-import numpy as np
 import random
-import os
+import time
 from collections import Counter
 
-import time
+import numpy as np
 
 random.seed(42)
-import amfinder_save as AmfSave
-import amfinder_model as AmfModel
-import amfinder_load as AmfLoad
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-from test_metrics import TestMetrics
-from metrics_collector import MetricsCollector
-import torch.nn.functional as F
-import torch
-from torch.utils.data import DataLoader
-import amfinder_segmentation as AmfSegm
 import pandas as pd
-
+import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
 from tqdm import tqdm
+
+import amfinder_config as AmfConfig
+import amfinder_load as AmfLoad
+import amfinder_log as AmfLog
+import amfinder_model as AmfModel
+import amfinder_save as AmfSave
+import amfinder_segmentation as AmfSegm
+from metrics_collector import MetricsCollector
+from test_metrics import TestMetrics
 
 
 def get_test_results(
@@ -186,7 +185,7 @@ def get_test_results(
     metrics_collector.add_generic_metric("Loss", avg_loss)
 
     # Convert to numpy arrays
-    print(f"Converting to numpy arrays")
+    print("Converting to numpy arrays")
     predicted_labels = np.array(predicted_labels)
     true_labels = np.array(true_labels)
     all_probs = np.array(all_probs)
@@ -233,9 +232,7 @@ def get_test_results(
 
                 # Batch process all low-confidence tiles from this image
                 all_contextual_tile_sets = []
-                num_contextual_tiles_mapping = (
-                    []
-                )  # Number of contextual tiles for a given tile index
+                num_contextual_tiles_mapping = []  # Number of contextual tiles for a given tile index
 
                 for idx, r, c in indices_with_coords:
                     # Get surrounding tiles
@@ -369,7 +366,7 @@ def get_test_results(
             )
 
     # Check the shape of the arrays before forwarding them to TestMetrics
-    AmfLog.info(f"Calling TestMetrics and initializing metrics")
+    AmfLog.info("Calling TestMetrics and initializing metrics")
 
     metrics = TestMetrics(
         x_test,
@@ -398,7 +395,7 @@ def get_test_results(
     AmfLog.info("Calculating test metrics per confidence threshold")
     metrics.get_metrics_with_threshold_comparison()
 
-    AmfLog.info(f"Saving metrics function.")
+    AmfLog.info("Saving metrics function.")
     AmfSave.save_metrics(metrics.metrics_collector, results_dir)
 
     # End timing

@@ -1,24 +1,25 @@
 import argparse
+import copy
+import random
+from copy import deepcopy
+
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-import numpy as np
-import random
-import copy
+import torch.optim as optim
 from sklearn.metrics import confusion_matrix, f1_score
-import amfinder_load as AmfLoad
-import amfinder_config as AmfConfig
-import amfinder_model as AmfModel
-from amfinder_train import class_weights
-from torch.utils.data import DataLoader, TensorDataset, Dataset
-from tqdm import tqdm
+from torch.utils.data import DataLoader
 
 # from torchsummary import summary
 from torchinfo import summary
-from copy import deepcopy
+from tqdm import tqdm
+
+import amfinder_config as AmfConfig
+import amfinder_load as AmfLoad
+import amfinder_model as AmfModel
 from acquisition_functions import get_batchbald_batch
+from amfinder_train import class_weights
 
 
 def add_dropout_layers(model: nn.Module, p: float = 0.25) -> nn.Module:
@@ -510,9 +511,9 @@ def main(data_directory_name):
     y_train = []
     x_val, y_val = splitter._get_dataset("val")
 
-
-
-    dataset_loader_unlabelled = AmfLoad.TileFilesandData(unlabelled_images, is_bald_folder=True)
+    dataset_loader_unlabelled = AmfLoad.TileFilesandData(
+        unlabelled_images, is_bald_folder=True
+    )
     x_unlabelled, y_unlabelled, _, _, _ = dataset_loader_unlabelled.get_all_data()
 
     dataset_loader_test = AmfLoad.TileFilesandData(test_images, is_bald_folder=True)
@@ -611,7 +612,7 @@ def main(data_directory_name):
     num_iterations = len(loss_array_bald)
     print("Comparison of BALD and Random Methods:")
     for i in range(num_iterations):
-        print(f"\nIteration {i+1}:")
+        print(f"\nIteration {i + 1}:")
 
         # Output for BALD method
         loss_bald = loss_array_bald[i]

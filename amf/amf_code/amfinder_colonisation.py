@@ -9,12 +9,12 @@ import random
 import numpy as np
 
 random.seed(42)
-import amfinder_save as AmfSave
+import amfinder_config as AmfConfig
 import amfinder_load as AmfLoad
 import amfinder_log as AmfLog
-import amfinder_config as AmfConfig
-from test_metrics import TestMetrics
+import amfinder_save as AmfSave
 from metrics_collector import MetricsCollector
+from test_metrics import TestMetrics
 
 
 def get_colonisation_results(
@@ -43,10 +43,10 @@ def get_colonisation_results(
         cols=cols,
     )
 
-    AmfLog.info(f"Allocating metrics variables")
+    AmfLog.info("Allocating metrics variables")
     metrics.get_perfile_metrics(colonised_only=True)
 
-    AmfLog.info(f"Saving metrics function.")
+    AmfLog.info("Saving metrics function.")
     AmfSave.save_metrics(metrics.metrics_collector, results_dir)
 
 

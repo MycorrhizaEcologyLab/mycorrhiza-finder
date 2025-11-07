@@ -1,21 +1,19 @@
-from argparse import ArgumentParser, RawTextHelpFormatter
 import io
 import os
-from contextlib import asynccontextmanager
 import signal
+import sys
+import threading
+import webbrowser
+from argparse import ArgumentParser, RawTextHelpFormatter
+from contextlib import asynccontextmanager
+from itertools import product
+
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.gzip import GZipMiddleware
-import webbrowser
-import threading
-
-import sys
-import os
-
-from itertools import product
 from PIL import Image
 
 # This allows any size image
@@ -26,39 +24,23 @@ try:
 except AttributeError:
     wd = os.getcwd()
 
-import amfinder_train as AmfTrain
-import amfinder_config as AmfConfig
-import amfinder_convert as AmfConvert
-import amfinder_convert_tile_size as AmfConvertTileSize
-import amfinder_convert_image_type as AmfConvertImageType
-import amfinder_predict as AmfPredict
-import amfinder_test as AmfTest
 import amfinder_bald as AmfBald
 import amfinder_calibrate as AmfCalibrate
 import amfinder_colonisation as AmfColonisation
-import semisupervised_train as AmfSemiSupervisedTrain
+import amfinder_config as AmfConfig
+import amfinder_convert as AmfConvert
+import amfinder_convert_image_type as AmfConvertImageType
+import amfinder_convert_tile_size as AmfConvertTileSize
+import amfinder_predict as AmfPredict
+import amfinder_test as AmfTest
+import amfinder_train as AmfTrain
 import semisupervised_evaluate as AmfSemiSupervisedEvaluate
-from api_utils import (
-    change_setting_to_default_in_db,
-    check_entries_for_id,
-    delete_image,
-    download_entries_as_csv,
-    fetch_items,
-    get_all_settings_from_db,
-    save_annotations_to_db,
-    get_images,
-    check_entries_for_image,
-    save_predictions_to_db,
-    set_to_enabled_in_db,
-    update_setting_in_db,
-    zip_files_for_transit,
-)
-from db_config import connect, create_database_if_not_exists
+import semisupervised_train as AmfSemiSupervisedTrain
 from api_objects import (
+    AnnotationValues,
     BaseConfig,
     CalibrateConfig,
     ConvertConfig,
-    AnnotationValues,
     PredictionConfig,
     PredictionValues,
     Setting,
@@ -68,6 +50,22 @@ from api_objects import (
     TileEdgeConfig,
     TrainConfig,
 )
+from api_utils import (
+    change_setting_to_default_in_db,
+    check_entries_for_id,
+    check_entries_for_image,
+    delete_image,
+    download_entries_as_csv,
+    fetch_items,
+    get_all_settings_from_db,
+    get_images,
+    save_annotations_to_db,
+    save_predictions_to_db,
+    set_to_enabled_in_db,
+    update_setting_in_db,
+    zip_files_for_transit,
+)
+from db_config import connect, create_database_if_not_exists
 
 ### CONFIG
 
@@ -361,7 +359,7 @@ def check_if_settings_exists(crsr):
     table_exists = crsr.fetchone()[0]
 
     if not table_exists:
-        print(f"Table settings does not exist.")
+        print("Table settings does not exist.")
         return False
 
     crsr.execute("SELECT COUNT(*) FROM settings")
@@ -370,7 +368,7 @@ def check_if_settings_exists(crsr):
     row_count = crsr.fetchone()[0]
 
     if row_count == 0:
-        print(f"Settings exists but it is empty.")
+        print("Settings exists but it is empty.")
         return False
     else:
         print(f"Settings exists and it contains {row_count} rows.")
@@ -408,7 +406,7 @@ if __name__ == "__main__":
         # Check if settings exist, and if not populate table with default values
         settings_exist = check_if_settings_exists(crsr)
         if not settings_exist:
-            print(f"Populating settings.")
+            print("Populating settings.")
             crsr.execute(
                 open(os.path.join(wd, "scripts/fill_default_settings.sql"), "r").read()
             )

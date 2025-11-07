@@ -1,23 +1,20 @@
-import amfinder_log as AmfLog
-import amfinder_load as AmfLoad
-import amfinder_config as AmfConfig
-import amfinder_model as AmfModel
-import torch
-import torch.nn.functional as F
-import torch
-from torch.utils.data import DataLoader
 import os
+import time
 
 # Import from https://github.com/markus93/NN_calibration/blob/master/scripts/calibration/cal_methods.py
 import numpy as np
-from scipy.optimize import minimize
-from sklearn.metrics import log_loss
 import pandas as pd
-import time
-from sklearn.metrics import log_loss, f1_score
 import sklearn.metrics as metrics
-
+import torch
+from scipy.optimize import minimize
+from sklearn.metrics import f1_score, log_loss
+from torch.utils.data import DataLoader
 from tqdm import tqdm
+
+import amfinder_config as AmfConfig
+import amfinder_load as AmfLoad
+import amfinder_log as AmfLog
+import amfinder_model as AmfModel
 
 
 # Defining relevant functions
@@ -126,7 +123,6 @@ def compute_acc_bin(conf_thresh_lower, conf_thresh_upper, conf, pred, true):
 
 # Defining model for TemperatureScaling
 class TemperatureScaling:
-
     def __init__(self, temp=1, maxiter=50, solver="BFGS"):
         """
         Initialize class
@@ -373,9 +369,9 @@ def run(input_files):
 
     # Create results dataframe
     # Assuming 'calibrated_probs' has one probability set per sample
-    assert (
-        len(filenames) == len(rows) == len(cols) == len(calibrated_probs)
-    ), "Length mismatch"
+    assert len(filenames) == len(rows) == len(cols) == len(calibrated_probs), (
+        "Length mismatch"
+    )
 
     colonisation_type = AmfConfig.get("colonisation_type")
 

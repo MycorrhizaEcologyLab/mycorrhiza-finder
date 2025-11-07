@@ -4,6 +4,8 @@ import re
 
 import pandas as pd
 
+import amfinder_config as AmfConfig
+import amfinder_log as AmfLog
 from api_objects import AnnotationValues
 from api_utils import (
     check_entries_for_id,
@@ -11,8 +13,6 @@ from api_utils import (
     get_enabled,
 )
 from db_config import connect
-import amfinder_log as AmfLog
-import amfinder_config as AmfConfig
 
 
 def collapse_annots(annotation_data):

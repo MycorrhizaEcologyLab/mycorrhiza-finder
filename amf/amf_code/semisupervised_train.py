@@ -1,4 +1,4 @@
-import argparse
+import datetime
 import logging
 import math
 import os
@@ -6,26 +6,23 @@ import random
 import shutil
 import sys
 import time
-import mlflow
-import yaml
 from types import SimpleNamespace
-import datetime
+
+import mlflow
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+import yaml
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
-import yaml
 
-from fixmatch.dataset.amf_fixmatch import get_amf
-
+import amfinder_config as AmfConfig
 import amfinder_log as AmfLog
 import amfinder_model as AmfModel
-import amfinder_config as AmfConfig
-
+from fixmatch.dataset.amf_fixmatch import get_amf
 from fixmatch.utils import AverageMeter, accuracy, get_confusion_matrix
 
 # TODO constants that use AmfConfig need to be moved to local variables to work with FastAPI
@@ -263,7 +260,7 @@ def run(image_path):
     AmfLog.info(f"  Task = {args.dataset}@{args.num_labeled}")
     AmfLog.info(f"  Num Epochs = {args.epochs}")
     AmfLog.info(f"  Batch size per GPU = {args.batch_size}")
-    AmfLog.info(f"  Total train batch size = {args.batch_size*args.world_size}")
+    AmfLog.info(f"  Total train batch size = {args.batch_size * args.world_size}")
     AmfLog.info(f"  Total optimization steps = {args.total_steps}")
 
     model.zero_grad()

@@ -1,9 +1,11 @@
-import os
-from PIL import Image
-import xml.etree.ElementTree as ET
 import gc
-import amfinder_log as AmfLog
+import os
+import xml.etree.ElementTree as ET
+
+from PIL import Image
+
 import amfinder_config as AmfConfig
+import amfinder_log as AmfLog
 
 # This allows any size image
 Image.MAX_IMAGE_PIXELS = None

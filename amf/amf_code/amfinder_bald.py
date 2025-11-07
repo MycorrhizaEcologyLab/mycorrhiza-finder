@@ -1,18 +1,16 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
-import numpy as np
-import amfinder_load as AmfLoad
-import amfinder_config as AmfConfig
-import amfinder_model as AmfModel
-from torch.utils.data import DataLoader
 from collections import defaultdict
 
-from copy import deepcopy
-from acquisition_functions import get_batchbald_batch
+import numpy as np
 import pandas as pd
+import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+
+import amfinder_config as AmfConfig
+import amfinder_load as AmfLoad
 import amfinder_log as AmfLog
+import amfinder_model as AmfModel
+from acquisition_functions import get_batchbald_batch
 
 
 def bald_acquisition(
@@ -138,7 +136,6 @@ def batch_bald_acquisition(
 
 
 def run(input_files):
-
     model = AmfModel.load()
 
     device = AmfConfig.get("device")

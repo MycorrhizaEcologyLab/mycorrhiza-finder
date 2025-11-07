@@ -1,7 +1,9 @@
-import io
 import csv
+import io
 import zipfile
+
 from fastapi import HTTPException, Response
+
 from api_objects import AnnotationValues, PredictionValues
 
 
@@ -35,7 +37,7 @@ def fetch_items(crsr, name, id, type, cnn, colonisation_type):
         )
 
     if name != "" and id != "":
-        print(f"Both name and ID provided, name ignored in favour of more specific ID")
+        print("Both name and ID provided, name ignored in favour of more specific ID")
 
     values = {}
     image_ids = []
@@ -483,10 +485,7 @@ def _get_existing_entries_for_image(crsr, colonisation_type, images):
         crsr.execute(cnn1_annotations_exist_query, (id,))
         cnn1_annotations_exist = crsr.fetchone()[0]
 
-        if (
-            cnn1_annotations_exist
-            or cnn1_predictions_exist
-        ):
+        if cnn1_annotations_exist or cnn1_predictions_exist:
             output[id] = {
                 "timestamp": timestamp,
                 "enabled": enabled,
@@ -503,10 +502,7 @@ def download_entries_as_csv(crsr, id, type, colonisation_type):
     output = io.StringIO()
 
     fetch_values_query = (
-        "SELECT * FROM Cnn1"
-        + type
-        + colonisation_type
-        + " WHERE ImageReferenceId=%s"
+        "SELECT * FROM Cnn1" + type + colonisation_type + " WHERE ImageReferenceId=%s"
     )
     crsr.execute(fetch_values_query, (id,))
     entries = crsr.fetchall()

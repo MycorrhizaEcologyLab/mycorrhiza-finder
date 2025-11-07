@@ -46,28 +46,24 @@ Functions
 :function initialize: Read command-line arguments and store user-defined values.
 """
 
-import json
-import os
-import glob
 import datetime
+import glob
 import mimetypes
+import os
+from argparse import ArgumentParser, RawTextHelpFormatter
 
 import torch
-from api_utils import get_enabled, get_tile_edge
-from db_config import connect
+
+import amfinder_log as AmfLog
 from api_objects import (
     BaseConfig,
     CalibrateConfig,
     ConvertConfig,
     PredictionConfig,
     TestConfig,
-    TrainConfig,
     TifConversionConfig,
+    TrainConfig,
 )
-from argparse import ArgumentParser
-from argparse import RawTextHelpFormatter
-
-import amfinder_log as AmfLog
 
 USER_HOME_LOC = "~"
 RESULTS_FOLDER_NAME = "amfinder"
@@ -119,7 +115,7 @@ HEADERS = {
         "DSE",
         "HybridErm",
         "HybridDse",
-    ]
+    ],
 }
 
 HUMAN_HEADERS = {
@@ -279,7 +275,6 @@ def get(id):
     id = id.lower()
 
     if id in PAR:
-
         # Special case, look into a specific folder.
         if id in ["model", "model_erm"] and PAR[id] is not None:
             # Check if model exists in trained networks, else use absolute path
@@ -292,15 +287,12 @@ def get(id):
             return path
 
         else:
-
             return PAR[id]
 
     elif id in PAR["monitors"]:
-
         return PAR["monitors"][id]
 
     else:
-
         AmfLog.warning(f"Unknown parameter {id}")
         return None
 
@@ -337,25 +329,19 @@ def set(id, value, create=False):
     """
 
     if value is None:
-
         return
 
     else:
-
         id = id.lower()
 
         if id in PAR:
-
             PAR[id] = value
 
             if id == "colonisation_type":
-
                 PAR["header"] = HEADERS[value]
 
             elif id == "collapse":
-
                 if value:
-
                     if PAR["colonisation_type"] == "am":
                         PAR["header"] = [
                             "AMColonised",
@@ -395,15 +381,12 @@ def set(id, value, create=False):
                     }
 
         elif id in PAR["monitors"]:
-
             PAR["monitors"][id] = value
 
         elif create:
-
             PAR[id] = value
 
         else:
-
             AmfLog.warning(f"Unknown parameter {id}")
 
 
@@ -535,7 +518,7 @@ def add_training_subparser(subparsers):
         metavar="NUM",
         type=int,
         default=x,
-        help="training batch size." "\ndefault value: {}".format(x),
+        help="training batch size.\ndefault value: {}".format(x),
     )
 
     x = PAR["data_augm"]
@@ -580,7 +563,7 @@ def add_training_subparser(subparsers):
         metavar="NUM",
         type=int,
         default=x,
-        help="number of epochs to run." "\ndefault value: {}".format(x),
+        help="number of epochs to run.\ndefault value: {}".format(x),
     )
 
     x = PAR["epochs_active_learning"]
@@ -592,8 +575,9 @@ def add_training_subparser(subparsers):
         metavar="NUM",
         type=int,
         default=x,
-        help="number of epochs to run after active learning."
-        "\ndefault value: {}".format(x),
+        help="number of epochs to run after active learning.\ndefault value: {}".format(
+            x
+        ),
     )
 
     x = PAR["patience_e"]
@@ -631,8 +615,7 @@ def add_training_subparser(subparsers):
         metavar="NUM",
         type=float,
         default=x,
-        help="learning rate used by the Adam optimizer."
-        "\ndefault value: {}".format(x),
+        help="learning rate used by the Adam optimizer.\ndefault value: {}".format(x),
     )
 
     x = PAR["learning_rate_active_learning"]
@@ -657,7 +640,7 @@ def add_training_subparser(subparsers):
         metavar="NUM",
         type=float,
         default=x,
-        help="Beta 1 Hyperparameter for Adam optimiser" "\ndefault value: {}".format(x),
+        help="Beta 1 Hyperparameter for Adam optimiser\ndefault value: {}".format(x),
     )
 
     x = PAR["adam_beta2"]
@@ -669,7 +652,7 @@ def add_training_subparser(subparsers):
         metavar="NUM",
         type=float,
         default=x,
-        help="Beta 2 Hyperparameter for Adam optimiser" "\ndefault value: {}".format(x),
+        help="Beta 2 Hyperparameter for Adam optimiser\ndefault value: {}".format(x),
     )
 
     x = PAR["balance_factor"]
@@ -694,8 +677,7 @@ def add_training_subparser(subparsers):
         metavar="N",
         type=int,
         default=x,
-        help="Proportion of tiles used for validation."
-        "\ndefault value: {}%%".format(x),
+        help="Proportion of tiles used for validation.\ndefault value: {}%%".format(x),
     )
 
     x = None  # by default, do not fine-tune
@@ -890,7 +872,7 @@ def add_test_subparser(subparsers):
         action="store",
         dest="fixmatch_results_directory",
         default=x,
-        help="folder where fixmatch results are stored." "\ndefault: {}".format(x),
+        help="folder where fixmatch results are stored.\ndefault: {}".format(x),
     )
 
     x = PAR["temperature_factor_path"]
@@ -1187,7 +1169,6 @@ def add_prediction_subparser(subparsers):
 
 
 def add_conversion_subparser(subparsers):
-
     parser = subparsers.add_parser(
         "convert",
         help="Runs AMFinder in conversion mode.",
@@ -1222,7 +1203,7 @@ def add_conversion_subparser(subparsers):
         type=str,
         action="store",
         default=x,
-        help="plant root image to process." "\ndefault value: {}".format(x),
+        help="plant root image to process.\ndefault value: {}".format(x),
     )
 
     x = PAR["colonisation_type"]
@@ -1280,7 +1261,6 @@ def add_conversion_subparser(subparsers):
 
 
 def add_tif_conversion_subparser(subparsers):
-
     parser = subparsers.add_parser(
         "tifconversion",
         help="Runs AMFinder in TIF conversion mode.",
@@ -1303,7 +1283,7 @@ def add_tif_conversion_subparser(subparsers):
         type=str,
         action="store",
         default=x,
-        help="plant root image to process." "\ndefault value: {}".format(x),
+        help="plant root image to process.\ndefault value: {}".format(x),
     )
 
     x = PAR["colonisation_type"]
@@ -1842,7 +1822,6 @@ def initialize():
         set("collapse", par.collapse)
 
     elif par.run_mode == "predict":
-
         set("tile_edge", par.edge)
         set("model", par.model)
         set("model_erm", par.model_erm)
@@ -1858,7 +1837,6 @@ def initialize():
             set("outdir", clean_path(par.images))
 
     elif par.run_mode == "test":
-
         set("model", par.model)
         set("model_erm", par.model_erm)
         set("outdir", par.outdir)
@@ -1877,7 +1855,6 @@ def initialize():
             set("outdir", results_dir)
 
     elif par.run_mode == "colonisation":
-
         set("outdir", par.outdir)
         set("tile_edge", par.edge)
 
@@ -1887,7 +1864,6 @@ def initialize():
             set("outdir", results_dir)
 
     elif par.run_mode == "convert":
-
         set("threshold", par.threshold)
         set("aggregate_tiles", par.aggregate_tiles)
         set("tile_edge", par.edge)
@@ -1895,12 +1871,10 @@ def initialize():
         set("collapse", par.collapse)
 
     elif par.run_mode == "tifconversion":
-
         set("convert_image_file_type", par.convert_image_file_type)
         set("tile_edge", par.edge)
 
     elif par.run_mode == "calibrate":
-
         set("model", par.model)
         set("model_erm", par.model_erm)
         set("tile_edge", par.edge)
@@ -1911,5 +1885,4 @@ def initialize():
             set("outdir", results_dir)
 
     else:
-
         pass

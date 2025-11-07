@@ -6,21 +6,24 @@
 #
 
 import os
+import random
+
 import numpy as np
 import pandas as pd
 
 # For intermediate images
 import seaborn as sns
-import random
 
 random.seed(42)
-import matplotlib.pyplot as plt
-import random
 import math
+import random
+
+import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
-from metrics_collector import MetricsCollector
+
 import amfinder_config as AmfConfig
 import amfinder_log as AmfLog
+from metrics_collector import MetricsCollector
 
 
 class TestMetrics:
@@ -63,7 +66,6 @@ class TestMetrics:
         )
 
     def get_conf_matrix(self):
-
         mapped_predictions = [
             self.class_names[label] for label in self.predicted_labels
         ]
@@ -114,7 +116,7 @@ class TestMetrics:
         self.metrics_collector.add_generic_metric("Macro precision", macro_precision)
         self.metrics_collector.add_generic_metric("Macro recall", macro_recall)
         self.metrics_collector.add_generic_metric("Macro f1 score", macro_f1)
-        print(f"Macro F1 Score: {macro_f1*100:.2f}%")
+        print(f"Macro F1 Score: {macro_f1 * 100:.2f}%")
 
         # Print per-class metrics
         print("\nPer-Class Metrics:")
@@ -122,10 +124,10 @@ class TestMetrics:
             self.class_names, accuracy, precision, recall, f1_score
         ):
             print(f"{class_name}:")
-            print(f"  Accuracy: {acc*100:.2f}%")
-            print(f"  Precision: {prec*100:.2f}%")
-            print(f"  Recall: {rec*100:.2f}%")
-            print(f"  F1 Score: {f1*100:.2f}%")
+            print(f"  Accuracy: {acc * 100:.2f}%")
+            print(f"  Precision: {prec * 100:.2f}%")
+            print(f"  Recall: {rec * 100:.2f}%")
+            print(f"  F1 Score: {f1 * 100:.2f}%")
 
             # Add metrics to metrics collector
             self.metrics_collector.add_class_metric(f"{class_name}", "Accuracy", acc)
@@ -269,7 +271,6 @@ class TestMetrics:
         split_files = [os.path.basename(filename) for filename in self.filenames]
 
         if colonised_only:
-
             data = {
                 "Filename": split_files,
                 "Actual Label": self.y_test_labels,
@@ -282,19 +283,13 @@ class TestMetrics:
                         {
                             "Actual % AM + Hybrid Colonised": calculate_am_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                0
-                            ],
+                            )[0],
                             "Actual % DSE + Hybrid Colonised": calculate_am_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                1
-                            ],
+                            )[1],
                             "Actual % Total Colonised including Hybrid": calculate_am_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                2
-                            ],
+                            )[2],
                             "Actual % Root": calculate_am_colonised_percentage(
                                 x["Actual Label"]
                             )[3],
@@ -307,29 +302,19 @@ class TestMetrics:
                         {
                             "Actual % Blue Coil Colonised": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                0
-                            ],
+                            )[0],
                             "Actual % Brown Coil Colonised": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                1
-                            ],
+                            )[1],
                             "Actual % Type Two Colonised": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                2
-                            ],
+                            )[2],
                             "Actual % DSE + Hybrid DSE Colonised": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                3
-                            ],
+                            )[3],
                             "Actual % Total ErM Colonisation (inc. Hybrid ErM)": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                4
-                            ],
+                            )[4],
                             "Actual % Root": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
                             )[5],
@@ -363,37 +348,25 @@ class TestMetrics:
                         {
                             "Actual % AM + Hybrid Colonised": calculate_am_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                0
-                            ],
+                            )[0],
                             "Actual % DSE + Hybrid Colonised": calculate_am_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                1
-                            ],
+                            )[1],
                             "Actual % Total Colonised including Hybrid": calculate_am_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                2
-                            ],
+                            )[2],
                             "Actual % Root": calculate_am_colonised_percentage(
                                 x["Actual Label"]
                             )[3],
                             "Predicted % AM + Hybrid Colonised": calculate_am_colonised_percentage(
                                 x["Predicted Label"]
-                            )[
-                                0
-                            ],
+                            )[0],
                             "Predicted % DSE + Hybrid Colonised": calculate_am_colonised_percentage(
                                 x["Predicted Label"]
-                            )[
-                                1
-                            ],
+                            )[1],
                             "Predicted % Total Colonised including Hybrid": calculate_am_colonised_percentage(
                                 x["Predicted Label"]
-                            )[
-                                2
-                            ],
+                            )[2],
                             "Predicted % Root": calculate_am_colonised_percentage(
                                 x["Predicted Label"]
                             )[3],
@@ -406,57 +379,37 @@ class TestMetrics:
                         {
                             "Actual % Blue Coil Colonised": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                0
-                            ],
+                            )[0],
                             "Actual % Brown Coil Colonised": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                1
-                            ],
+                            )[1],
                             "Actual % Type Two Colonised": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                2
-                            ],
+                            )[2],
                             "Actual % DSE + Hybrid DSE Colonised": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                3
-                            ],
+                            )[3],
                             "Actual % Total ErM Colonisation (inc. Hybrid ErM)": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
-                            )[
-                                4
-                            ],
+                            )[4],
                             "Actual % Root": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
                             )[5],
                             "Predicted % Blue Coil Colonised": calculate_erm_colonised_percentage(
                                 x["Predicted Label"]
-                            )[
-                                0
-                            ],
+                            )[0],
                             "Predicted % Brown Coil Colonised": calculate_erm_colonised_percentage(
                                 x["Predicted Label"]
-                            )[
-                                1
-                            ],
+                            )[1],
                             "Predicted % Type Two Colonised": calculate_erm_colonised_percentage(
                                 x["Predicted Label"]
-                            )[
-                                2
-                            ],
+                            )[2],
                             "Predicted % DSE + Hybrid DSE Colonised": calculate_erm_colonised_percentage(
                                 x["Predicted Label"]
-                            )[
-                                3
-                            ],
+                            )[3],
                             "Predicted % Total ErM Colonisation (inc. Hybrid ErM)": calculate_erm_colonised_percentage(
                                 x["Predicted Label"]
-                            )[
-                                4
-                            ],
+                            )[4],
                             "Predicted % Root": calculate_erm_colonised_percentage(
                                 x["Predicted Label"]
                             )[5],
@@ -722,7 +675,6 @@ class TestMetrics:
                 plt.savefig(save_path)
 
     def get_num_tiles_per_confidence(self):
-
         total_tiles = self.predicted_probs.shape[0]
         max_probs = self.predicted_probs.max(axis=1)
 
@@ -745,7 +697,6 @@ class TestMetrics:
         )
 
     def get_metrics_with_threshold_comparison(self):
-
         thresholds = np.linspace(0.1, 1.0, 10)
         thresholds = np.round(thresholds, 1)
 
@@ -755,12 +706,13 @@ class TestMetrics:
         os.makedirs(folder_path, exist_ok=True)
 
         for conversion_threshold in thresholds:
-
             max_probs = self.predicted_probs.max(axis=1)
             rows_to_modify = max_probs <= conversion_threshold
             adjusted_predicted_labels = self.predicted_labels.copy()
 
-            adjusted_predicted_labels[rows_to_modify] = np.argmax(self.predictions[rows_to_modify], axis=1)
+            adjusted_predicted_labels[rows_to_modify] = np.argmax(
+                self.predictions[rows_to_modify], axis=1
+            )
 
             mapped_predictions = [
                 self.class_names[label] for label in adjusted_predicted_labels
@@ -794,7 +746,6 @@ class TestMetrics:
             for class_name, acc, prec, rec, f1 in zip(
                 self.class_names, accuracy, precision, recall, f1_score
             ):
-
                 data.append(
                     {
                         "class_name": class_name,

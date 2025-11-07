@@ -1,11 +1,13 @@
 import io
-import os
 import json
+import os
 import re
 
 import imagesize
 import pandas as pd
 
+import amfinder_config as AmfConfig
+import amfinder_log as AmfLog
 from api_objects import AnnotationValues
 from api_utils import (
     check_entries_for_id,
@@ -15,8 +17,6 @@ from api_utils import (
     save_annotations_to_db,
 )
 from db_config import connect
-import amfinder_log as AmfLog
-import amfinder_config as AmfConfig
 
 SCALING_FACTOR = 2
 
@@ -89,7 +89,6 @@ def rescale_annot(annotation_data):
 
     for new_row_coord, old_row_coord in enumerate(new_row_starts):
         for new_col_coord, old_col_coord in enumerate(new_col_starts):
-
             tile_annotations = annotation_data.loc[
                 annotation_data["row"].isin([old_row_coord, old_row_coord + 1])
             ].loc[annotation_data["col"].isin([old_col_coord, old_col_coord + 1])]
@@ -129,9 +128,7 @@ def rescale_annot(annotation_data):
 
             else:
                 number_of_126tiles_in_256tiles = tile_annotations.shape[0]
-                majority_class_name = (
-                    class_totals.idxmax()
-                )  # According to documentation: Return index of FIRST occurrence of maximum over requested axis.
+                majority_class_name = class_totals.idxmax()  # According to documentation: Return index of FIRST occurrence of maximum over requested axis.
                 majority_class_ratio = (
                     class_totals.max() / number_of_126tiles_in_256tiles
                 )
@@ -277,7 +274,6 @@ def rescale_annot(annotation_data):
 
                         # If it is equal or less than 50 %, cases need to be distinguished.
                         elif ratios["Unreadable"] <= 0.5:
-
                             # Again, all types of colonisation are given priority as no minimum colonisation is required.
                             # If there is any AMColonised (as minority) or DSE/Hybrid tiles present (also as minority):
                             if ratios["AMColonised"] > 0.0 and (
@@ -438,7 +434,6 @@ def run(input_images):
             )
 
         for path in input_images:
-
             tile_size = initialize_size(path)
             convert_tile_size(path, tile_size)
 

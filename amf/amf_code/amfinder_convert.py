@@ -24,25 +24,25 @@
 
 
 import io
-import os
 import json
+import os
 import re
+
+import imagesize
+import numpy as np
+import pandas as pd
+
+import amfinder_config as AmfConfig
+import amfinder_log as AmfLog
 from api_objects import AnnotationValues
 from api_utils import (
     check_entries_for_id,
     download_entries_as_csv,
     get_enabled,
-    save_annotations_to_db,
     get_tile_edge,
+    save_annotations_to_db,
 )
 from db_config import connect
-import imagesize
-import numpy as np
-import pandas as pd
-
-import amfinder_log as AmfLog
-import amfinder_config as AmfConfig
-
 
 NROWS = None
 NCOLS = None
@@ -154,7 +154,6 @@ def update_archive(out, prev_path):
 
 
 def create_annotations(path, tile_size):
-
     preds = []
     image_name = os.path.splitext(os.path.basename(path))[0]
 
@@ -212,7 +211,6 @@ def create_annotations(path, tile_size):
                 preds.append(file)
 
         if preds == []:
-
             AmfLog.info(f"Skipping {path} as no predictions could be found")
 
         elif len(preds) == 1:
@@ -221,7 +219,6 @@ def create_annotations(path, tile_size):
             update_archive(out, full_preds_path)
 
         else:
-
             AmfLog.info(
                 f"Skipping {path} as <amf convert> does not \
                     support multiple prediction files."

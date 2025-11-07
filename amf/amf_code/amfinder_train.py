@@ -44,28 +44,26 @@ Functions
 
 # New total imports log for train_flx
 # Original AMFinder imports.
-import os
-import psutil
 import random
-from tqdm import tqdm
-import numpy as np
 
-import amfinder_save as AmfSave
-import amfinder_model as AmfModel
-import amfinder_config as AmfConfig
-import amfinder_load as AmfLoad
-import amfinder_log as AmfLog
+# from torch.utils.data.distributed import DistributedSampler
+# from torch.utils.tensorboard import SummaryWriter
+import mlflow
+import mlflow.pytorch
+import numpy as np
 
 # Semi-Supervised Imports (pruned with respect to earlier imports).
 import torch
 import torch.nn as nn
 import torch.optim
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-# from torch.utils.data.distributed import DistributedSampler
-# from torch.utils.tensorboard import SummaryWriter
-import mlflow
-import mlflow.pytorch
+import amfinder_config as AmfConfig
+import amfinder_load as AmfLoad
+import amfinder_log as AmfLog
+import amfinder_model as AmfModel
+import amfinder_save as AmfSave
 
 # logger = tf.get_logger()
 # logger.setLevel(logging.ERROR)
@@ -119,6 +117,7 @@ def class_weights(y, weight_type="inverse_freq", beta=0.9999, epsilon=1e-6):
         dict(enumerate(final_class_weights)),
         final_class_weights,
     ]  # class wegiths as a dict and array respectively.
+
 
 # PyTorch implementation of earlier Keras functionality for early stopping.
 
@@ -241,9 +240,7 @@ def run(input_files, flag, train_active_learning=False):
     val_dataset = AmfLoad.CustomNormalisedDataset(x_val, y_val)
 
     # Initialise variables to prepare training and validation datasets
-    labels = np.stack(
-        [full_dataset.labels[i] for i in range(len(full_dataset.labels))]
-    )
+    labels = np.stack([full_dataset.labels[i] for i in range(len(full_dataset.labels))])
     labels = torch.from_numpy(labels)
     labels = labels.type(torch.float32)
     weights = class_weights(labels, "effective_num")
@@ -366,7 +363,7 @@ def run(input_files, flag, train_active_learning=False):
 
             # Log losses
             AmfLog.text(
-                f"Epoch {epoch+1}/{num_epochs}, Average validation loss: {avg_val_loss:.4f}"
+                f"Epoch {epoch + 1}/{num_epochs}, Average validation loss: {avg_val_loss:.4f}"
             )
 
             if flag:
@@ -434,7 +431,6 @@ def run(input_files, flag, train_active_learning=False):
 
     # Save model information (layers and graph) upon user request.
     if AmfConfig.get("summary"):
-
         AmfSave.save_model_architecture(model, device, AmfConfig.get("tile_edge"))
 
     return output

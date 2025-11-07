@@ -2,13 +2,16 @@ import logging
 import math
 import os
 from typing import Union
+
 import numpy as np
-from torchvision import transforms
 import torch
-from PIL import Image
-import amfinder_load as AmfLoad
-from .randaugment import RandAugmentMC
 from matplotlib import pyplot as plt
+from PIL import Image
+from torchvision import transforms
+
+import amfinder_load as AmfLoad
+
+from .randaugment import RandAugmentMC
 
 logger = logging.getLogger(__name__)
 CLASS_NAMES = [
@@ -152,7 +155,6 @@ class TransformFixMatch(object):
 
 
 class AmfDatasetLabelled:
-
     def __init__(
         self,
         args=None,
@@ -204,7 +206,6 @@ class AmfDatasetLabelled:
             raise ValueError("no train or test data provided")
 
     def __getitem__(self, idx):
-
         # Get id and target
         im = self.images[idx]
         target = self.targets[idx]
@@ -224,7 +225,6 @@ class AmfDatasetLabelled:
             return im, target, filename
 
     def __len__(self):
-
         # Find dataset size
         dataset_length = len(self.images)
 
@@ -290,7 +290,6 @@ class AmfDatasetLabelled:
 
 
 class AmfDatasetUnlabelled:
-
     def __init__(
         self,
         prop_unlabelled=None,
@@ -313,7 +312,6 @@ class AmfDatasetUnlabelled:
         )
 
     def __getitem__(self, idx):
-
         im = self.images[idx]
         target = self.targets[idx]
 
@@ -327,7 +325,6 @@ class AmfDatasetUnlabelled:
         return im, target
 
     def __len__(self):
-
         # Find dataset size
         dataset_length = len(self.images)
 

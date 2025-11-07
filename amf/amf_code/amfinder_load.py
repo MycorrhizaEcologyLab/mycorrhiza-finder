@@ -1,6 +1,23 @@
 import glob
+import io
 import json
+import os
+import random
 import re
+from collections import defaultdict
+
+import numpy as np
+import pandas as pd
+
+# Torch functionalities
+import torch
+from torch.utils.data import Dataset
+from torchvision import transforms
+from torchvision.transforms import InterpolationMode
+
+import amfinder_config as AmfConfig
+import amfinder_log as AmfLog
+import amfinder_segmentation as AmfSegm
 from api_utils import (
     check_entries_for_id,
     download_entries_as_csv,
@@ -8,24 +25,6 @@ from api_utils import (
     get_tile_edge,
 )
 from db_config import connect
-import amfinder_log as AmfLog
-import amfinder_config as AmfConfig
-import amfinder_segmentation as AmfSegm
-import os
-import pandas as pd
-import io
-import random
-import numpy as np
-import random
-
-# Torch functionalities
-import torch
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-from torchvision.transforms import functional as F
-from torchvision.transforms import InterpolationMode
-import numpy as np
-from collections import defaultdict
 
 
 # Defining class for Datasetloader
@@ -637,7 +636,6 @@ class TileFilesandData(Dataset):
 
 # TODO fix match needs to be updated to work with ErM model
 class FixMatchLoader:
-
     def get_input_files(self, root):
         """
         Filter input file list and keep valid JPEG or PNG images.
@@ -680,7 +678,6 @@ class FixMatchLoader:
 
         # Determine the required amount (in %) of background subsampling (if active).
         def process_dataset(dataset: list = None):
-
             tiles = []
             hot_labels = []
 
@@ -690,7 +687,6 @@ class FixMatchLoader:
                 hot_labels.append(list(annot[3:-1]))
 
             for path, annots in dataset:
-
                 # FIXME: Random access is inefficient. To achieve better
                 # efficiency we would have to load tiles row by row.
                 # set the number of not colonised to = the number of colonised
@@ -752,13 +748,11 @@ class FixMatchLoader:
 
         # Determine the required amount (in %) of background subsampling (if active).
         def process_dataset(dataset: list = None):
-
             tiles = []
             hot_labels = []
             file_names = []
 
             for path, annots in dataset:
-
                 image = AmfSegm.load(path)
 
                 for annot in annots.itertuples():

@@ -34,24 +34,25 @@ Functions
 :function prediction_table: Saves or append predictions to an archive.
 """
 
+import datetime
 import json
 import os
-import h5py
 import pickle
-import datetime
+from contextlib import redirect_stdout
+
+import h5py
 import numpy as np
-from db_config import connect
-from api_utils import save_predictions_to_db
-import amfinder_zipfile as zf
 import torch
 from torchinfo import summary
 from torchview import draw_graph
-from contextlib import redirect_stdout
 
-import amfinder_plot as AmfPlot
 import amfinder_config as AmfConfig
 import amfinder_log as AmfLog
+import amfinder_plot as AmfPlot
+import amfinder_zipfile as zf
 from api_objects import PredictionValues
+from api_utils import save_predictions_to_db
+from db_config import connect
 
 
 def now():
@@ -134,8 +135,8 @@ def save_model_architecture(model, device, tile_size):
     :param model: Model to save.
     """
 
-    path_summary = os.path.join(AmfConfig.get("outdir"), f"CNN1_summary.txt")
-    path_graph = os.path.join(AmfConfig.get("outdir"), f"CNN1_graph")
+    path_summary = os.path.join(AmfConfig.get("outdir"), "CNN1_summary.txt")
+    path_graph = os.path.join(AmfConfig.get("outdir"), "CNN1_graph")
     input_tensor = torch.randn(1, 3, tile_size, tile_size).to(device)
 
     with open(path_summary, "w") as sf:
@@ -182,7 +183,7 @@ def save_metrics(metrics_collector, path):
                 metrics_type="class"
             )
             class_metrics_csv = class_metrics_df.to_csv(index=False)
-            class_metrics_file_name = f"class_metrics.csv"
+            class_metrics_file_name = "class_metrics.csv"
             z.writestr(class_metrics_file_name, class_metrics_csv)
 
         # Handle file-specific metrics
@@ -191,7 +192,7 @@ def save_metrics(metrics_collector, path):
                 metrics_type="file_metrics"
             )
             file_metrics_csv = file_metrics_df.to_csv(index=False)
-            file_metrics_file_name = f"file_metrics.csv"
+            file_metrics_file_name = "file_metrics.csv"
             z.writestr(file_metrics_file_name, file_metrics_csv)
 
         # Handle generic metrics
@@ -200,7 +201,7 @@ def save_metrics(metrics_collector, path):
                 metrics_type="generic"
             )
             generic_metrics_csv = generic_metrics_df.to_csv(index=False)
-            generic_metrics_file_name = f"generic_metrics.csv"
+            generic_metrics_file_name = "generic_metrics.csv"
             z.writestr(generic_metrics_file_name, generic_metrics_csv)
 
         for image_name, image in metrics_collector.images.items():

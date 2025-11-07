@@ -33,8 +33,8 @@ Functions
 
 """
 
-
 import io
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -68,11 +68,9 @@ def draw(history, epochs, title, x_range, t_name, v_name):
     legend_pos = "upper right"
 
     if title[0:4] == "Loss":
-
         pyplot.xlim(-padding, epochs + padding)
 
     else:
-
         legend_pos = "lower right"
         pyplot.axis([-padding, epochs + padding, 0, 1])
 

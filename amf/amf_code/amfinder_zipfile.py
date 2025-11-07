@@ -5,8 +5,7 @@ XXX references to utf-8 need further investigation.
 """
 
 import binascii
-import functools
-import importlib.util
+import contextlib
 import io
 import itertools
 import os
@@ -17,7 +16,6 @@ import struct
 import sys
 import threading
 import time
-import contextlib
 from operator import attrgetter
 
 try:
@@ -506,7 +504,7 @@ class ZipInfo(object):
                         (self.header_offset,) = unpack("<Q", data[:8])
                 except struct.error:
                     raise BadZipFile(
-                        f"Corrupt zip64 extra field. " f"{field} not found."
+                        f"Corrupt zip64 extra field. {field} not found."
                     ) from None
 
             extra = extra[ln + 4 :]
@@ -1073,7 +1071,7 @@ class ZipExtFile(io.BufferedIOBase):
             new_pos = self._orig_file_size + offset
         else:
             raise ValueError(
-                "whence must be os.SEEK_SET (0), " "os.SEEK_CUR (1), or os.SEEK_END (2)"
+                "whence must be os.SEEK_SET (0), os.SEEK_CUR (1), or os.SEEK_END (2)"
             )
 
         if new_pos > self._orig_file_size:
@@ -1608,8 +1606,7 @@ class ZipFile:
                     pwd = self.pwd
                 if not pwd:
                     raise RuntimeError(
-                        "File %r is encrypted, password "
-                        "required for extraction" % name
+                        "File %r is encrypted, password required for extraction" % name
                     )
             else:
                 pwd = None

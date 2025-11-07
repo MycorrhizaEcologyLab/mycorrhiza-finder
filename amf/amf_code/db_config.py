@@ -1,11 +1,11 @@
-from configparser import ConfigParser
-import sys
 import os
+import sys
+from configparser import ConfigParser
+
 import psycopg2
 from psycopg2 import sql
 
 import amfinder_log as AmfLog
-
 
 try:
     wd = sys._MEIPASS
