@@ -1,0 +1,6 @@
+[tool.ruff]
+src = ["amf/amf_code"]
+exclude = ["amf/analysis_code", "*.ipynb"]
+
+[tool.ruff.lint]
+extend-select = ["I"]
