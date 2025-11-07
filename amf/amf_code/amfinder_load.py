@@ -681,7 +681,7 @@ class FixMatchLoader:
             tiles = []
             hot_labels = []
 
-            def get_tile(annot):
+            def get_tile(image, annot):
                 tile = AmfSegm.tile(image, annot.row, annot.col)
                 tiles.append(tile)
                 hot_labels.append(list(annot[3:-1]))
@@ -709,19 +709,19 @@ class FixMatchLoader:
                 num_Hybrid = 0
                 for annot in annots.itertuples():
                     if annot.Uncolonised == 1 and num_Uncolonised < max_examples:
-                        get_tile(annot)
+                        get_tile(image, annot)
                         num_Uncolonised += 1
                     elif annot.AMColonised == 1 and num_AM < max_examples:
-                        get_tile(annot)
+                        get_tile(image, annot)
                         num_AM += 1
                     elif annot.Unreadable == 1 and num_Unreadable < max_examples:
-                        get_tile(annot)
+                        get_tile(image, annot)
                         num_Unreadable += 1
                     elif annot.DSE == 1 and num_DSE < max_examples:
-                        get_tile(annot)
+                        get_tile(image, annot)
                         num_DSE += 1
                     elif annot.Hybrid == 1 and num_Hybrid < max_examples:
-                        get_tile(annot)
+                        get_tile(image, annot)
                         num_Hybrid += 1
 
                 del image
@@ -920,7 +920,7 @@ def import_settings(path):
                 id = get_enabled(crsr, image_name)
 
                 # Make sure there is an enabled image
-                assert id != None
+                assert id is not None
 
                 tile_edge = get_tile_edge(crsr, id)
                 return {"tile_edge": tile_edge[0]}
@@ -959,10 +959,10 @@ def import_annotations(path, is_bald_folder=False):
             with conn, conn.cursor() as crsr:
                 id = get_enabled(crsr, image_name)
 
-                if id == None and is_bald_folder:
+                if id is None and is_bald_folder:
                     return None
 
-                assert id != None
+                assert id is not None
 
                 existing_entries = check_entries_for_id(crsr, id, colonisation_type)
 

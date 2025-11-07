@@ -37,17 +37,14 @@ Functions
 :function preprocess: Convert a tile list to NumPy array and normalise pixels.
 """
 
+import numpy as np
 from PIL import Image
+
+import amfinder_config as AmfConfig
 
 # This allows any size image
 Image.MAX_IMAGE_PIXELS = None
-
-import random
-
-random.seed(42)
-import numpy as np
-
-import amfinder_config as AmfConfig
+np.random.seed(42)
 
 
 def load(image_path):

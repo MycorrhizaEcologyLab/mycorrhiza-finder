@@ -42,15 +42,13 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 
-random.seed(42)
-
-import random
-
 import amfinder_config as AmfConfig
 import amfinder_log as AmfLog
 import amfinder_model as AmfModel
 import amfinder_save as AmfSave
 import amfinder_segmentation as AmfSegm
+
+random.seed(42)
 
 
 def table_header():

@@ -1,4 +1,3 @@
-import io
 import os
 import re
 
@@ -6,10 +5,8 @@ import pandas as pd
 
 import amfinder_config as AmfConfig
 import amfinder_log as AmfLog
-from api_objects import AnnotationValues
 from api_utils import (
     check_entries_for_id,
-    download_entries_as_csv,
     get_enabled,
 )
 from db_config import connect
@@ -151,7 +148,7 @@ def collapse_classes(path):
         with conn, conn.cursor() as crsr:
             id = get_enabled(crsr, image_name)
 
-            if id == None:
+            if id is None:
                 AmfLog.warning(
                     f"Skipping {path} as no entries are saved in DB for this image"
                 )
@@ -160,18 +157,21 @@ def collapse_classes(path):
             existing_entries = check_entries_for_id(crsr, id, colonisation_type)
 
             if existing_entries[id]["cnn1_annotations_exist"]:
-                csv = download_entries_as_csv(
-                    crsr, id, "Annotations", colonisation_type
+                raise NotImplementedError(
+                    "DB access for class collapsing disabled as DB schema would need to be updated"
                 )
-                out = collapse_annots(io.StringIO(csv))
-                cnn1results = out.values.tolist()
-                values = AnnotationValues(
-                    imageReferenceId=id,
-                    colonisationType=colonisation_type,
-                    cnnOneValues=cnn1results,
-                )
+                # csv = download_entries_as_csv(
+                #     crsr, id, "Annotations", colonisation_type
+                # )
+                # out = collapse_annots(io.StringIO(csv))
+                # cnn1results = out.values.tolist()
+                # values = AnnotationValues(
+                #     imageReferenceId=id,
+                #     colonisationType=colonisation_type,
+                #     cnnOneValues=cnn1results,
+                # )
                 # save_annotations_to_db(crsr, values)
-                return
+                # return
 
             AmfLog.warning(f"Skipping {path} as no annotations could be found")
 

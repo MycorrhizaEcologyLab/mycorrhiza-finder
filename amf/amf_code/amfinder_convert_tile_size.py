@@ -33,7 +33,7 @@ def initialize_size(path):
         conn = connect("amf")
         with conn, conn.cursor() as crsr:
             id = get_enabled(crsr, image_name)
-            if id != None:
+            if id is not None:
                 tile_edge = get_tile_edge(crsr, id)
                 tile_size = tile_edge[0]
     else:
@@ -84,8 +84,6 @@ def rescale_annot(annotation_data):
     )  # Creating a sequence of new col indices with a step of two, based on the max col number.
 
     rescaled_tile_annotations = []
-
-    colonisation_type = AmfConfig.get("colonisation_type")
 
     for new_row_coord, old_row_coord in enumerate(new_row_starts):
         for new_col_coord, old_col_coord in enumerate(new_col_starts):
@@ -362,7 +360,7 @@ def convert_tile_size(path, tile_size):
         with conn, conn.cursor() as crsr:
             id = get_enabled(crsr, image_name)
 
-            if id == None:
+            if id is None:
                 AmfLog.warning(
                     f"Skipping {path} as no entries are saved in DB for this image"
                 )

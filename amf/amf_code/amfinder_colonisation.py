@@ -8,13 +8,14 @@ import random
 
 import numpy as np
 
-random.seed(42)
 import amfinder_config as AmfConfig
 import amfinder_load as AmfLoad
 import amfinder_log as AmfLog
 import amfinder_save as AmfSave
 from metrics_collector import MetricsCollector
 from test_metrics import TestMetrics
+
+random.seed(42)
 
 
 def get_colonisation_results(

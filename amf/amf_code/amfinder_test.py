@@ -10,8 +10,6 @@ import time
 from collections import Counter
 
 import numpy as np
-
-random.seed(42)
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -26,6 +24,8 @@ import amfinder_save as AmfSave
 import amfinder_segmentation as AmfSegm
 from metrics_collector import MetricsCollector
 from test_metrics import TestMetrics
+
+random.seed(42)
 
 
 def get_test_results(
@@ -161,7 +161,6 @@ def get_test_results(
             probabilities = torch.softmax(outputs / temperature_factor, dim=1)
             class_indices = torch.argmax(probabilities, dim=1)
             num_classes = probabilities.size(1)
-            one_hot_predictions = F.one_hot(class_indices, num_classes=num_classes)
 
             # Accumulate metrics
             total += batch_y.size(0)

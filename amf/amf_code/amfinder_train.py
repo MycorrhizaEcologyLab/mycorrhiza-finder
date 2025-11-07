@@ -287,7 +287,6 @@ def run(input_files, flag, train_active_learning=False):
     )
     save_directory = AmfConfig.get("outdir")
     # Optional
-    e = EarlyStopping(patience=AmfConfig.get("patience_e"), verbose=True)
     r = ReduceLROnPlateau(
         optimiser=optim,
         factor=0.5,
@@ -374,7 +373,7 @@ def run(input_files, flag, train_active_learning=False):
 
             # Check for early stopping
             if (
-                early_stopping != None
+                early_stopping is not None
             ):  # TODO: This needs to be tied to the config file!
                 AmfLog.text("Early stopping mechanism active")
                 early_stopping.check_early_stop(model, avg_val_loss)
@@ -398,7 +397,7 @@ def run(input_files, flag, train_active_learning=False):
                 )  # Always store best performing model weights.
 
             # Step the learning rate scheduler
-            if reduce_lr != None:
+            if reduce_lr is not None:
                 AmfLog.text("Reduce LR mechanism active")
                 reduce_lr.step(avg_val_loss)
                 AmfConfig.set("reduce_lr_on_plateau", reduce_lr)

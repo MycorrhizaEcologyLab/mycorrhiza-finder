@@ -126,7 +126,7 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
     """
     # Check if image reference ID exists in DB
     exists = False
-    if values.imageReferenceId != None:
+    if values.imageReferenceId is not None:
         # Check that given ID already has an entry in the database
         check_image_id = "SELECT EXISTS(SELECT 1 FROM imagereference WHERE id=%s)"
         crsr.execute(check_image_id, (values.imageReferenceId,))
@@ -268,7 +268,7 @@ def save_predictions_to_db(crsr, values: PredictionValues):
 
     # Check if image reference ID exists in DB
     exists = False
-    if values.imageReferenceId != None:
+    if values.imageReferenceId is not None:
         # Check that given ID already has an entry in the database
         check_image_id = "SELECT EXISTS(SELECT 1 FROM imagereference WHERE id=%s)"
         crsr.execute(check_image_id, (values.imageReferenceId,))
@@ -432,7 +432,7 @@ def get_enabled(crsr, image_name):
             f"No enabled annotations for image {image_name}, return image with most recent timestamp instead."
         )
         id = get_most_recent_timestamp(crsr, image_name)
-        if id != None:
+        if id is not None:
             set_to_enabled_in_db(crsr, id)
         return id
 

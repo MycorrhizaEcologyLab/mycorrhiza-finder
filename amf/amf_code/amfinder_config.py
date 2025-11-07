@@ -1880,7 +1880,7 @@ def initialize():
         set("tile_edge", par.edge)
         set("outdir", par.outdir)
 
-        if par.outdir == None:
+        if par.outdir is None:
             results_dir = create_results_dir("calibrate")
             set("outdir", results_dir)
 

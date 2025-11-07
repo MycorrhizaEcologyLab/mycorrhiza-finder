@@ -16,14 +16,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from PIL import Image
 
-# This allows any size image
-Image.MAX_IMAGE_PIXELS = None
-
-try:
-    wd = sys._MEIPASS
-except AttributeError:
-    wd = os.getcwd()
-
 import amfinder_bald as AmfBald
 import amfinder_calibrate as AmfCalibrate
 import amfinder_colonisation as AmfColonisation
@@ -66,6 +58,15 @@ from api_utils import (
     zip_files_for_transit,
 )
 from db_config import connect, create_database_if_not_exists
+
+# This allows any size image
+Image.MAX_IMAGE_PIXELS = None
+
+try:
+    wd = sys._MEIPASS
+except AttributeError:
+    wd = os.getcwd()
+
 
 ### CONFIG
 
@@ -227,7 +228,7 @@ def convert_images(convert_config: ConvertConfig):
 
 
 @app.post("/tif-conversion")
-def convert_images(tif_conversion_config: TifConversionConfig):
+def tif_conversion(tif_conversion_config: TifConversionConfig):
     AmfConfig.set_tif_conversion_config(tif_conversion_config)
     input_files = AmfConfig.get_input_files()
     return AmfConvertImageType.run(input_files)

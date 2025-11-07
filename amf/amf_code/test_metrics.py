@@ -5,25 +5,23 @@
 # Collates metrics and produces visualisations of results after running test.
 #
 
+import math
 import os
 import random
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 # For intermediate images
 import seaborn as sns
-
-random.seed(42)
-import math
-import random
-
-import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 
 import amfinder_config as AmfConfig
 import amfinder_log as AmfLog
 from metrics_collector import MetricsCollector
+
+random.seed(42)
 
 
 class TestMetrics:

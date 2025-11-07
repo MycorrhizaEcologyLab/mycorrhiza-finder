@@ -35,7 +35,7 @@ def connect(db_name, password=None):
     try:
         params = config()
         params["database"] = db_name
-        if password != None:
+        if password is not None:
             params["password"] = password
         connection = psycopg2.connect(**params)
         connection.autocommit = True

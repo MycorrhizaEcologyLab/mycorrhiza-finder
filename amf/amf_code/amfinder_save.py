@@ -107,7 +107,7 @@ def save_training_data(history, model, save_path):
         # TODO: Integrate save mechanism when Early Stopping is triggered.
         # With early stopping implemented
         early = AmfConfig.get("early_stopping")
-        if early != None and early.early_stop:
+        if early is not None and early.early_stop:
             break_epoch = AmfConfig.get("early_break_epoch")
             x_range = np.arange(0, break_epoch)
 

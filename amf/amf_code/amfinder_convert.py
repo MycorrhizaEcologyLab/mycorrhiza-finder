@@ -60,7 +60,7 @@ def initialize_size(path):
         conn = connect("amf")
         with conn, conn.cursor() as crsr:
             id = get_enabled(crsr, image_name)
-            if id != None:
+            if id is not None:
                 tile_edge = get_tile_edge(crsr, id)
                 tile_size = tile_edge[0]
     else:
@@ -164,7 +164,7 @@ def create_annotations(path, tile_size):
         with conn, conn.cursor() as crsr:
             id = get_enabled(crsr, image_name)
 
-            if id == None:
+            if id is None:
                 AmfLog.info(
                     f"Skipping {path} as no entries are saved in DB for this image"
                 )

@@ -9,13 +9,6 @@ from sklearn.metrics import confusion_matrix
 
 logger = logging.getLogger(__name__)
 
-__all__ = [
-    "accuracy",
-    "AverageMeter",
-    "get_confusion_matrix",
-    "get_per_class_accuracies",
-]
-
 
 def get_confusion_matrix(outputs, targets, to_cpu=True):
     if to_cpu:

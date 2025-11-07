@@ -24,25 +24,25 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-import amfinder_log as AmfLog
-import amfinder_train as AmfTrain
-import amfinder_config as AmfConfig
-import amfinder_convert as AmfConvert
-import amfinder_convert_tile_size as AmfConvertTileSize
-import amfinder_convert_image_type as AmfConvertImageType
-import amfinder_predict as AmfPredict
-import amfinder_test as AmfTest
+import torch
+
 import amfinder_bald as AmfBald
-import amfinder_colonisation as AmfColonisation
 import amfinder_calibrate as AmfCalibrate
 import amfinder_collapse_classes as AmfCollapse
-import semisupervised_train as AmfSemiSupervisedTrain
+import amfinder_colonisation as AmfColonisation
+import amfinder_config as AmfConfig
+import amfinder_convert as AmfConvert
+import amfinder_convert_image_type as AmfConvertImageType
+import amfinder_convert_tile_size as AmfConvertTileSize
+import amfinder_log as AmfLog
+import amfinder_predict as AmfPredict
+import amfinder_test as AmfTest
+import amfinder_train as AmfTrain
 import semisupervised_evaluate as AmfSemiSupervisedEvaluate
-import torch
+import semisupervised_train as AmfSemiSupervisedTrain
 
 
 def main():
-
     AmfConfig.initialize()
     run_mode = AmfConfig.get("run_mode")
     semi_supervised = AmfConfig.get("semi_supervised")
@@ -89,15 +89,13 @@ def main():
             AmfLog.text("This is the normal training route")
             flag = AmfConfig.get("mlflow_flag")
 
-            AmfLog.text(
-                f"mlflow logging enabled" if flag else "mlflow logging disabled"
-            )
+            AmfLog.text("mlflow logging enabled" if flag else "mlflow logging disabled")
             input_files = AmfConfig.get_input_files()
             get_tiles_for_labelling_using_active_learning = AmfConfig.get(
                 "get_tiles_for_labelling_using_active_learning"
             )
             if get_tiles_for_labelling_using_active_learning:
-                AmfLog.text(f"Running active learning to get tiles for labelling.")
+                AmfLog.text("Running active learning to get tiles for labelling.")
                 AmfBald.run(input_files)
 
             else:
@@ -117,7 +115,7 @@ def main():
             AmfTest.run(input_files)
 
     elif run_mode == "colonisation":
-        AmfLog.text(f"Get colonisation percentage for annotations")
+        AmfLog.text("Get colonisation percentage for annotations")
         input_files = AmfConfig.get_input_files()
         AmfColonisation.run(input_files)
 

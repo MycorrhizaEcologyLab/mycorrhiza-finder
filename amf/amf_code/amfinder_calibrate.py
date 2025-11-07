@@ -312,9 +312,6 @@ def run(input_files):
     # Categorise train path for logistic regression
     cal_img_list = AmfLoad.categorise_path(input_files)["train"]
 
-    # Grab class names
-    class_names = AmfConfig.get("header")
-
     # Validate input folder structure
     if not cal_img_list:
         AmfLog.error("There is no train subfolder", AmfLog.ERR_NO_DATA)
