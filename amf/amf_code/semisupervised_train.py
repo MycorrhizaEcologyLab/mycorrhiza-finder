@@ -359,10 +359,12 @@ def train(
             mask_probs.update(mask.mean().item())
             if not args.no_progress:
                 p_bar.set_description(
-                    "Train Epoch: {epoch}/{epochs:4}. Iter: {batch:4}/{iter:4}. "
-                    "LR: {lr:.4f}. Data: {data:.3f}s. Batch: {bt:.3f}s. "
-                    "Loss: {loss:.4f}. Loss_x: {loss_x:.4f}. Loss_u: {loss_u:.4f}. "
-                    "Mask: {mask:.2f}. ".format(
+                    (
+                        "Train Epoch: {epoch}/{epochs:4}. Iter: {batch:4}/{iter:4}. "
+                        "LR: {lr:.4f}. Data: {data:.3f}s. Batch: {bt:.3f}s. "
+                        "Loss: {loss:.4f}. Loss_x: {loss_x:.4f}. Loss_u: {loss_u:.4f}. "
+                        "Mask: {mask:.2f}. "
+                    ).format(
                         epoch=epoch + 1,
                         epochs=args.epochs,
                         batch=batch_idx + 1,
@@ -490,8 +492,10 @@ def test(args, test_loader, model, epoch):
             end = time.time()
             if not args.no_progress:
                 test_loader.set_description(
-                    "Test Iter: {batch:4}/{iter:4}. Data: {data:.3f}s. "
-                    "Batch: {bt:.3f}s. Loss: {loss:.4f}. top1: {top1:.2f}. ".format(
+                    (
+                        "Test Iter: {batch:4}/{iter:4}. Data: {data:.3f}s. "
+                        "Batch: {bt:.3f}s. Loss: {loss:.4f}. top1: {top1:.2f}. "
+                    ).format(
                         batch=batch_idx + 1,
                         iter=len(test_loader),
                         data=data_time.avg,
