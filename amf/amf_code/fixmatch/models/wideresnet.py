@@ -108,7 +108,8 @@ class WideResNet(nn.Module):
     def __init__(self, num_classes, depth=28, widen_factor=2, drop_rate=0.0):
         super(WideResNet, self).__init__()
         channels = [16, 16 * widen_factor, 32 * widen_factor, 64 * widen_factor]
-        assert (depth - 4) % 6 == 0
+        if (depth - 4) % 6 != 0:
+            raise ValueError("Depth should be a factor of 6, plus 4")
         n = (depth - 4) / 6
         block = BasicBlock
         # 1st conv before any network block

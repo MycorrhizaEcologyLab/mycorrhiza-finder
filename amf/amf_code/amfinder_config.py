@@ -314,7 +314,8 @@ def find_files_in_directory(directory, convert_tiff=False):
     for pattern in search_patterns:
         img_files.extend(glob.glob(pattern, recursive=True))
 
-    assert len(img_files) > 0, f"no images found in {directory}"
+    if len(img_files) == 0:
+        raise FileNotFoundError(f"No image files found in {directory}")
 
     return img_files
 

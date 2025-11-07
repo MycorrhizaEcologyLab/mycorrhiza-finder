@@ -2076,7 +2076,6 @@ class ZipFile:
         self.fp.flush()
 
     def _fpclose(self, fp):
-        assert self._fileRefCnt > 0
         self._fileRefCnt -= 1
         if not self._fileRefCnt and not self._filePassed:
             fp.close()

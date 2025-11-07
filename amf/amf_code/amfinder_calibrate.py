@@ -366,9 +366,10 @@ def run(input_files):
 
     # Create results dataframe
     # Assuming 'calibrated_probs' has one probability set per sample
-    assert len(filenames) == len(rows) == len(cols) == len(calibrated_probs), (
-        "Length mismatch"
-    )
+    if not len(filenames) == len(rows) == len(cols) == len(calibrated_probs):
+        raise ValueError(
+            f"Length mismatch: {len(filenames)} filenames, {len(rows)} rows, {len(cols)} cols, {len(calibrated_probs)} calibrated_probs"
+        )
 
     colonisation_type = AmfConfig.get("colonisation_type")
 

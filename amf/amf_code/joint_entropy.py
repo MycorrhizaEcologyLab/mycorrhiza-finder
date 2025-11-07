@@ -53,7 +53,10 @@ class ExactJointEntropy(JointEntropy):
         return entropy
 
     def add_variables(self, log_probs_N_K_C: torch.Tensor) -> "ExactJointEntropy":
-        assert self.joint_probs_M_K.shape[1] == log_probs_N_K_C.shape[1]
+        if self.joint_probs_M_K.shape[1] != log_probs_N_K_C.shape[1]:
+            raise ValueError(
+                f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to ExactJointEntropy with K={self.joint_probs_M_K.shape[1]}."
+            )
 
         N, K, C = log_probs_N_K_C.shape
         joint_probs_K_M_1 = self.joint_probs_M_K.t()[:, :, None]
@@ -72,7 +75,10 @@ class ExactJointEntropy(JointEntropy):
         return self
 
     def compute_batch(self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None):
-        assert self.joint_probs_M_K.shape[1] == log_probs_B_K_C.shape[1]
+        if self.joint_probs_M_K.shape[1] != log_probs_B_K_C.shape[1]:
+            raise ValueError(
+                f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for ExactJointEntropy with K={self.joint_probs_M_K.shape[1]}."
+            )
 
         B, K, C = log_probs_B_K_C.shape
         M = self.joint_probs_M_K.shape[0]
@@ -133,10 +139,6 @@ def batch_multi_choices(probs_b_C, M: int):
 
 
 def gather_expand(data, dim, index):
-    if gather_expand.DEBUG_CHECKS:
-        assert len(data.shape) == len(index.shape)
-        assert all(dr == ir or 1 in (dr, ir) for dr, ir in zip(data.shape, index.shape))
-
     max_shape = [max(dr, ir) for dr, ir in zip(data.shape, index.shape)]
     new_data_shape = list(max_shape)
     new_data_shape[dim] = data.shape[dim]
@@ -148,9 +150,6 @@ def gather_expand(data, dim, index):
     index = index.expand(new_index_shape)
 
     return torch.gather(data, dim, index)
-
-
-gather_expand.DEBUG_CHECKS = False
 
 
 class SampledJointEntropy(JointEntropy):
@@ -205,7 +204,10 @@ class SampledJointEntropy(JointEntropy):
         self, log_probs_N_K_C: torch.Tensor, M2: int
     ) -> "SampledJointEntropy":
         K = self.sampled_joint_probs_M_K.shape[1]
-        assert K == log_probs_N_K_C.shape[1]
+        if K != log_probs_N_K_C.shape[1]:
+            raise ValueError(
+                f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to SampledJointEntropy with K={K}."
+            )
 
         sample_K_M1_1 = self.sampled_joint_probs_M_K.t()[:, :, None]
 
@@ -220,7 +222,10 @@ class SampledJointEntropy(JointEntropy):
         return self
 
     def compute_batch(self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None):
-        assert self.sampled_joint_probs_M_K.shape[1] == log_probs_B_K_C.shape[1]
+        if self.sampled_joint_probs_M_K.shape[1] != log_probs_B_K_C.shape[1]:
+            raise ValueError(
+                f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for SampledJointEntropy with K={self.sampled_joint_probs_M_K.shape[1]}."
+            )
 
         B, K, C = log_probs_B_K_C.shape
         M = self.sampled_joint_probs_M_K.shape[0]
@@ -288,8 +293,14 @@ class DynamicJointEntropy(JointEntropy):
         C = self.log_probs_max_N_K_C.shape[2]
         add_N = log_probs_N_K_C.shape[0]
 
-        assert self.log_probs_max_N_K_C.shape[0] >= self.N + add_N
-        assert self.log_probs_max_N_K_C.shape[2] == C
+        if self.log_probs_max_N_K_C.shape[0] < self.N + add_N:
+            raise ValueError(
+                f"Cannot add {add_N} variables to DynamicJointEntropy with max_N={self.max_N} and current N={self.N}."
+            )
+        if self.log_probs_max_N_K_C.shape[1] != log_probs_N_K_C.shape[1]:
+            raise ValueError(
+                f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to DynamicJointEntropy with K={self.log_probs_max_N_K_C.shape[1]}."
+            )
 
         self.log_probs_max_N_K_C[self.N : self.N + add_N] = log_probs_N_K_C
         self.N += add_N

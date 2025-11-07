@@ -142,8 +142,10 @@ def fixmatch_augment_pool():
 
 class RandAugmentMC(object):
     def __init__(self, n, m):
-        assert n >= 1
-        assert 1 <= m <= 10
+        if n < 1:
+            raise ValueError(f"n should be >= 1, but got {n}")
+        if not (1 <= m <= 10):
+            raise ValueError(f"m should be between 1 and 10, but got {m}")
         self.n = n
         self.m = m
         self.augment_pool = fixmatch_augment_pool()

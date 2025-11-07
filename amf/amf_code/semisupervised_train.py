@@ -239,7 +239,10 @@ def run(image_path):
 
     if args.resume:
         AmfLog.info("==> Resuming from checkpoint..")
-        assert os.path.isfile(args.resume), "Error: no checkpoint directory found!"
+        if not os.path.isfile(args.resume):
+            raise FileNotFoundError(
+                f"Error: no checkpoint directory found at {args.resume}"
+            )
         args.out = os.path.dirname(args.resume)
         checkpoint = torch.load(args.resume)
         best_acc = checkpoint["best_acc"]

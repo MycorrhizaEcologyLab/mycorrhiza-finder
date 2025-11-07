@@ -46,7 +46,8 @@ def initialize_size(path):
                 tile_size = x["tile_edge"]
 
     global NROWS, NCOLS
-    assert tile_size is not None
+    if tile_size is None:
+        raise ValueError("Tile size not configured")
     NCOLS = width // tile_size
     NROWS = height // tile_size
 

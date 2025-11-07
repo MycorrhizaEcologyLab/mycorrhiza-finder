@@ -806,7 +806,8 @@ class FixMatchLoader:
         filtered_dataset = self._load_data(input_files, args.root_path)
 
         # Terminate if there is no data to process.
-        assert len(filtered_dataset) != 0, "no files to process, terminating"
+        if len(filtered_dataset) == 0:
+            raise ValueError("No files to process")
 
         def sample_data(images, y, num_labelled, filenames, cols, rows):
             # Convert one-hot encodings to class labels
@@ -920,7 +921,8 @@ def import_settings(path):
                 id = get_enabled(crsr, image_name)
 
                 # Make sure there is an enabled image
-                assert id is not None
+                if id is None:
+                    raise ValueError(f"No enabled image found for {image_name}")
 
                 tile_edge = get_tile_edge(crsr, id)
                 return {"tile_edge": tile_edge[0]}
@@ -962,7 +964,8 @@ def import_annotations(path, is_bald_folder=False):
                 if id is None and is_bald_folder:
                     return None
 
-                assert id is not None
+                if id is None:
+                    raise ValueError(f"No enabled image found for {image_name}")
 
                 existing_entries = check_entries_for_id(crsr, id, colonisation_type)
 
@@ -974,7 +977,8 @@ def import_annotations(path, is_bald_folder=False):
                 ):
                     return None
 
-                assert existing_entries[id]["cnn1_annotations_exist"]
+                if not existing_entries[id]["cnn1_annotations_exist"]:
+                    raise ValueError(f"No annotations found for {image_name}")
 
                 csv = download_entries_as_csv(
                     crsr, id, "Annotations", colonisation_type
@@ -999,7 +1003,8 @@ def import_annotations(path, is_bald_folder=False):
                 if is_bald_folder and output.empty:
                     return None
 
-                assert not output.empty
+                if output.empty:
+                    raise ValueError("Annotation file is empty")
 
                 return output
         else:
@@ -1035,7 +1040,8 @@ def import_annotations(path, is_bald_folder=False):
                 output.drop("QuestionComment", axis=1, inplace=True, errors="ignore")
 
             # Further check that csv is not empty
-            assert not output.empty
+            if output.empty:
+                raise ValueError("Annotation file is empty")
 
             return output
 
