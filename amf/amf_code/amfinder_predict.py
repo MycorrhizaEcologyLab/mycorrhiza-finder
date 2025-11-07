@@ -126,12 +126,15 @@ def apply_contextual_confidence(table, image, model, base):
     if len(low_confidence_indices) == 0:
         # No low confidence predictions to refine
         AmfLog.info(
-            f"Found 0 predictions that are under the context threshold of {contextual_confidence_threshold}, so don't make any changes."
+            "Found 0 predictions that are under the context threshold of "
+            f"{contextual_confidence_threshold}, so don't make any changes."
         )
         return table, pd.DataFrame()
 
     AmfLog.info(
-        f"Found {len(low_confidence_indices)} predictions that are under the context threshold of {contextual_confidence_threshold}. Applying contextual refinement"
+        f"Found {len(low_confidence_indices)} predictions that are under the context "
+        f"threshold of {contextual_confidence_threshold}. "
+        "Applying contextual refinement."
     )
 
     # Create a mapping from class names to indices
@@ -304,15 +307,18 @@ def prepare_metrics(
 
     if col_type == "am":
         # Save number of root tilesclasses in results_dict
-        # Takes the numer of tiles for each class from results_dict and sums them up, substracts background images and unreadable
-        # The first two values of results_dict are exclude, since they are defined as strings
+        # Takes the numer of tiles for each class from results_dict and sums them up,
+        # subtracts background images and unreadable
+        # The first two values of results_dict are exclude, since they are defined as
+        # strings
         total_root_tiles = (
             sum(value for _, value in list(results_dict.items())[2:])
             - results_dict[col_headers[2]]  # Remove class Background
             - results_dict[col_headers[3]]  # Remove class Unreadable
         )
 
-        # Ensures that the Hybrid class is included in or excluded from the percentage calculation depending on the include_hybrid parameter
+        # Ensures that the Hybrid class is included in or excluded from the percentage
+        # calculation depending on the include_hybrid parameter
         hybrid_addition = results_dict[col_headers[5]] if include_hybrid else 0
 
         # Calculate % AM colonised as a ratio to all root tiles
@@ -340,7 +346,8 @@ def prepare_metrics(
             - results_dict[col_headers[6]]  # Remove class Unreadable
         )
 
-        # Ensures that the Hybrid class is included in or excluded from the percentage calculation depending on the include_hybrid parameter
+        # Ensures that the Hybrid class is included in or excluded from the percentage
+        # calculation depending on the include_hybrid parameter
         hybriderm_addition = results_dict[col_headers[8]]
         hybriddse_addition = results_dict[col_headers[9]]
 
@@ -698,7 +705,8 @@ def get_relative_conf_intervals(bootstrap_distribution, include_hybrid, metric):
             numerator += bootstrap_distribution[:, 0] + bootstrap_distribution[:, 4]
         else:
             raise ValueError(
-                "Not a possible metric. Choose either am_colonised_percentage, dse_colonised_percentage or total_colonised_percentage"
+                "Not a possible metric. Choose either am_colonised_percentage, "
+                "dse_colonised_percentage or total_colonised_percentage"
             )
 
     else:
@@ -730,7 +738,9 @@ def get_relative_conf_intervals(bootstrap_distribution, include_hybrid, metric):
             )
         else:
             raise ValueError(
-                "Not a possible metric. Choose either BlueCoils_colonised_percentage, BrownCoils_colonised_percentage, TypeTwo_colonised_percentage, dse_colonised_percentage or total_colonised_percentage"
+                "Not a possible metric. Choose either BlueCoils_colonised_percentage, "
+                "BrownCoils_colonised_percentage, TypeTwo_colonised_percentage, "
+                "dse_colonised_percentage or total_colonised_percentage"
             )
 
     percentages = np.where(denominator != 0, (numerator / denominator), np.nan)

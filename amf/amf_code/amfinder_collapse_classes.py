@@ -24,7 +24,8 @@ def collapse_annots(annotation_data):
         num_questions = annotation_data["Question"].sum()
         if num_questions > 0:
             raise Exception(
-                f"Cannot carry out tile conversion if questions exist, currently there are {num_questions} question(s)"
+                f"Cannot carry out tile conversion if questions exist, currently there "
+                f"are {num_questions} question(s)"
             )
 
         # Drop questions column
@@ -75,7 +76,8 @@ def collapse_annots(annotation_data):
 
             collapsed_annots.append(this_result)
     else:
-        # Collapse ErM to 7 classes, merging blue coils, brown coils, type two and hybrid ErM to ErMColonised
+        # Collapse ErM to 7 classes, merging blue coils, brown coils, type two and
+        # hybrid ErM to ErMColonised
         for _, row in annotation_data.iterrows():
             if "BlueCoils" not in annotation_data.columns:
                 raise Exception(
@@ -138,7 +140,8 @@ def collapse_classes(path):
     if AmfConfig.get("use_db"):
         # TODO DB schema would need to be updated to save annotations to DB.
         AmfLog.error(
-            "DB access for class collapsing disabled as DB schema would need to be updated",
+            "DB access for class collapsing disabled as DB schema would need to be "
+            "updated",
             AmfLog.ERR_INVALID_DATA,
         )
 
@@ -158,7 +161,8 @@ def collapse_classes(path):
 
             if existing_entries[id]["cnn1_annotations_exist"]:
                 raise NotImplementedError(
-                    "DB access for class collapsing disabled as DB schema would need to be updated"
+                    "DB access for class collapsing disabled as DB schema would need "
+                    "to be updated"
                 )
                 # csv = download_entries_as_csv(
                 #     crsr, id, "Annotations", colonisation_type
@@ -199,7 +203,8 @@ def collapse_classes(path):
             AmfLog.info(f"Saved collapsed annotations to {out_annotation_path}")
         else:
             AmfLog.warning(
-                f"Multiple annotation files found for {image_name}. Skipping processing."
+                f"Multiple annotation files found for {image_name}. "
+                "Skipping processing."
             )
 
 

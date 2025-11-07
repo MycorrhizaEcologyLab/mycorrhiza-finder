@@ -88,7 +88,8 @@ def create_results_dir(label: str = ""):
     default_output_loc = get_default_output_dir()
     if default_output_loc is None:
         raise Exception(
-            "Error: output directory not specified and the default location is not writeable. Cannot continue."
+            "Error: output directory not specified and the default location is not "
+            "writeable. Cannot continue."
         )
     results_dir_path = os.path.join(
         default_output_loc,
@@ -439,7 +440,10 @@ def add_training_subparser(subparsers):
         action="store_const",
         dest="train_active_learning",
         const=True,
-        help="Enables training with different default learning rate and num epochs  after active learning samples have been acquired.",
+        help=(
+            "Enables training with different default learning rate and num epochs "
+            "after active learning samples have been acquired."
+        ),
     )
 
     x = PAR["get_tiles_for_labelling_using_active_learning"]
@@ -665,8 +669,10 @@ def add_training_subparser(subparsers):
         metavar="NUM",
         type=float,
         default=x,
-        help="multiplier for balancing datasets based on class sizes and oriented on Colonised classes."
-        "\ndefault value: {}".format(x),
+        help=(
+            "multiplier for balancing datasets based on class sizes and oriented on "
+            "Colonised classes.\ndefault value: {}".format(x)
+        ),
     )
 
     x = PAR["vfrac"]
@@ -716,8 +722,10 @@ def add_training_subparser(subparsers):
         metavar="pth",
         type=str,
         default=x,
-        help="Choice for new model intialisation: cnn1, resnet, resnext, efficientnet, efficientnetv2."
-        "\ndefault value: {}".format(x),
+        help=(
+            "Choice for new model intialisation: cnn1, resnet, resnext, efficientnet, "
+            "efficientnetv2.\ndefault value: {}".format(x)
+        ),
     )
 
     x = PAR["pre_trained"]
@@ -727,7 +735,10 @@ def add_training_subparser(subparsers):
         action="store_const",
         dest="pre_trained",
         const=True,
-        help="Loads ImageNet weights if ResNet, ResNeXt or EfficentNet is selected for Model type.",
+        help=(
+            "Loads ImageNet weights if ResNet, ResNeXt or EfficentNet is selected for "
+            "Model type."
+        ),
     )
 
     x = PAR["colonisation_type"]
@@ -1552,7 +1563,8 @@ def set_predict_config(predictionConfig: PredictionConfig):
     Set configuration for the prediction run.
 
     Args:
-        predictionConfig (PredictionConfig): Configuration object containing prediction parameters.
+        predictionConfig (PredictionConfig): Configuration object containing prediction
+            parameters.
 
     This function sets parameters required for making predictions, such as
     input files, model, and output directory.
@@ -1652,7 +1664,8 @@ def set_convert_config(convertConfig: ConvertConfig):
     Set configuration for the conversion run.
 
     Args:
-        convertConfig (ConvertConfig): Configuration object containing conversion parameters.
+        convertConfig (ConvertConfig): Configuration object containing conversion
+            parameters.
 
     This function defines the necessary settings for annotations conversion,
     including input files, colonisation type, threshold, and output directory.
@@ -1679,7 +1692,8 @@ def set_tif_conversion_config(tifConversionConfig: TifConversionConfig):
     Set configuration for the tif conversion.
 
     Args:
-        tifConversionConfig (TifConversionConfig): Configuration object containing TIF conversion parameters.
+        tifConversionConfig (TifConversionConfig): Configuration object containing TIF
+            conversion parameters.
 
     This function defines the necessary settings for tif file conversion.
     """
@@ -1703,7 +1717,8 @@ def set_calibrate_config(calibrateConfig: CalibrateConfig):
     Set configuration for the calibration.
 
     Args:
-        calibrateConfig (CalibrateConfig): Configuration object containing calibration parameters.
+        calibrateConfig (CalibrateConfig): Configuration object containing calibration
+        parameters.
 
     This function sets parameters necessary for calibration models, including
     input files, model, and output directory for results.

@@ -69,7 +69,8 @@ def fetch_items(crsr, name, id, type, cnn, colonisation_type):
 
 def set_to_enabled_in_db(crsr, id):
     """
-    Sets the 'Enabled' status of an image reference to true in the database for a given ID.
+    Sets the 'Enabled' status of an image reference to true in the database for a given
+    ID.
 
     This function updates the 'Enabled' field of the image reference to true for
     the specified ID and then disables all other image references that have the same
@@ -86,10 +87,16 @@ def set_to_enabled_in_db(crsr, id):
     Exception: May raise exceptions related to database operations
                 (e.g., if the ID does not exist).
     """
-    update_enabled_query = "UPDATE imageReference SET Enabled = true WHERE Id = %s RETURNING filenamereference"
+    update_enabled_query = (
+        "UPDATE imageReference SET Enabled = true WHERE Id = %s RETURNING "
+        "filenamereference"
+    )
     crsr.execute(update_enabled_query, (id,))
     file_name_reference = crsr.fetchone()[0]
-    set_enabled_query = "UPDATE imageReference SET Enabled = false WHERE FileNameReference=%s AND Id <> %s"
+    set_enabled_query = (
+        "UPDATE imageReference SET Enabled = false WHERE FileNameReference=%s "
+        "AND Id <> %s"
+    )
     crsr.execute(
         set_enabled_query,
         (
@@ -106,16 +113,16 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
     This function first checks if a provided image reference ID exists in the database.
     If it does not exist, it inserts a new record into the `imagereference` table.
 
-    If the annotations are to be enabled, it updates the `Enabled` field for the relevant
-    image references. The function also handles the insertion of CNN annotations for
-    both Type One and Type Two annotations, replacing any existing data for the specified
-    image reference ID.
+    If the annotations are to be enabled, it updates the `Enabled` field for the
+    relevant image references. The function also handles the insertion of CNN
+    annotations for both Type One and Type Two annotations, replacing any existing data
+    for the specified image reference ID.
 
     Parameters:
     crsr (cursor): The database cursor used to execute SQL queries.
-    values (AnnotationValues): An object containing the details of the annotations to be saved,
-                               including the image reference ID, file name, tile edge, enable
-                               status, and CNN annotation values.
+    values (AnnotationValues): An object containing the details of the annotations to be
+        saved, including the image reference ID, file name, tile edge, enable status,
+        and CNN annotation values.
 
     Returns:
     int: The ID of the saved image reference.
@@ -145,7 +152,8 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
         tile_edge = get_tile_edge(crsr, image_id)
         if tile_edge[0] != values.tileEdge:
             print(
-                f"Tile edge does not match, update from {tile_edge[0]} to {values.tileEdge}"
+                f"Tile edge does not match, update from {tile_edge[0]} to "
+                f"{values.tileEdge}"
             )
             update_tile_edge_query = "UPDATE ImageReference SET TileEdge=%s WHERE Id=%s"
             crsr.execute(
@@ -157,7 +165,10 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
             )
     else:
         # If not, then upload file name to DB
-        insert_id_query = "INSERT INTO imagereference(filenamereference, TileEdge, Enabled) VALUES (%s, %s, false) RETURNING id"
+        insert_id_query = (
+            "INSERT INTO imagereference(filenamereference, TileEdge, Enabled) VALUES "
+            "(%s, %s, false) RETURNING id"
+        )
         crsr.execute(
             insert_id_query,
             (
@@ -185,7 +196,8 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
                 """INSERT INTO cnn1annotations"""
                 + values.colonisationType
                 + """(
-                imagereferenceid, rownum, colnum, amcolonised, uncolonised, background, unreadable, dse, hybrid, question, questioncomment)
+                imagereferenceid, rownum, colnum, amcolonised, uncolonised, background,
+                unreadable, dse, hybrid, question, questioncomment)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
             )
             for row in values.cnnOneValues:
@@ -211,7 +223,9 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
                 """INSERT INTO cnn1annotations"""
                 + values.colonisationType
                 + """(
-            imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo, Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm, HybridDse, Question, QuestionComment)
+            imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo,
+            Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm, HybridDse,
+            Question, QuestionComment)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
             )
 
@@ -246,16 +260,18 @@ def save_predictions_to_db(crsr, values: PredictionValues):
     """
     Saves prediction data to the database associated with a specific image reference.
 
-    This function first checks if the provided image reference ID exists in the database.
+    This function first checks if the provided image reference ID exists in the
+    database.
     If it does not exist, it inserts a new record into the `imagereference` table.
-    The function then handles the insertion of CNN prediction data, deleting any existing data
-    for the specified image reference ID before inserting the new predictions.
+    The function then handles the insertion of CNN prediction data, deleting any
+    existing data for the specified image reference ID before inserting the new
+    predictions.
 
     Parameters:
     crsr (cursor): The database cursor used to execute SQL queries.
-    values (PredictionValues): An object containing the details of the predictions to be saved,
-                               including the image reference ID, file name, tile edge,
-                               colonisation type, and CNN prediction values.
+    values (PredictionValues): An object containing the details of the predictions to be
+        saved, including the image reference ID, file name, tile edge, colonisation
+        type, and CNN prediction values.
 
     Returns:
     None: This function does not return any value but modifies the database
@@ -286,7 +302,10 @@ def save_predictions_to_db(crsr, values: PredictionValues):
         )
     else:
         # If not, then upload file name to DB
-        insert_id_query = "INSERT INTO imagereference(filenamereference, TileEdge, Enabled) VALUES (%s, %s, false) RETURNING id"
+        insert_id_query = (
+            "INSERT INTO imagereference(filenamereference, TileEdge, Enabled) VALUES "
+            "(%s, %s, false) RETURNING id"
+        )
         crsr.execute(
             insert_id_query,
             (
@@ -310,7 +329,8 @@ def save_predictions_to_db(crsr, values: PredictionValues):
                 """INSERT INTO cnn1predictions"""
                 + values.colonisationType
                 + """(
-            imagereferenceid, rownum, colnum, amcolonised, uncolonised, background, unreadable, dse, hybrid, contextuallabel)
+            imagereferenceid, rownum, colnum, amcolonised, uncolonised, background,
+            unreadable, dse, hybrid, contextuallabel)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
             )
             for row in values.cnnOneValues:
@@ -334,7 +354,9 @@ def save_predictions_to_db(crsr, values: PredictionValues):
                 """INSERT INTO cnn1predictions"""
                 + values.colonisationType
                 + """(
-            imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo, Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm, HybridDse, contextuallabel)
+            imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo,
+            Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm, HybridDse,
+            contextuallabel)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
             )
 
@@ -370,15 +392,17 @@ def get_images(crsr):
 
 def get_most_recent_timestamp(crsr, image_name):
     """
-    Retrieves the ID of the most recently uploaded image based on the specified image name.
+    Retrieves the ID of the most recently uploaded image based on the specified image
+    name.
 
-    This function queries the database for records in the `ImageReference` table that match
-    the provided `image_name`. It sorts the results by upload timestamp and returns the ID
-    of the most recent entry. If no images are found, it returns None.
+    This function queries the database for records in the `ImageReference` table that
+    match the provided `image_name`. It sorts the results by upload timestamp and
+    returns the ID of the most recent entry. If no images are found, it returns None.
 
     Parameters:
     crsr (cursor): The database cursor used to execute SQL queries.
-    image_name (str): The name of the image for which to retrieve the most recent timestamp.
+    image_name (str): The name of the image for which to retrieve the most recent
+        timestamp.
 
     Returns:
     int or None: The ID of the most recently uploaded image if found; otherwise, None.
@@ -400,19 +424,22 @@ def get_most_recent_timestamp(crsr, image_name):
 
 def get_enabled(crsr, image_name):
     """
-    Retrieves the ID of an enabled image from the database based on the specified image name.
+    Retrieves the ID of an enabled image from the database based on the specified image
+    name.
 
     This function queries the `ImageReference` table to check if there is an entry
-    with the provided `image_name` that is marked as enabled. If an enabled image is found,
-    its ID is returned. If no enabled images are present for the given name, the function
-    retrieves the ID of the most recently uploaded image and sets that image to enabled before returning its ID.
+    with the provided `image_name` that is marked as enabled. If an enabled image is
+    found, its ID is returned. If no enabled images are present for the given name, the
+    function retrieves the ID of the most recently uploaded image and sets that image to
+    enabled before returning its ID.
 
     Parameters:
     crsr (cursor): The database cursor used to execute SQL queries.
     image_name (str): The name of the image for which to check for enabled status.
 
     Returns:
-    int: The ID of the enabled image if found; otherwise, the ID of the most recent image.
+    int: The ID of the enabled image if found; otherwise, the ID of the most recent
+        image.
 
     Raises:
     Exception: May raise exceptions related to database operations (e.g., SQL errors or
@@ -429,7 +456,8 @@ def get_enabled(crsr, image_name):
     else:
         # If no annotations enabled, get most recent timestamp and set this to enabled
         print(
-            f"No enabled annotations for image {image_name}, return image with most recent timestamp instead."
+            f"No enabled annotations for image {image_name}, return image with most "
+            "recent timestamp instead."
         )
         id = get_most_recent_timestamp(crsr, image_name)
         if id is not None:
@@ -444,7 +472,10 @@ def get_tile_edge(crsr, id):
 
 
 def check_entries_for_image(crsr, image_name, colonisation_type):
-    fetch_images = "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt FROM ImageReference WHERE FileNameReference=%s"
+    fetch_images = (
+        "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt FROM ImageReference "
+        "WHERE FileNameReference=%s"
+    )
     crsr.execute(fetch_images, (image_name,))
     images = crsr.fetchall()
 
@@ -452,7 +483,10 @@ def check_entries_for_image(crsr, image_name, colonisation_type):
 
 
 def check_entries_for_id(crsr, id, colonisation_type):
-    fetch_images = "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt FROM ImageReference WHERE Id=%s"
+    fetch_images = (
+        "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt FROM ImageReference "
+        "WHERE Id=%s"
+    )
     crsr.execute(fetch_images, (id,))
     images = crsr.fetchall()
 

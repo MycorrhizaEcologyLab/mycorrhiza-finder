@@ -186,7 +186,8 @@ def balance_dataset(x, y, factor=1.0):  # factor is a hyperparameter
                 # Skip if no samples are available for the current class
                 continue
 
-            # Clip samples to the minimum of `factor * class_0_samples` or the class size
+            # Clip samples to the minimum of `factor * class_0_samples`
+            # or the class size
             num_samples_to_select = min(
                 int(class_0_samples * factor), num_class_samples
             )
@@ -198,7 +199,8 @@ def balance_dataset(x, y, factor=1.0):  # factor is a hyperparameter
                 )
                 indices_to_keep.extend(idx_selected_samples)
             else:
-                # Retain all samples if the number to select exceeds or equals the class size
+                # Retain all samples if the number to select exceeds
+                # or equals the class size
                 indices_to_keep.extend(idx_class_samples)
 
     # Update the input data (x) and labels (y) to retain only the selected indices
@@ -619,7 +621,11 @@ def main(data_directory_name):
         f1_scores_bald = f1_scores_array_bald[i]
         f1_bald_formatted = [f"{score:.2f}" for score in f1_scores_bald]
         print(
-            f"  BALD - Loss: {loss_bald:.2f}, F1 Scores (per class): {f1_bald_formatted}, Macro F1: {f1_scores_bald.mean():.2f},Confusion Matrix: {conf_matrix_array_bald[i]}, Class Dictionary: {class_dict_in_selected_labels_array_bald[i]}"
+            f"  BALD - Loss: {loss_bald:.2f}, "
+            f"F1 Scores (per class): {f1_bald_formatted}, "
+            f"Macro F1: {f1_scores_bald.mean():.2f}, "
+            f"Confusion Matrix: {conf_matrix_array_bald[i]}, "
+            f"Class Dictionary: {class_dict_in_selected_labels_array_bald[i]}"
         )
 
         # Output for Random method
@@ -627,7 +633,11 @@ def main(data_directory_name):
         f1_scores_random = f1_scores_array_random[i]
         f1_random_formatted = [f"{score:.2f}" for score in f1_scores_random]
         print(
-            f"  Random - Loss: {loss_random:.2f}, F1 Scores (per class): {f1_random_formatted}, Macro F1: {f1_scores_random.mean():.2f},Confusion Matrix: {conf_matrix_array_random[i]}, Class Dictionary: {class_dict_in_selected_labels_array_random[i]}"
+            f"  Random - Loss: {loss_random:.2f}, "
+            f"F1 Scores (per class): {f1_random_formatted}, "
+            f"Macro F1: {f1_scores_random.mean():.2f}, "
+            f"Confusion Matrix: {conf_matrix_array_random[i]}, "
+            f"Class Dictionary: {class_dict_in_selected_labels_array_random[i]}"
         )
 
         # Output for BatchBALD method
@@ -635,7 +645,11 @@ def main(data_directory_name):
         f1_scores_batch_bald = f1_scores_array_batch_bald[i]
         f1_batch_bald_formatted = [f"{score:.2f}" for score in f1_scores_batch_bald]
         print(
-            f"  BatchBALD - Loss: {loss_batch_bald:.2f}, F1 Scores (per class): {f1_batch_bald_formatted}, Macro F1: {f1_scores_batch_bald.mean():.2f},Confusion Matrix: {conf_matrix_array_batch_bald[i]}, Class Dictionary: {class_dict_in_selected_labels_array_batch_bald[i]}"
+            f"  BatchBALD - Loss: {loss_batch_bald:.2f}, "
+            f"F1 Scores (per class): {f1_batch_bald_formatted}, "
+            f"Macro F1: {f1_scores_batch_bald.mean():.2f}, "
+            f"Confusion Matrix: {conf_matrix_array_batch_bald[i]}, "
+            f"Class Dictionary: {class_dict_in_selected_labels_array_batch_bald[i]}"
         )
 
     print("macro f1 for bald: ", [i.mean() for i in f1_scores_array_bald])

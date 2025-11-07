@@ -66,8 +66,10 @@ def get_contextual_tiles(
     :param c: The column index of the central tile.
     :param edge: The size of each tile edge. Defaults to configuration if None.
     :param overlap: The fraction of overlap between central and surrounding tiles (0-1).
-    :param overlap_method: Method to extract tiles - 'cardinal' (top, bottom, left, right)
-                          or 'diagonal' (top-left, top-right, bottom-left, bottom-right).
+    :param overlap_method: Method to extract tiles - 'cardinal'
+                           (top, bottom, left, right)
+                           or 'diagonal'
+                           (top-left, top-right, bottom-left, bottom-right).
     :return: List of tiles based on overlap_method, each as a NumPy array or None.
     """
     # Validate overlap parameter

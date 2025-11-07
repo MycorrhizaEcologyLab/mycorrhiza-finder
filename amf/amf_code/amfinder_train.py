@@ -80,8 +80,10 @@ def class_weights(y, weight_type="inverse_freq", beta=0.9999, epsilon=1e-6):
     :rtype: dict
 
     Args:
-    - y (torch.Tensor): One-hot encoded label tensor with shape (N, C), where C is the number of classes.
-    - weight_type (str): Method for calculating class weights. Options are 'inverse_freq', 'effective_num',
+    - y (torch.Tensor): One-hot encoded label tensor with shape (N, C), where C is the
+        number of classes.
+    - weight_type (str): Method for calculating class weights. Options are
+        'inverse_freq', 'effective_num',
     - beta (float): Smoothing parameter for effective number of samples (default 0.99).
     - epsilon (float): Small constant to avoid division by zero (default 1e-6).
     """
@@ -362,14 +364,14 @@ def run(input_files, flag, train_active_learning=False):
 
             # Log losses
             AmfLog.text(
-                f"Epoch {epoch + 1}/{num_epochs}, Average validation loss: {avg_val_loss:.4f}"
+                f"Epoch {epoch + 1}/{num_epochs}, "
+                f"Average validation loss: {avg_val_loss:.4f}"
             )
 
             if flag:
                 # Logging the metrics after each epoch
                 mlflow.log_metric("Training loss", avg_loss, step=epoch)
                 mlflow.log_metric("Validation loss", avg_val_loss, step=epoch)
-                # mlflow.log_metric("Learning Rate", r.optimiser.param_groups["lr"], step=epoch)
 
             # Check for early stopping
             if (

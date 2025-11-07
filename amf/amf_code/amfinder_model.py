@@ -59,8 +59,10 @@ class ConvolutionalBlocks(nn.Module):
 
         # Convolution Block 1
         # Earlier: 126 x 126 --> 120 x 120.
-        # With 252 x 252 Input, this means it is: 252 x 252 --> 252 x 252 (with padding applied)
-        # With 252 x 252 Input, this means it is: 252 x 252 --> 246 x 246 (without padding)
+        # With 252 x 252 Input, this means it is: 252 x 252 --> 252 x 252
+        # (with padding applied)
+        # With 252 x 252 Input, this means it is: 252 x 252 --> 246 x 246
+        # (without padding)
 
         self.conv11 = nn.Conv2d(in_channels=3, out_channels=kc, kernel_size=3)
 
@@ -69,8 +71,10 @@ class ConvolutionalBlocks(nn.Module):
         self.conv13 = nn.Conv2d(in_channels=kc, out_channels=kc, kernel_size=3)
 
         # Adding pooling. Earlier: 120 x 120 --> 60 x 60
-        # With 252 x 252 Input, this means it is: 252 x 252 --> 126 x 126 (with padding applied)
-        # With 252 x 252 Input, this means it is: 246 x 246 --> 123 x 123 (without padding)
+        # With 252 x 252 Input, this means it is: 252 x 252 --> 126 x 126
+        # (with padding applied)
+        # With 252 x 252 Input, this means it is: 246 x 246 --> 123 x 123
+        # (without padding)
         self.pool1 = nn.MaxPool2d(kernel_size=2)
 
         # Update kernel count in conv layers
@@ -78,15 +82,19 @@ class ConvolutionalBlocks(nn.Module):
 
         # Convolution Block 2
         # Earlier: 60 x 60 --> 56 x 56.
-        # With 252 x 252 Input, this means it is: 126 x 126 --> 126 x 126 (with padding applied)
-        # With 252 x 252 Input, this means it is: 123 x 123 --> 119 x 119 (without applied)
+        # With 252 x 252 Input, this means it is: 126 x 126 --> 126 x 126
+        # (with padding applied)
+        # With 252 x 252 Input, this means it is: 123 x 123 --> 119 x 119
+        # (without applied)
         self.conv21 = nn.Conv2d(in_channels=kc // 2, out_channels=kc, kernel_size=3)
 
         self.conv22 = nn.Conv2d(in_channels=kc, out_channels=kc, kernel_size=3)
 
         # Adding pooling. Earlier: 56 x 56 --> 28 x 28
-        # With 252 x 252 Input, this means it is: 126 x 126 --> 63 x 63 (with padding applied)
-        # With 252 x 252 Input, this means it is: 119 x 119 --> 59 x 59 (without padding applied ("half" a pixel appears to be omitted))
+        # With 252 x 252 Input, this means it is: 126 x 126 --> 63 x 63
+        # (with padding applied)
+        # With 252 x 252 Input, this means it is: 119 x 119 --> 59 x 59
+        # (without padding applied ("half" a pixel appears to be omitted))
         self.pool2 = nn.MaxPool2d(kernel_size=2)
 
         # Update kernel count in conv layers
@@ -94,15 +102,19 @@ class ConvolutionalBlocks(nn.Module):
 
         # Convolution Block 3
         # Earlier: 28 x 28 --> 24 x 24.
-        # With 252 x 252 Input, this means it is: 63 x 63 --> 63 x 63 (with padding applied)
-        # With 252 x 252 Input, this means it is: 59 x 59 --> 55 x 55 (without padding applied)
+        # With 252 x 252 Input, this means it is: 63 x 63 --> 63 x 63
+        # (with padding applied)
+        # With 252 x 252 Input, this means it is: 59 x 59 --> 55 x 55
+        # (without padding applied)
         self.conv31 = nn.Conv2d(in_channels=kc // 2, out_channels=kc, kernel_size=3)
 
         self.conv32 = nn.Conv2d(in_channels=kc, out_channels=kc, kernel_size=3)
 
         # Adding pooling. Earlier: 24 x 24 --> 12 x 12
-        # With 252 x 252 Input, this means it is: 63 x 63 --> 31 x 31 (with padding applied, ("half" a pixel appears to be omitted))
-        # With 252 x 252 Input, this means it is: 55 x 55 --> 27 x 27 (without applied ("half" a pixel appears to be omitted))
+        # With 252 x 252 Input, this means it is: 63 x 63 --> 31 x 31
+        # (with padding applied, ("half" a pixel appears to be omitted))
+        # With 252 x 252 Input, this means it is: 55 x 55 --> 27 x 27
+        # (without applied ("half" a pixel appears to be omitted))
         self.pool3 = nn.MaxPool2d(kernel_size=2)
 
         # Update kernel count in conv layers
@@ -110,13 +122,17 @@ class ConvolutionalBlocks(nn.Module):
 
         # Convolution Block 4
         # Earlier: 12 x 12 --> 10 x 10.
-        # With 252 x 252 Input, this means it is: 31 x 31 --> 31 x 31 (with padding applied)
-        # With 252 x 252 Input, this means it is: 27 x 27 --> 25 x 25 (without padding applied)
+        # With 252 x 252 Input, this means it is: 31 x 31 --> 31 x 31
+        # (with padding applied)
+        # With 252 x 252 Input, this means it is: 27 x 27 --> 25 x 25
+        # (without padding applied)
         self.conv4 = nn.Conv2d(in_channels=kc // 2, out_channels=kc, kernel_size=3)
 
         # Adding pooling. Earlier: 10 x 10 --> 5 x 5
-        # With 252 x 252 Input, this means it is: 31 x 31 --> 15 x 15 (with padding applied, ("half" a pixel appears to be omitted))
-        # With 252 x 252 Input, this means it is: 27 x 27 --> 13 x 13 (without applied ("half" a pixel appears to be omitted))
+        # With 252 x 252 Input, this means it is: 31 x 31 --> 15 x 15
+        # (with padding applied, ("half" a pixel appears to be omitted))
+        # With 252 x 252 Input, this means it is: 27 x 27 --> 13 x 13
+        # (without applied ("half" a pixel appears to be omitted))
         self.pool4 = nn.MaxPool2d(kernel_size=2)
 
         # Flatten as per original architecture
@@ -345,7 +361,8 @@ def load(name=None):
 
     colonisation_type = AmfConfig.get("colonisation_type")
     if name is not None:
-        # Check if model exists in trained network, otherwise return name to allow absolute paths
+        # Check if model exists in trained network, otherwise return name to allow
+        # absolute paths
         path = os.path.join(AmfConfig.get_appdir(), "trained_networks", name)
 
         if not os.path.isfile(path):
@@ -369,7 +386,8 @@ def load(name=None):
         if isinstance(model, torch.nn.Module):
             model_name = model.__class__.__name__  # Get class name of loaded model
 
-            # TODO: ResNeXt has the same model.__class__.__name__ as ResNet. Change to map correctly.
+            # TODO: ResNeXt has the same model.__class__.__name__ as ResNet.
+            # Change to map correctly.
             if model_name in ["CNN1", "ResNet", "ResNeXt", "EfficientNet"]:
                 AmfLog.text(f"Model type: {model_name}")
                 return model
@@ -389,7 +407,8 @@ def load(name=None):
             if AmfConfig.get("model_type") == "cnn1":
                 if pt_flag:
                     AmfLog.error(
-                        "Pre-trained weights are unanavailable for CNN1. Please proceed with pre_trained=False",
+                        "Pre-trained weights are unanavailable for CNN1. "
+                        "Please proceed with pre_trained=False",
                         exit_code=AmfLog.ERR_NO_PRETRAINED_MODEL,
                     )
                 else:
@@ -413,13 +432,16 @@ def load(name=None):
 
             else:
                 AmfLog.error(
-                    "Invalid model type. Please choose one of the following model types: 'cnn1', 'resnet', 'resnext', 'efficientnet' or 'efficientnetv2'.",
+                    "Invalid model type. Please choose one of the following model "
+                    "types: 'cnn1', 'resnet', 'resnext', 'efficientnet' or "
+                    "'efficientnetv2'.",
                     exit_code=AmfLog.ERR_INVALID_MODEL,
                 )
 
             model_name = AmfConfig.get("model_type")  # Get class name of loaded model
             AmfLog.text(
-                f"Initialise new network. Selected model type: {model_name}. Pre-Trained Flag: {pt_flag}"
+                f"Initialise new network. Selected model type: {model_name}. "
+                f"Pre-Trained Flag: {pt_flag}"
             )
 
             return model

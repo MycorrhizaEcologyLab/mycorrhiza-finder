@@ -93,7 +93,8 @@ def save_training_data(history, model, save_path):
                 )  # Numpy array conversion
 
         z.writestr("model.h5", open(model_path, "rb").read())
-        ## TODO: An additional model load class (loading the state dict seperately to the architecture) would be required in the case of HDF5
+        ## TODO: An additional model load class (loading the state dict seperately to
+        # the architecture) would be required in the case of HDF5
 
         # Option 2: Save the model state_dict as pth
         model_path = os.path.join(save_path, "model.pth")
@@ -101,8 +102,10 @@ def save_training_data(history, model, save_path):
         z.writestr("model.pth", open(model_path, "rb").read())
 
         # Optionally, save additional plots or metrics here
-        # In the original AMFinder version, the accuracy was tracked throughout the training process.
-        # As this metric is not used any longer, it is not included in the PyTorch version of the code.´
+        # In the original AMFinder version, the accuracy was tracked throughout the
+        # training process.
+        # As this metric is not used any longer, it is not included in the PyTorch
+        # version of the code.´
 
         # TODO: Integrate save mechanism when Early Stopping is triggered.
         # With early stopping implemented
@@ -145,7 +148,8 @@ def save_model_architecture(model, device, tile_size):
             summary(model, input_data=input_tensor)
 
     draw_graph(model, input_data=input_tensor, filename=path_graph, save_graph=True)
-    # TODO Currently this creates three files: "CNN1_summary.txt", "CNN1_graph.png" and "CNN1_graph". The third file is not required in theory.
+    # TODO Currently this creates three files: "CNN1_summary.txt", "CNN1_graph.png" and
+    # "CNN1_graph". The third file is not required in theory.
 
 
 def save_settings(path):
@@ -251,5 +255,3 @@ def prediction_table(results, path):
             save_settings(path)
 
             AmfLog.info(f"Saved results to CSV at {path}")
-
-            # print(f"Saved results to {os.path.join(directory, image_name + uniq + "cnn_1_predictions.csv")} file")

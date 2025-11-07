@@ -27,7 +27,8 @@ import amfinder_log as AmfLog
 import amfinder_model as AmfModel
 from fixmatch.dataset.amf_fixmatch import get_amf
 
-# TODO note that these should be updated to mean and std of channels in dataset you are using
+# TODO note that these should be updated to mean and std of channels in dataset you are
+# using
 amf_mean = (0.6936627221601291, 0.7870194843667774, 0.8169391664031584)
 amf_std = (0.24046182473804545, 0.11873623743912588, 0.07242399828535838)
 
@@ -91,7 +92,8 @@ def run():
             return sqrt_val, sqrt_val
 
         for extra in range(1, sqrt_val + 1):
-            # Attempt to find factors by incrementally checking numbers larger than the square root
+            # Attempt to find factors by incrementally checking numbers larger than the
+            # square root
             if num_items % (sqrt_val + extra) == 0:
                 return num_items // (sqrt_val + extra), sqrt_val + extra
 
@@ -99,7 +101,8 @@ def run():
         # use the closest square higher than the number of items
         nearest_square = (sqrt_val + 1) ** 2
         row, col = find_optimal_layout(nearest_square)
-        # Adjust rows if the number of items doesn't require all rows in the nearest square layout
+        # Adjust rows if the number of items doesn't require all rows in the nearest
+        # square layout
         if num_items <= row * (col - 1):
             return row, col - 1
         return row, col
@@ -286,7 +289,6 @@ def get_perfile_metrics(actual_labels, predicted_labels, filenames):
         colonized = series.value_counts()
         total_root = colonized.get(0, 0) + colonized.get(1, 0)
         perc_col = (colonized.get(0, 0) / total_root) * 100 if total_root > 0 else None
-        # perc_root = (total_root / colonized.sum()) * 100 if colonized.sum() > 0 else None
         return perc_col
 
     def calculate_accuracy_for_class(group, class_label):

@@ -911,7 +911,8 @@ class ZipExtFile(io.BufferedIOBase):
 
     def read(self, n=-1):
         """Read and return up to n bytes.
-        If the argument is omitted, None, or negative, data is read and returned until EOF is reached.
+        If the argument is omitted, None, or negative, data is read and returned until
+        EOF is reached.
         """
         if self.closed:
             raise ValueError("read from closed file.")

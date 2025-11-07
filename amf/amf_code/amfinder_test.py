@@ -44,12 +44,14 @@ def get_test_results(
 
     This function performs the following steps:
     1. Sets the model to evaluation mode and assigns the computational device.
-    2. Iterates through the test data to compute predictions, calculate loss, and evaluate accuracy.
-    3. Collects predicted labels, one-hot encoded predictions, and probabilities for all test samples.
+    2. Iterates through the test data to compute predictions, calculate loss, and
+        evaluate accuracy.
+    3. Collects predicted labels, one-hot encoded predictions, and probabilities for all
+        test samples.
     4. Converts predictions and probabilities to numpy arrays for further processing.
     5. For predictions with low confidence, applies max voting using surrounding tiles.
-    6. Initializes a `TestMetrics` object to calculate and save various performance metrics, such as
-       confusion matrices, per-file and per-class metrics.
+    6. Initializes a `TestMetrics` object to calculate and save various performance
+        metrics, such as confusion matrices, per-file and per-class metrics.
 
     Parameters:
     - x_test: np.ndarray
@@ -65,7 +67,8 @@ def get_test_results(
     - test_dataset: torch.utils.data.DataSet
         Datset object containing the test tiles alongside corresponding labels.
     - test_loader: torch.utils.data.DataLoader
-        DataLoader object providing batches of test data. Expecting numpy arrays as input but using normalised torch tensors in batches.
+        DataLoader object providing batches of test data. Expecting numpy arrays as
+        input but using normalised torch tensors in batches.
     - metrics_collector: MetricsCollector
         Object responsible for storing and managing calculated metrics.
     - rows: int
@@ -208,7 +211,8 @@ def get_test_results(
 
         if len(low_confidence_indices) > 0:
             AmfLog.info(
-                f"Found {len(low_confidence_indices)} predictions with confidence lower than {contextual_confidence_threshold}. Applying max voting"
+                f"Found {len(low_confidence_indices)} predictions with confidence "
+                f"lower than {contextual_confidence_threshold}. Applying max voting"
             )
 
             # Group by image to minimize image loading
@@ -231,7 +235,8 @@ def get_test_results(
 
                 # Batch process all low-confidence tiles from this image
                 all_contextual_tile_sets = []
-                num_contextual_tiles_mapping = []  # Number of contextual tiles for a given tile index
+                # Number of contextual tiles for a given tile index
+                num_contextual_tiles_mapping = []
 
                 for idx, r, c in indices_with_coords:
                     # Get surrounding tiles
@@ -272,7 +277,10 @@ def get_test_results(
                     for batch_x, batch_y in tqdm(
                         contextual_tile_loader,
                         total=len(contextual_tile_loader),
-                        desc=f"Processing contextual predictions for {os.path.splitext(os.path.basename(file_path))[0]}",
+                        desc=(
+                            "Processing contextual predictions for "
+                            f"{os.path.splitext(os.path.basename(file_path))[0]}"
+                        ),
                     ):
                         batch_x, batch_y = batch_x.to(device), batch_y.to(device)
                         outputs = model(batch_x)
@@ -355,13 +363,15 @@ def get_test_results(
                     csv_path = os.path.join(results_dir, "tile_class_changes.csv")
                     changes_df.to_csv(csv_path, index=False)
                     AmfLog.info(
-                        f"Saved {len(individual_tile_changes)} individual tile changes to {csv_path}"
+                        f"Saved {len(individual_tile_changes)} individual tile changes "
+                        f"to {csv_path}"
                     )
             else:
                 AmfLog.info("No class changes occurred after max voting.")
         else:
             AmfLog.info(
-                f"Didn't find any predictions with confidence lower than {contextual_confidence_threshold}, so do not use context"
+                "Didn't find any predictions with confidence lower than "
+                f"{contextual_confidence_threshold}, so do not use context"
             )
 
     # Check the shape of the arrays before forwarding them to TestMetrics

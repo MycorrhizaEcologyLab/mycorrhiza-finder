@@ -143,7 +143,8 @@ class TransformFixMatch(object):
                 ),
                 RandAugmentMC(n=2, m=10),
             ]
-        )  # n is number of augmentations in the Randaugment sequence, m is magnitude for each of the transformations - >M implies stronger augmentations
+        )  # n is number of augmentations in the Randaugment sequence, m is magnitude
+        #    for each of the transformations - >M implies stronger augmentations
         self.normalize = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)]
         )
@@ -168,10 +169,12 @@ class AmfDatasetLabelled:
     ):
         """
         root (str): Root directory
-        n_labels (Union[None, int, float]): indication of number of datapoints that should be labelled.
+        n_labels (Union[None, int, float]): indication of number of datapoints that
+            should be labelled.
         n_labels < 0 indicates all labels should be used.
         n_labels 0<x<1 indicated that n_labels*100% of the data should be labelled.
-        n_labels >= 1 indicated that exactly n_labels labelled pieces of data should be used.
+        n_labels >= 1 indicated that exactly n_labels labelled pieces of data should be
+            used.
         train (bool): whether the dataset should be a training set
         """
         self.train = args.train
@@ -189,7 +192,6 @@ class AmfDatasetLabelled:
                 )
                 self.labelled_indices = labelled_indices
                 self.x = x
-                # self.plot_labelled_images(self.images, self.targets, len(labelled_indices))
             else:
                 raise ValueError("num_labels cannot be 0 for labelled set")
         elif (
@@ -241,7 +243,8 @@ class AmfDatasetLabelled:
             return sqrt_val, sqrt_val
 
         for extra in range(1, sqrt_val + 1):
-            # Attempt to find factors by incrementally checking numbers larger than the square root
+            # Attempt to find factors by incrementally checking numbers larger than the
+            # square root
             if num_items % (sqrt_val + extra) == 0:
                 return num_items // (sqrt_val + extra), sqrt_val + extra
 
@@ -249,7 +252,8 @@ class AmfDatasetLabelled:
         # use the closest square higher than the number of items
         nearest_square = (sqrt_val + 1) ** 2
         row, col = self.find_optimal_layout(nearest_square)
-        # Adjust rows if the number of items doesn't require all rows in the nearest square layout
+        # Adjust rows if the number of items doesn't require all rows in the nearest
+        # square layout
         if num_items <= row * (col - 1):
             return row, col - 1
         return row, col
@@ -308,7 +312,8 @@ class AmfDatasetUnlabelled:
         self.targets = [torch.tensor(float("nan"))] * len(self.images)
 
         print(
-            f"Unlabelled dataset set up with {prop_unlabelled * 100}% of the available unlabelled data, totalling {num_examples} examples."
+            f"Unlabelled dataset set up with {prop_unlabelled * 100}% of the available "
+            f"unlabelled data, totalling {num_examples} examples."
         )
 
     def __getitem__(self, idx):

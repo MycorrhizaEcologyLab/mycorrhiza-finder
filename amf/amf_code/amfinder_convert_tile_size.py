@@ -66,7 +66,8 @@ def rescale_annot(annotation_data):
         num_questions = annotation_data["Question"].sum()
         if num_questions > 0:
             AmfLog.error(
-                f"Cannot carry out tile conversion if questions exist, currently there are {num_questions} question(s)",
+                f"Cannot carry out tile conversion if questions exist, currently there "
+                f"are {num_questions} question(s)",
                 AmfLog.ERR_INVALID_DATA,
             )
 
@@ -79,10 +80,12 @@ def rescale_annot(annotation_data):
 
     new_row_starts = list(
         range(0, annotation_data["row"].max(), SCALING_FACTOR)
-    )  # Creating a sequence of new row indices with a step of two, based on the max row number.
+    )  # Creating a sequence of new row indices with a step of two, based on the max
+    #    row number.
     new_col_starts = list(
         range(0, annotation_data["col"].max(), SCALING_FACTOR)
-    )  # Creating a sequence of new col indices with a step of two, based on the max col number.
+    )  # Creating a sequence of new col indices with a step of two, based on the max
+    #    col number.
 
     rescaled_tile_annotations = []
 
@@ -92,7 +95,8 @@ def rescale_annot(annotation_data):
                 annotation_data["row"].isin([old_row_coord, old_row_coord + 1])
             ].loc[annotation_data["col"].isin([old_col_coord, old_col_coord + 1])]
 
-            # Create pandas Series on the frequency of each class within the new tile size.
+            # Create pandas Series on the frequency of each class within the new tile
+            # size.
             class_totals = (
                 tile_annotations[
                     [
@@ -121,18 +125,22 @@ def rescale_annot(annotation_data):
             }
 
             # Entering rule tree
-            # New tiles that do not contain any of the old tiles are omitted, to stay consistent with previous labelling strategies.
+            # New tiles that do not contain any of the old tiles are omitted, to stay
+            # consistent with previous labelling strategies.
             if tile_annotations.shape[0] == 0:
                 continue
 
             else:
                 number_of_126tiles_in_256tiles = tile_annotations.shape[0]
-                majority_class_name = class_totals.idxmax()  # According to documentation: Return index of FIRST occurrence of maximum over requested axis.
+                # According to documentation: Return index of FIRST occurrence of
+                # maximum over requested axis.
+                majority_class_name = class_totals.idxmax()
                 majority_class_ratio = (
                     class_totals.max() / number_of_126tiles_in_256tiles
                 )
 
-                # If all old tiles within a new tile have the same class (independent of the number of tiles), it is the new tile class.
+                # If all old tiles within a new tile have the same class (independent of
+                # the number of tiles), it is the new tile class.
                 if majority_class_ratio == 1.0:
                     this_result[majority_class_name] = 1
 
@@ -145,19 +153,24 @@ def rescale_annot(annotation_data):
 
                     # All AMColonised cases
                     if majority_class_name == "AMColonised":
-                        # If there is any amount of DSE (including a Hybrid tile) from the old tiles, new tiles should be classified as Hybrid.
+                        # If there is any amount of DSE (including a Hybrid tile) from
+                        # the old tiles, new tiles should be classified as Hybrid.
                         if ratios["DSE"] > 0.0 or ratios["Hybrid"] > 0.0:
                             this_result["Hybrid"] = 1
 
-                        # All other cases, including the cases where the majority class ratio is only 0.33 or 0.25
+                        # All other cases, including the cases where the majority class
+                        # ratio is only 0.33 or 0.25
                         else:
                             this_result["AMColonised"] = 1
 
                     # All Uncolonised cases
-                    # The following consideration is true for all cases (including ratio['Uncolonised'] >= 0.25)
+                    # The following consideration is true for all cases
+                    # (including ratio['Uncolonised'] >= 0.25)
                     if majority_class_name == "Uncolonised":
-                        # All types of colonisation are given priority, as no minimum colonisation is required.
-                        # If there is any AMColonised (as minority) or DSE/Hybrid tiles present (also as minority):
+                        # All types of colonisation are given priority, as no minimum
+                        # colonisation is required.
+                        # If there is any AMColonised (as minority) or DSE/Hybrid tiles
+                        # present (also as minority):
                         if ratios["AMColonised"] > 0.0 and (
                             ratios["DSE"] > 0.0 or ratios["Hybrid"] > 0.0
                         ):
@@ -187,7 +200,8 @@ def rescale_annot(annotation_data):
                         ):
                             this_result["Hybrid"] = 1
 
-                        # If there is a single Hybrid tile present, whilst a DSE tile is present as well.
+                        # If there is a single Hybrid tile present, whilst a DSE tile is
+                        # present as well.
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] > 0.0
@@ -195,16 +209,21 @@ def rescale_annot(annotation_data):
                         ):
                             this_result["Hybrid"] = 1
 
-                        # Cases where there is no AMColonised, DSE or Unreadable are all considered Uncolonised, as only 10 % need to be occupied
-                        # to be classified as Uncolonised, including cases where background and unreadable are present.
+                        # Cases where there is no AMColonised, DSE or Unreadable are all
+                        # considered Uncolonised, as only 10 % need to be occupied
+                        # to be classified as Uncolonised, including cases where
+                        # background and unreadable are present.
                         else:
                             this_result["Uncolonised"] = 1
 
                     # All Background cases
-                    # The following consideration is true for all cases (including ratio['Background'] >= 0.25)
+                    # The following consideration is true for all cases
+                    # (including ratio['Background'] >= 0.25)
                     if majority_class_name == "Background":
-                        # All types of colonisation are given priority, as no minimum colonisation is required.
-                        # If there is any AMColonised (as minority) or DSE/Hybrid tiles present (also as minority):
+                        # All types of colonisation are given priority, as no minimum
+                        # colonisation is required.
+                        # If there is any AMColonised (as minority) or DSE/Hybrid tiles
+                        # present (also as minority):
                         if ratios["AMColonised"] > 0.0 and (
                             ratios["DSE"] > 0.0 or ratios["Hybrid"] > 0.0
                         ):
@@ -234,7 +253,8 @@ def rescale_annot(annotation_data):
                         ):
                             this_result["Hybrid"] = 1
 
-                        # If there is a single Hybrid tile present, whilst a DSE tile is present as well.
+                        # If there is a single Hybrid tile present, whilst a DSE tile is
+                        # present as well.
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] > 0.0
@@ -242,7 +262,8 @@ def rescale_annot(annotation_data):
                         ):
                             this_result["Hybrid"] = 1
 
-                        # If there is a single Uncolonised tile present, whilst all Colonisation tiles are 0, it is Uncolonised in all cases.
+                        # If there is a single Uncolonised tile present, whilst all
+                        # Colonisation tiles are 0, it is Uncolonised in all cases.
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] == 0.0
@@ -251,7 +272,9 @@ def rescale_annot(annotation_data):
                         ):
                             this_result["Uncolonised"] = 1
 
-                        # If there is a single Unreadable tile present, whilst all other classes are 0, it is Unreadable in all cases, even if Background is the majority.
+                        # If there is a single Unreadable tile present, whilst all other
+                        # classes are 0, it is Unreadable in all cases, even if
+                        # Background is the majority.
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] == 0.0
@@ -265,22 +288,28 @@ def rescale_annot(annotation_data):
                             this_result["Background"] = 1
 
                     # All Unreadable cases
-                    # The following consideration is true for all cases (including ratio['Background'] >= 0.25)
+                    # The following consideration is true for all cases
+                    # (including ratio['Background'] >= 0.25)
                     if majority_class_name == "Unreadable":
-                        # If Unreadable is strictly larger than 50 % of the new tile, it should be considered Unreadable.
+                        # If Unreadable is strictly larger than 50 % of the new tile, it
+                        # should be considered Unreadable.
                         if ratios["Unreadable"] > 0.5:
                             this_result["Unreadable"] = 1
 
-                        # If it is equal or less than 50 %, cases need to be distinguished.
+                        # If it is equal or less than 50 %, cases need to be
+                        # distinguished.
                         elif ratios["Unreadable"] <= 0.5:
-                            # Again, all types of colonisation are given priority as no minimum colonisation is required.
-                            # If there is any AMColonised (as minority) or DSE/Hybrid tiles present (also as minority):
+                            # Again, all types of colonisation are given priority as no
+                            # minimum colonisation is required.
+                            # If there is any AMColonised (as minority) or DSE/Hybrid
+                            # tiles present (also as minority):
                             if ratios["AMColonised"] > 0.0 and (
                                 ratios["DSE"] > 0.0 or ratios["Hybrid"] > 0.0
                             ):
                                 this_result["Hybrid"] = 1
 
-                            # If there is any AMColonised (as minority), DSE/Hybrid == 0.0
+                            # If there is any AMColonised (as minority),
+                            # DSE/Hybrid == 0.0
                             elif (
                                 ratios["AMColonised"] > 0.0
                                 and ratios["DSE"] == 0.0
@@ -304,7 +333,8 @@ def rescale_annot(annotation_data):
                             ):
                                 this_result["Hybrid"] = 1
 
-                            # If there is a single Hybrid tile present, whilst a DSE tile is present as well.
+                            # If there is a single Hybrid tile present, whilst a DSE
+                            # tile is present as well.
                             elif (
                                 ratios["AMColonised"] == 0.0
                                 and ratios["DSE"] > 0.0
@@ -312,7 +342,8 @@ def rescale_annot(annotation_data):
                             ):
                                 this_result["Hybrid"] = 1
 
-                            # If there is a single Uncolonised tile present, whilst all Colonisation tiles are 0, it is Uncolonised in all cases.
+                            # If there is a single Uncolonised tile present, whilst all
+                            # Colonisation tiles are 0, it is Uncolonised in all cases.
                             elif (
                                 ratios["AMColonised"] == 0.0
                                 and ratios["DSE"] == 0.0
@@ -325,20 +356,26 @@ def rescale_annot(annotation_data):
                                 this_result["Unreadable"] = 1
 
                     # All DSE cases
-                    # The following consideration is true for all cases (including ratio['DSE'] >= 0.25)
+                    # The following consideration is true for all cases
+                    # (including ratio['DSE'] >= 0.25)
                     if majority_class_name == "DSE":
-                        # If there is a single AMColonised or Hybrid tile present whilst DSE is present.
+                        # If there is a single AMColonised or Hybrid tile present whilst
+                        # DSE is present.
                         if ratios["AMColonised"] > 0.0 or ratios["Hybrid"] > 0.0:
                             this_result["Hybrid"] = 1
 
-                        # In all other cases, AMColonised and DSE == 0.0 and the other classes have lower priority as compared to Hybrid.
-                        # Technically, Hybrid could be summarised within one criterion, but this is written out explicitly for consistency.
+                        # In all other cases, AMColonised and DSE == 0.0 and the other
+                        # classes have lower priority as compared to Hybrid.
+                        # Technically, Hybrid could be summarised within one criterion,
+                        # but this is written out explicitly for consistency.
                         else:
                             this_result["DSE"] = 1
 
                     # All Hybrid cases
-                    # The following consideration is true for all cases (including ratio['DSE'] >= 0.25). Once a single Hybrid tile is present and
-                    # has at leas the same ratio as compared to all other classes, the new tile class is Hybrid.
+                    # The following consideration is true for all cases
+                    # (including ratio['DSE'] >= 0.25). Once a single Hybrid tile is
+                    # present and has at leas the same ratio as compared to all other
+                    # classes, the new tile class is Hybrid.
                     if majority_class_name == "Hybrid":
                         this_result["Hybrid"] = 1
 
@@ -414,11 +451,13 @@ def convert_tile_size(path, tile_size):
                 json.dump(settings, file)
 
             AmfLog.info(
-                f"Saved aggregated annotations and settings to {annotation_path} and {settings_path}"
+                f"Saved aggregated annotations and settings to {annotation_path} and "
+                f"{settings_path}"
             )
         else:
             AmfLog.warning(
-                f"Multiple annotation files found for {image_name}. Skipping processing."
+                f"Multiple annotation files found for {image_name}. "
+                "Skipping processing."
             )
 
 
@@ -428,7 +467,8 @@ def run(input_images):
     try:
         if AmfConfig.get("colonisation_type") != "am":
             AmfLog.error(
-                f"Only support AM Colonisation for converting tile size, not {AmfConfig.get('colonisation_type')}. Cancel operation.",
+                f"Only support AM Colonisation for converting tile size, not "
+                f"{AmfConfig.get('colonisation_type')}. Cancel operation.",
                 AmfLog.ERR_INVALID_DATA,
             )
 

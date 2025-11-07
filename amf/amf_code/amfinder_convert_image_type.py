@@ -1,5 +1,6 @@
 import gc
 import os
+import warnings
 import xml.etree.ElementTree as ET
 
 from PIL import Image
@@ -16,8 +17,10 @@ def convert_tiff(path, file_type="jpg"):
         os.path.splitext(path)[1].lower() == ".tiff"
         or os.path.splitext(path)[1].lower() == ".tif"
     ):
-        # You MUST export the annotations along with the TIFF by changing the slidemaster settings
-        # This changes the image offset - if you export the annotations separately this does not work
+        # You MUST export the annotations along with the TIFF by changing the
+        # slidemaster settings.
+        # This changes the image offset - if you export the annotations separately this
+        # does not work.
         try:
             im = Image.open(path)
             AmfLog.info(f"Original image size: {im.size}")
@@ -25,7 +28,8 @@ def convert_tiff(path, file_type="jpg"):
             # Check if annotation file exists - if not, convert the entire tif
             if os.path.isfile(os.path.splitext(path)[0] + ".xml"):
                 AmfLog.info(
-                    f"Found annotations in {os.path.splitext(path)[0]}.xml, cropping tif file to match the given annotations"
+                    f"Found annotations in {os.path.splitext(path)[0]}.xml, cropping "
+                    "tif file to match the given annotations"
                 )
                 # Parse annotations from XML provided by slidemaster - this needs
                 # to have the exact same name as the TIF image you want to parse
@@ -60,7 +64,8 @@ def convert_tiff(path, file_type="jpg"):
                             max_y = int(attribs["y"])
 
                     print(
-                        f"Annotation {name} has top left coord {(min_x, min_y)} and bottom right coord {(max_x, max_y)}"
+                        f"Annotation {name} has top left coord {(min_x, min_y)} and "
+                        f"bottom right coord {(max_x, max_y)}"
                     )
 
                     annotation_coords[name] = [
@@ -107,12 +112,14 @@ def convert_tiff(path, file_type="jpg"):
                         else:
                             print(f"Invalid crop box for image {image}: {crop_box}")
                     except Exception as e:
-                        print(
-                            f"Failed to crop {image} due to error: {e.__class__.__name__}: {e}"
+                        warnings.warn(
+                            f"Failed to crop {image} due to error: "
+                            f"{e.__class__.__name__}: {e}"
                         )
             else:
                 AmfLog.info(
-                    f"No annotations found for {os.path.splitext(path)[0]}, directly converting TIF to {file_type}"
+                    f"No annotations found for {os.path.splitext(path)[0]}, "
+                    f"directly converting TIF to {file_type}"
                 )
                 outfile_crop = f"{os.path.splitext(path)[0]}.{file_type}"
                 im.convert("RGB").save(outfile_crop, subsampling=0, quality=95)

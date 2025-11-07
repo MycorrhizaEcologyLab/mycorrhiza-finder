@@ -262,7 +262,6 @@ class TestMetrics:
         def calculate_class_count(group, class_label):
             num_actual = (group["Actual Label"] == class_label).sum()
             num_pred = (group["Predicted Label"] == class_label).sum()
-            # class_preds = {CLASS_NAMES[class_label]: (group['Predicted Label'] == class_label).sum() for class_label in classes}
 
             return num_actual, num_pred
 
@@ -279,18 +278,18 @@ class TestMetrics:
                 colonisation_metrics = df.groupby("Filename").apply(
                     lambda x: pd.Series(
                         {
-                            "Actual % AM + Hybrid Colonised": calculate_am_colonised_percentage(
-                                x["Actual Label"]
-                            )[0],
-                            "Actual % DSE + Hybrid Colonised": calculate_am_colonised_percentage(
-                                x["Actual Label"]
-                            )[1],
-                            "Actual % Total Colonised including Hybrid": calculate_am_colonised_percentage(
-                                x["Actual Label"]
-                            )[2],
-                            "Actual % Root": calculate_am_colonised_percentage(
-                                x["Actual Label"]
-                            )[3],
+                            "Actual % AM + Hybrid Colonised": (
+                                calculate_am_colonised_percentage(x["Actual Label"])[0]
+                            ),
+                            "Actual % DSE + Hybrid Colonised": (
+                                calculate_am_colonised_percentage(x["Actual Label"])[1]
+                            ),
+                            "Actual % Total Colonised including Hybrid": (
+                                calculate_am_colonised_percentage(x["Actual Label"])[2]
+                            ),
+                            "Actual % Root": (
+                                calculate_am_colonised_percentage(x["Actual Label"])[3]
+                            ),
                         }
                     )
                 )
@@ -298,21 +297,21 @@ class TestMetrics:
                 colonisation_metrics = df.groupby("Filename").apply(
                     lambda x: pd.Series(
                         {
-                            "Actual % Blue Coil Colonised": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[0],
-                            "Actual % Brown Coil Colonised": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[1],
-                            "Actual % Type Two Colonised": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[2],
-                            "Actual % DSE + Hybrid DSE Colonised": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[3],
-                            "Actual % Total ErM Colonisation (inc. Hybrid ErM)": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[4],
+                            "Actual % Blue Coil Colonised": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[0]
+                            ),
+                            "Actual % Brown Coil Colonised": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[1]
+                            ),
+                            "Actual % Type Two Colonised": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[2]
+                            ),
+                            "Actual % DSE + Hybrid DSE Colonised": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[3]
+                            ),
+                            "Actual % Total ErM Colonisation (inc. Hybrid ErM)": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[4]
+                            ),
                             "Actual % Root": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
                             )[5],
@@ -344,27 +343,33 @@ class TestMetrics:
                 colonisation_metrics = df.groupby("Filename").apply(
                     lambda x: pd.Series(
                         {
-                            "Actual % AM + Hybrid Colonised": calculate_am_colonised_percentage(
-                                x["Actual Label"]
-                            )[0],
-                            "Actual % DSE + Hybrid Colonised": calculate_am_colonised_percentage(
-                                x["Actual Label"]
-                            )[1],
-                            "Actual % Total Colonised including Hybrid": calculate_am_colonised_percentage(
-                                x["Actual Label"]
-                            )[2],
+                            "Actual % AM + Hybrid Colonised": (
+                                calculate_am_colonised_percentage(x["Actual Label"])[0]
+                            ),
+                            "Actual % DSE + Hybrid Colonised": (
+                                calculate_am_colonised_percentage(x["Actual Label"])[1]
+                            ),
+                            "Actual % Total Colonised including Hybrid": (
+                                calculate_am_colonised_percentage(x["Actual Label"])[2]
+                            ),
                             "Actual % Root": calculate_am_colonised_percentage(
                                 x["Actual Label"]
                             )[3],
-                            "Predicted % AM + Hybrid Colonised": calculate_am_colonised_percentage(
-                                x["Predicted Label"]
-                            )[0],
-                            "Predicted % DSE + Hybrid Colonised": calculate_am_colonised_percentage(
-                                x["Predicted Label"]
-                            )[1],
-                            "Predicted % Total Colonised including Hybrid": calculate_am_colonised_percentage(
-                                x["Predicted Label"]
-                            )[2],
+                            "Predicted % AM + Hybrid Colonised": (
+                                calculate_am_colonised_percentage(x["Predicted Label"])[
+                                    0
+                                ]
+                            ),
+                            "Predicted % DSE + Hybrid Colonised": (
+                                calculate_am_colonised_percentage(x["Predicted Label"])[
+                                    1
+                                ]
+                            ),
+                            "Predicted % Total Colonised including Hybrid": (
+                                calculate_am_colonised_percentage(x["Predicted Label"])[
+                                    2
+                                ]
+                            ),
                             "Predicted % Root": calculate_am_colonised_percentage(
                                 x["Predicted Label"]
                             )[3],
@@ -375,39 +380,49 @@ class TestMetrics:
                 colonisation_metrics = df.groupby("Filename").apply(
                     lambda x: pd.Series(
                         {
-                            "Actual % Blue Coil Colonised": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[0],
-                            "Actual % Brown Coil Colonised": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[1],
-                            "Actual % Type Two Colonised": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[2],
-                            "Actual % DSE + Hybrid DSE Colonised": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[3],
-                            "Actual % Total ErM Colonisation (inc. Hybrid ErM)": calculate_erm_colonised_percentage(
-                                x["Actual Label"]
-                            )[4],
+                            "Actual % Blue Coil Colonised": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[0]
+                            ),
+                            "Actual % Brown Coil Colonised": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[1]
+                            ),
+                            "Actual % Type Two Colonised": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[2]
+                            ),
+                            "Actual % DSE + Hybrid DSE Colonised": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[3]
+                            ),
+                            "Actual % Total ErM Colonisation (inc. Hybrid ErM)": (
+                                calculate_erm_colonised_percentage(x["Actual Label"])[4]
+                            ),
                             "Actual % Root": calculate_erm_colonised_percentage(
                                 x["Actual Label"]
                             )[5],
-                            "Predicted % Blue Coil Colonised": calculate_erm_colonised_percentage(
-                                x["Predicted Label"]
-                            )[0],
-                            "Predicted % Brown Coil Colonised": calculate_erm_colonised_percentage(
-                                x["Predicted Label"]
-                            )[1],
-                            "Predicted % Type Two Colonised": calculate_erm_colonised_percentage(
-                                x["Predicted Label"]
-                            )[2],
-                            "Predicted % DSE + Hybrid DSE Colonised": calculate_erm_colonised_percentage(
-                                x["Predicted Label"]
-                            )[3],
-                            "Predicted % Total ErM Colonisation (inc. Hybrid ErM)": calculate_erm_colonised_percentage(
-                                x["Predicted Label"]
-                            )[4],
+                            "Predicted % Blue Coil Colonised": (
+                                calculate_erm_colonised_percentage(
+                                    x["Predicted Label"]
+                                )[0]
+                            ),
+                            "Predicted % Brown Coil Colonised": (
+                                calculate_erm_colonised_percentage(
+                                    x["Predicted Label"]
+                                )[1]
+                            ),
+                            "Predicted % Type Two Colonised": (
+                                calculate_erm_colonised_percentage(
+                                    x["Predicted Label"]
+                                )[2]
+                            ),
+                            "Predicted % DSE + Hybrid DSE Colonised": (
+                                calculate_erm_colonised_percentage(
+                                    x["Predicted Label"]
+                                )[3]
+                            ),
+                            "Predicted % Total ErM Colonisation (inc. Hybrid ErM)": (
+                                calculate_erm_colonised_percentage(
+                                    x["Predicted Label"]
+                                )[4]
+                            ),
                             "Predicted % Root": calculate_erm_colonised_percentage(
                                 x["Predicted Label"]
                             )[5],
@@ -419,8 +434,8 @@ class TestMetrics:
             class_accuracies = df.groupby("Filename").apply(
                 lambda group: pd.Series(
                     {
-                        f"Accuracy Class {self.class_names[i]}": calculate_accuracy_for_class(
-                            group, i
+                        f"Accuracy Class {self.class_names[i]}": (
+                            calculate_accuracy_for_class(group, i)
                         )
                         for i in range(len(self.class_names))
                     }
@@ -430,8 +445,8 @@ class TestMetrics:
             class_precisions = df.groupby("Filename").apply(
                 lambda group: pd.Series(
                     {
-                        f"Precision Class {self.class_names[i]}": calculate_precision_for_class(
-                            group, i
+                        f"Precision Class {self.class_names[i]}": (
+                            calculate_precision_for_class(group, i)
                         )
                         for i in range(len(self.class_names))
                     }
@@ -442,8 +457,8 @@ class TestMetrics:
             class_recalls = df.groupby("Filename").apply(
                 lambda group: pd.Series(
                     {
-                        f"Recall Class {self.class_names[i]}": calculate_recall_for_class(
-                            group, i
+                        f"Recall Class {self.class_names[i]}": (
+                            calculate_recall_for_class(group, i)
                         )
                         for i in range(len(self.class_names))
                     }
@@ -511,7 +526,8 @@ class TestMetrics:
             img = np.transpose(img, (1, 2, 0))
             axes.flat[i].imshow(img, cmap="gray" if img.ndim == 2 else None)
             axes.flat[i].set_title(
-                f"Prediction: {predicted_label}\nColumn: {self.cols[example_idx]}, Row: {self.rows[example_idx]}",
+                f"Prediction: {predicted_label}\nColumn: {self.cols[example_idx]}, "
+                f"Row: {self.rows[example_idx]}",
                 fontsize=16,
             )
             axes.flat[i].axis("off")
@@ -535,7 +551,8 @@ class TestMetrics:
             file_dir = os.path.join(self.results_dir, filename)
             os.makedirs(file_dir, exist_ok=True)  # Create a directory for each file
 
-            # Create a figure for the incorrect predictions associated with the current filename
+            # Create a figure for the incorrect predictions associated with the current
+            # filename
             for class_idx, class_name in enumerate(self.class_names):
                 # Find indices of incorrect predictions for this class
                 class_incorrect_indices = [
@@ -548,8 +565,9 @@ class TestMetrics:
                     for idx in indices
                     if self.y_test_labels[idx["index"]] == class_idx
                 ]
+                # Skip if there are no incorrect predictions for this class
                 if not class_incorrect_indices:
-                    continue  # Skip if there are no incorrect predictions for this class
+                    continue
 
                 num_incorrect = len(class_incorrect_indices)
                 num_rows, num_columns = self.find_optimal_layout(
@@ -592,7 +610,8 @@ class TestMetrics:
             return sqrt_val, sqrt_val
 
         for extra in range(1, sqrt_val + 1):
-            # Attempt to find factors by incrementally checking numbers larger than the square root
+            # Attempt to find factors by incrementally checking numbers larger than the
+            # square root
             if num_items % (sqrt_val + extra) == 0:
                 return num_items // (sqrt_val + extra), sqrt_val + extra
 
@@ -600,15 +619,16 @@ class TestMetrics:
         # use the closest square higher than the number of items
         nearest_square = (sqrt_val + 1) ** 2
         row, col = self.find_optimal_layout(nearest_square)
-        # Adjust rows if the number of items doesn't require all rows in the nearest square layout
+        # Adjust rows if the number of items doesn't require all rows in the nearest
+        # square layout
         if num_items <= row * (col - 1):
             return row, col - 1
         return row, col
 
     def get_pred_by_class(self):
         """
-        Gets the predictions in each class that were incorrect and plots them in separate
-        files for each class.
+        Gets the predictions in each class that were incorrect and plots them in
+        separate files for each class.
         """
 
         # Determine unique classes in the dataset
@@ -617,7 +637,8 @@ class TestMetrics:
         # Iterate over each class to plot its incorrectly predicted images
         for class_index in unique_classes:
             AmfLog.info(
-                f"Processing incorrect prediction images for class {self.class_names[class_index]}"
+                "Processing incorrect prediction images for class "
+                f"{self.class_names[class_index]}"
             )
             # Indices where this class is the true class but was predicted incorrectly
             incorrect_indices = np.where(
@@ -629,7 +650,8 @@ class TestMetrics:
             if len(incorrect_indices) > 0:
                 num_incorrect = len(incorrect_indices)
 
-                # Calculate the number of columns for subplot based on the number of incorrect images, with a max of 5 columns
+                # Calculate the number of columns for subplot based on the number of
+                # incorrect images, with a max of 5 columns
                 num_rows, num_columns = self.find_optimal_layout(num_incorrect)
 
                 # Create a figure for the incorrect predictions of the current class

@@ -15,11 +15,13 @@ from tqdm.auto import tqdm
 
 
 class JointEntropy:
-    """Random variables (all with the same # of categories $C$) can be added via `JointEntropy.add_variables`.
+    """Random variables (all with the same # of categories $C$) can be added via
+    JointEntropy.add_variables`.
 
     `JointEntropy.compute` computes the joint entropy.
 
-    `JointEntropy.compute_batch` computes the joint entropy of the added variables with each of the variables in the provided batch probabilities in turn."""
+    `JointEntropy.compute_batch` computes the joint entropy of the added variables with
+    each of the variables in the provided batch probabilities in turn."""
 
     def compute(self) -> torch.Tensor:
         """Computes the entropy of this joint entropy."""
@@ -32,7 +34,8 @@ class JointEntropy:
     def compute_batch(
         self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None
     ) -> torch.Tensor:
-        """Computes the joint entropy of the added variables together with the batch (one by one)."""
+        """Computes the joint entropy of the added variables together with the batch
+        (one by one)."""
         raise NotImplementedError()
 
 
@@ -55,7 +58,8 @@ class ExactJointEntropy(JointEntropy):
     def add_variables(self, log_probs_N_K_C: torch.Tensor) -> "ExactJointEntropy":
         if self.joint_probs_M_K.shape[1] != log_probs_N_K_C.shape[1]:
             raise ValueError(
-                f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to ExactJointEntropy with K={self.joint_probs_M_K.shape[1]}."
+                f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to "
+                f"ExactJointEntropy with K={self.joint_probs_M_K.shape[1]}."
             )
 
         N, K, C = log_probs_N_K_C.shape
@@ -77,7 +81,8 @@ class ExactJointEntropy(JointEntropy):
     def compute_batch(self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None):
         if self.joint_probs_M_K.shape[1] != log_probs_B_K_C.shape[1]:
             raise ValueError(
-                f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for ExactJointEntropy with K={self.joint_probs_M_K.shape[1]}."
+                f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for "
+                f"ExactJointEntropy with K={self.joint_probs_M_K.shape[1]}."
             )
 
         B, K, C = log_probs_B_K_C.shape
@@ -153,11 +158,13 @@ def gather_expand(data, dim, index):
 
 
 class SampledJointEntropy(JointEntropy):
-    """Random variables (all with the same # of categories $C$) can be added via `SampledJointEntropy.add_variables`.
+    """Random variables (all with the same # of categories $C$) can be added via
+    `SampledJointEntropy.add_variables`.
 
     `SampledJointEntropy.compute` computes the joint entropy.
 
-    `SampledJointEntropy.compute_batch` computes the joint entropy of the added variables with each of the variables in the provided batch probabilities in turn."""
+    `SampledJointEntropy.compute_batch` computes the joint entropy of the added
+    variables with each of the variables in the provided batch probabilities in turn."""
 
     sampled_joint_probs_M_K: torch.Tensor
 
@@ -206,7 +213,8 @@ class SampledJointEntropy(JointEntropy):
         K = self.sampled_joint_probs_M_K.shape[1]
         if K != log_probs_N_K_C.shape[1]:
             raise ValueError(
-                f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to SampledJointEntropy with K={K}."
+                f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to "
+                f"SampledJointEntropy with K={K}."
             )
 
         sample_K_M1_1 = self.sampled_joint_probs_M_K.t()[:, :, None]
@@ -224,7 +232,8 @@ class SampledJointEntropy(JointEntropy):
     def compute_batch(self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None):
         if self.sampled_joint_probs_M_K.shape[1] != log_probs_B_K_C.shape[1]:
             raise ValueError(
-                f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for SampledJointEntropy with K={self.sampled_joint_probs_M_K.shape[1]}."
+                f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for "
+                f"SampledJointEntropy with K={self.sampled_joint_probs_M_K.shape[1]}."
             )
 
         B, K, C = log_probs_B_K_C.shape
@@ -295,11 +304,13 @@ class DynamicJointEntropy(JointEntropy):
 
         if self.log_probs_max_N_K_C.shape[0] < self.N + add_N:
             raise ValueError(
-                f"Cannot add {add_N} variables to DynamicJointEntropy with max_N={self.max_N} and current N={self.N}."
+                f"Cannot add {add_N} variables to DynamicJointEntropy with "
+                f"max_N={self.max_N} and current N={self.N}."
             )
         if self.log_probs_max_N_K_C.shape[1] != log_probs_N_K_C.shape[1]:
             raise ValueError(
-                f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to DynamicJointEntropy with K={self.log_probs_max_N_K_C.shape[1]}."
+                f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to "
+                f"DynamicJointEntropy with K={self.log_probs_max_N_K_C.shape[1]}."
             )
 
         self.log_probs_max_N_K_C[self.N : self.N + add_N] = log_probs_N_K_C
@@ -321,5 +332,6 @@ class DynamicJointEntropy(JointEntropy):
     def compute_batch(
         self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None
     ) -> torch.Tensor:
-        """Computes the joint entropy of the added variables together with the batch (one by one)."""
+        """Computes the joint entropy of the added variables together with the batch
+        (one by one)."""
         return self.inner.compute_batch(log_probs_B_K_C, output_entropies_B)
