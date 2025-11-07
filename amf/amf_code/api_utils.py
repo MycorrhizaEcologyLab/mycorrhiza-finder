@@ -49,11 +49,7 @@ def fetch_items(crsr, name, id, type, cnn, colonisation_type):
         image_ids.append(id)
 
     fetch_values_query = (
-        "SELECT * FROM Cnn"
-        + cnn
-        + type
-        + colonisation_type
-        + " WHERE ImageReferenceId=%s"
+        f"SELECT * FROM Cnn{cnn}{type}{colonisation_type} WHERE ImageReferenceId=%s"
     )
     for id in image_ids:
         crsr.execute(fetch_values_query, (id,))
@@ -88,13 +84,17 @@ def set_to_enabled_in_db(crsr, id):
                 (e.g., if the ID does not exist).
     """
     update_enabled_query = (
-        "UPDATE imageReference SET Enabled = true WHERE Id = %s RETURNING "
-        "filenamereference"
+        "UPDATE imageReference "
+        "SET Enabled = true "
+        "WHERE Id = %s "
+        "RETURNING filenamereference"
     )
     crsr.execute(update_enabled_query, (id,))
     file_name_reference = crsr.fetchone()[0]
     set_enabled_query = (
-        "UPDATE imageReference SET Enabled = false WHERE FileNameReference=%s "
+        "UPDATE imageReference "
+        "SET Enabled = false "
+        "WHERE FileNameReference=%s "
         "AND Id <> %s"
     )
     crsr.execute(
@@ -166,8 +166,9 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
     else:
         # If not, then upload file name to DB
         insert_id_query = (
-            "INSERT INTO imagereference(filenamereference, TileEdge, Enabled) VALUES "
-            "(%s, %s, false) RETURNING id"
+            "INSERT INTO imagereference(filenamereference, TileEdge, Enabled) "
+            "VALUES (%s, %s, false) "
+            "RETURNING id"
         )
         crsr.execute(
             insert_id_query,
@@ -185,21 +186,20 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
     # Replace all annotations
     if values.cnnOneValues and len(values.cnnOneValues) != 0:
         delete_query = (
-            "DELETE FROM cnn1annotations"
-            + values.colonisationType
-            + " WHERE imagereferenceid=%s"
+            f"DELETE FROM cnn1annotations{values.colonisationType} "
+            "WHERE imagereferenceid=%s"
         )
         crsr.execute(delete_query, (image_id,))
 
         if values.colonisationType == "am":
-            insert_values_query = (
-                """INSERT INTO cnn1annotations"""
-                + values.colonisationType
-                + """(
-                imagereferenceid, rownum, colnum, amcolonised, uncolonised, background,
-                unreadable, dse, hybrid, question, questioncomment)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            )
+            insert_values_query = f"""
+                INSERT INTO cnn1annotations{values.colonisationType}
+                (
+                    imagereferenceid, rownum, colnum, amcolonised, uncolonised,
+                    background, unreadable, dse, hybrid, question, questioncomment
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
             for row in values.cnnOneValues:
                 row_length = len(row)
                 crsr.execute(
@@ -219,15 +219,15 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
                     ),
                 )
         else:
-            insert_values_query = (
-                """INSERT INTO cnn1annotations"""
-                + values.colonisationType
-                + """(
-            imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo,
-            Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm, HybridDse,
-            Question, QuestionComment)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            )
+            insert_values_query = f"""
+                INSERT INTO cnn1annotations{values.colonisationType}
+                (
+                    imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo,
+                    Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm,
+                    HybridDse, Question, QuestionComment
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
 
             for row in values.cnnOneValues:
                 row_length = len(row)
@@ -302,10 +302,12 @@ def save_predictions_to_db(crsr, values: PredictionValues):
         )
     else:
         # If not, then upload file name to DB
-        insert_id_query = (
-            "INSERT INTO imagereference(filenamereference, TileEdge, Enabled) VALUES "
-            "(%s, %s, false) RETURNING id"
-        )
+        insert_id_query = """
+            INSERT INTO imagereference
+                (filenamereference, TileEdge, Enabled)
+            VALUES (%s, %s, false)
+            RETURNING id
+        """
         crsr.execute(
             insert_id_query,
             (
@@ -318,21 +320,20 @@ def save_predictions_to_db(crsr, values: PredictionValues):
     # Then either take existing image ref ID or use new one and upload under it
     if values.cnnOneValues and len(values.cnnOneValues) != 0:
         delete_query = (
-            "DELETE FROM cnn1predictions"
-            + values.colonisationType
-            + " WHERE imagereferenceid=%s"
+            f"DELETE FROM cnn1predictions{values.colonisationType} "
+            "WHERE imagereferenceid=%s"
         )
         crsr.execute(delete_query, (image_id,))
 
         if values.colonisationType == "am":
-            insert_values_query = (
-                """INSERT INTO cnn1predictions"""
-                + values.colonisationType
-                + """(
-            imagereferenceid, rownum, colnum, amcolonised, uncolonised, background,
-            unreadable, dse, hybrid, contextuallabel)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            )
+            insert_values_query = f"""
+                INSERT INTO cnn1predictions{values.colonisationType}
+                (
+                    imagereferenceid, rownum, colnum, amcolonised, uncolonised,
+                    background, unreadable, dse, hybrid, contextuallabel
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
             for row in values.cnnOneValues:
                 crsr.execute(
                     insert_values_query,
@@ -350,16 +351,15 @@ def save_predictions_to_db(crsr, values: PredictionValues):
                     ),
                 )
         else:
-            insert_values_query = (
-                """INSERT INTO cnn1predictions"""
-                + values.colonisationType
-                + """(
-            imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo,
-            Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm, HybridDse,
-            contextuallabel)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            )
-
+            insert_values_query = f"""
+                INSERT INTO cnn1predictions{values.colonisationType}
+                (
+                    imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo,
+                    Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm,
+                    HybridDse, contextuallabel
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
             for row in values.cnnOneValues:
                 crsr.execute(
                     insert_values_query,
@@ -473,7 +473,8 @@ def get_tile_edge(crsr, id):
 
 def check_entries_for_image(crsr, image_name, colonisation_type):
     fetch_images = (
-        "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt FROM ImageReference "
+        "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt "
+        "FROM ImageReference "
         "WHERE FileNameReference=%s"
     )
     crsr.execute(fetch_images, (image_name,))
@@ -484,7 +485,8 @@ def check_entries_for_image(crsr, image_name, colonisation_type):
 
 def check_entries_for_id(crsr, id, colonisation_type):
     fetch_images = (
-        "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt FROM ImageReference "
+        "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt "
+        "FROM ImageReference "
         "WHERE Id=%s"
     )
     crsr.execute(fetch_images, (id,))
@@ -502,16 +504,20 @@ def _get_existing_entries_for_image(crsr, colonisation_type, images):
         enabled = value[2]
         tileEdge = value[3]
         updatedAt = value[4]
-        cnn1_predictions_exist_query = (
-            "SELECT EXISTS(SELECT 1 FROM cnn1predictions"
-            + colonisation_type
-            + " WHERE ImageReferenceId=%s)"
-        )
-        cnn1_annotations_exist_query = (
-            "SELECT EXISTS(SELECT 1 FROM cnn1annotations"
-            + colonisation_type
-            + " WHERE ImageReferenceId=%s)"
-        )
+        cnn1_predictions_exist_query = f"""
+            SELECT EXISTS(
+                SELECT 1
+                FROM cnn1predictions{colonisation_type}
+                WHERE ImageReferenceId=%s
+            )
+        """
+        cnn1_annotations_exist_query = f"""
+            SELECT EXISTS(
+                SELECT 1
+                FROM cnn1annotations{colonisation_type}"
+                WHERE ImageReferenceId=%s
+            )
+        """
 
         crsr.execute(cnn1_predictions_exist_query, (id,))
         cnn1_predictions_exist = crsr.fetchone()[0]
@@ -536,7 +542,7 @@ def download_entries_as_csv(crsr, id, type, colonisation_type):
     output = io.StringIO()
 
     fetch_values_query = (
-        "SELECT * FROM Cnn1" + type + colonisation_type + " WHERE ImageReferenceId=%s"
+        f"SELECT * FROM Cnn1{type}{colonisation_type} WHERE ImageReferenceId=%s"
     )
     crsr.execute(fetch_values_query, (id,))
     entries = crsr.fetchall()
