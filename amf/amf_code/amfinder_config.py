@@ -266,35 +266,35 @@ def human_readable_header():
     return HUMAN_HEADERS[PAR["colonisation_type"]]
 
 
-def get(id):
+def get(id_):
     """
     Retrieve application settings.
 
     :param id: Unique identifier.
     """
 
-    id = id.lower()
+    id_ = id_.lower()
 
-    if id in PAR:
+    if id_ in PAR:
         # Special case, look into a specific folder.
-        if id in ["model", "model_erm"] and PAR[id] is not None:
+        if id_ in ["model", "model_erm"] and PAR[id_] is not None:
             # Check if model exists in trained networks, else use absolute path
-            model_name = os.path.basename(PAR[id])
+            model_name = os.path.basename(PAR[id_])
             path = os.path.join(get_appdir(), "trained_networks", model_name)
 
             if not os.path.isfile(path):
-                path = PAR[id]
+                path = PAR[id_]
 
             return path
 
         else:
-            return PAR[id]
+            return PAR[id_]
 
-    elif id in PAR["monitors"]:
-        return PAR["monitors"][id]
+    elif id_ in PAR["monitors"]:
+        return PAR["monitors"][id_]
 
     else:
-        AmfLog.warning(f"Unknown parameter {id}")
+        AmfLog.warning(f"Unknown parameter {id_}")
         return None
 
 
@@ -321,7 +321,7 @@ def find_files_in_directory(directory, convert_tiff=False):
     return img_files
 
 
-def set(id, value, create=False):
+def set_(id_, value, create=False):
     """
     Updates application settings.
 
@@ -334,15 +334,15 @@ def set(id, value, create=False):
         return
 
     else:
-        id = id.lower()
+        id_ = id_.lower()
 
-        if id in PAR:
-            PAR[id] = value
+        if id_ in PAR:
+            PAR[id_] = value
 
-            if id == "colonisation_type":
+            if id_ == "colonisation_type":
                 PAR["header"] = HEADERS[value]
 
-            elif id == "collapse":
+            elif id_ == "collapse":
                 if value:
                     if PAR["colonisation_type"] == "am":
                         PAR["header"] = [
@@ -382,14 +382,14 @@ def set(id, value, create=False):
                         ],
                     }
 
-        elif id in PAR["monitors"]:
-            PAR["monitors"][id] = value
+        elif id_ in PAR["monitors"]:
+            PAR["monitors"][id_] = value
 
         elif create:
-            PAR[id] = value
+            PAR[id_] = value
 
         else:
-            AmfLog.warning(f"Unknown parameter {id}")
+            AmfLog.warning(f"Unknown parameter {id_}")
 
 
 def add_training_subparser(subparsers):
@@ -1506,56 +1506,56 @@ def set_train_config(trainConfig: TrainConfig):
     Sets various parameters such as input files, model details, batch size,
     number of epochs, and output directory for the training process.
     """
-    set("run_mode", "train")
+    set_("run_mode", "train")
     set_device(trainConfig.device)
 
-    set("semi_supervised", trainConfig.semiSupervised)
-    set("train_active_learning", trainConfig.trainActiveLearning)
-    set(
+    set_("semi_supervised", trainConfig.semiSupervised)
+    set_("train_active_learning", trainConfig.trainActiveLearning)
+    set_(
         "get_tiles_for_labelling_using_active_learning",
         trainConfig.getTilesForLabellingUsingActiveLearning,
     )
-    set("active_learning_method", trainConfig.activeLearningMethod)
-    set("num_samples_for_labelling", trainConfig.numSamplesForLabelling)
-    set("mc_samples", trainConfig.mcSamples)
-    set("dropout_rate", trainConfig.dropoutRate)
+    set_("active_learning_method", trainConfig.activeLearningMethod)
+    set_("num_samples_for_labelling", trainConfig.numSamplesForLabelling)
+    set_("mc_samples", trainConfig.mcSamples)
+    set_("dropout_rate", trainConfig.dropoutRate)
     if trainConfig.semiSupervised:
-        set("root_path", trainConfig.inputFiles)
+        set_("root_path", trainConfig.inputFiles)
     else:
         files = find_files_in_directory(trainConfig.inputFiles)
-        set("input_files", files)
+        set_("input_files", files)
 
-    set("use_db", trainConfig.useDb)
-    set("mlflow_flag", trainConfig.mlflowFlag)
-    set("colonisation_type", trainConfig.colonisationType)
-    set("batch_size", trainConfig.batchSize)
-    set("adam_beta1", trainConfig.adamBeta1)
-    set("adam_beta2", trainConfig.adamBeta2)
-    set("balance_factor", trainConfig.balanceFactor)
+    set_("use_db", trainConfig.useDb)
+    set_("mlflow_flag", trainConfig.mlflowFlag)
+    set_("colonisation_type", trainConfig.colonisationType)
+    set_("batch_size", trainConfig.batchSize)
+    set_("adam_beta1", trainConfig.adamBeta1)
+    set_("adam_beta2", trainConfig.adamBeta2)
+    set_("balance_factor", trainConfig.balanceFactor)
     # Override learning rate and epochs if train_active_learning is enabled
     if trainConfig.trainActiveLearning:
-        set("learning_rate_active_learning", trainConfig.learningRateActiveLearning)
-        set("epochs_active_learning", trainConfig.epochsActiveLearning)
+        set_("learning_rate_active_learning", trainConfig.learningRateActiveLearning)
+        set_("epochs_active_learning", trainConfig.epochsActiveLearning)
         AmfLog.info("Training mode after active learning")
     else:
-        set("learning_rate", trainConfig.learningRate)
-        set("epochs", trainConfig.epochs)
-    set("model", trainConfig.model)
-    set("model_erm", trainConfig.modelErm)
-    set("model_type", trainConfig.modelType)
-    set("pre_trained", trainConfig.preTrained)
-    set("vfrac", trainConfig.vfrac)
-    set("data_augm", trainConfig.dataAugm)
-    set("summary", trainConfig.summary)
-    set("patience_e", trainConfig.patienceE)
-    set("patience_r", trainConfig.patienceR)
-    set("tile_edge", trainConfig.tileEdge)
+        set_("learning_rate", trainConfig.learningRate)
+        set_("epochs", trainConfig.epochs)
+    set_("model", trainConfig.model)
+    set_("model_erm", trainConfig.modelErm)
+    set_("model_type", trainConfig.modelType)
+    set_("pre_trained", trainConfig.preTrained)
+    set_("vfrac", trainConfig.vfrac)
+    set_("data_augm", trainConfig.dataAugm)
+    set_("summary", trainConfig.summary)
+    set_("patience_e", trainConfig.patienceE)
+    set_("patience_r", trainConfig.patienceR)
+    set_("tile_edge", trainConfig.tileEdge)
 
     if trainConfig.outdir is None or trainConfig.outdir == "":
         results_dir = create_results_dir("train")
-        set("outdir", results_dir)
+        set_("outdir", results_dir)
     else:
-        set("outdir", trainConfig.outdir)
+        set_("outdir", trainConfig.outdir)
 
 
 def set_predict_config(predictionConfig: PredictionConfig):
@@ -1569,25 +1569,25 @@ def set_predict_config(predictionConfig: PredictionConfig):
     This function sets parameters required for making predictions, such as
     input files, model, and output directory.
     """
-    set("run_mode", "predict")
+    set_("run_mode", "predict")
     set_device(predictionConfig.device)
     files = find_files_in_directory(predictionConfig.inputFiles)
-    set("input_files", files)
-    set("use_db", predictionConfig.useDb)
-    set("colonisation_type", predictionConfig.colonisationType)
-    set("tile_edge", predictionConfig.tileEdge)
-    set("model", predictionConfig.model)
-    set("model_erm", predictionConfig.modelErm)
-    set("temperature_factor_path", predictionConfig.temperatureFactorPath)
-    set("temperature_factor_path_erm", predictionConfig.temperatureFactorPathErm)
+    set_("input_files", files)
+    set_("use_db", predictionConfig.useDb)
+    set_("colonisation_type", predictionConfig.colonisationType)
+    set_("tile_edge", predictionConfig.tileEdge)
+    set_("model", predictionConfig.model)
+    set_("model_erm", predictionConfig.modelErm)
+    set_("temperature_factor_path", predictionConfig.temperatureFactorPath)
+    set_("temperature_factor_path_erm", predictionConfig.temperatureFactorPathErm)
 
     if predictionConfig.outdir is None or predictionConfig.outdir == "":
-        set("outdir", clean_path(predictionConfig.inputFiles))
+        set_("outdir", clean_path(predictionConfig.inputFiles))
     else:
-        set("outdir", predictionConfig.outdir)
+        set_("outdir", predictionConfig.outdir)
 
-    set("use_contextual_confidence", predictionConfig.useContextualConfidence)
-    set(
+    set_("use_contextual_confidence", predictionConfig.useContextualConfidence)
+    set_(
         "contextual_confidence_threshold",
         predictionConfig.contextualConfidenceThreshold,
     )
@@ -1603,34 +1603,34 @@ def set_test_config(testConfig: TestConfig):
     This function configures the settings needed for the testing procedure,
     including input files, model, and output directory for results.
     """
-    set("run_mode", "test")
+    set_("run_mode", "test")
     set_device(testConfig.device)
-    set("semi_supervised", testConfig.semiSupervised)
+    set_("semi_supervised", testConfig.semiSupervised)
     if testConfig.semiSupervised:
-        set("root_path", testConfig.inputFiles)
+        set_("root_path", testConfig.inputFiles)
     else:
         files = find_files_in_directory(testConfig.inputFiles)
-        set("input_files", files)
+        set_("input_files", files)
 
-    set("use_db", testConfig.useDb)
-    set("colonisation_type", testConfig.colonisationType)
-    set("model", testConfig.model)
-    set("model_erm", testConfig.modelErm)
-    set("tile_edge", testConfig.tileEdge)
-    set("fixmatch_results_directory", testConfig.fixmatchResultsDirectory)
-    set("temperature_factor_path", testConfig.temperatureFactorPath)
-    set("temperature_factor_path_erm", testConfig.temperatureFactorPathErm)
+    set_("use_db", testConfig.useDb)
+    set_("colonisation_type", testConfig.colonisationType)
+    set_("model", testConfig.model)
+    set_("model_erm", testConfig.modelErm)
+    set_("tile_edge", testConfig.tileEdge)
+    set_("fixmatch_results_directory", testConfig.fixmatchResultsDirectory)
+    set_("temperature_factor_path", testConfig.temperatureFactorPath)
+    set_("temperature_factor_path_erm", testConfig.temperatureFactorPathErm)
 
     if (
         testConfig.outdir is None or testConfig.outdir == ""
     ) and not testConfig.semiSupervised:
         results_dir = create_results_dir("test")
-        set("outdir", results_dir)
+        set_("outdir", results_dir)
     else:
-        set("outdir", testConfig.outdir)
+        set_("outdir", testConfig.outdir)
 
-    set("use_contextual_confidence", testConfig.useContextualConfidence)
-    set("contextual_confidence_threshold", testConfig.contextualConfidenceThreshold)
+    set_("use_contextual_confidence", testConfig.useContextualConfidence)
+    set_("contextual_confidence_threshold", testConfig.contextualConfidenceThreshold)
 
 
 def set_colonisation_config(colonisationConfig: BaseConfig):
@@ -1643,20 +1643,20 @@ def set_colonisation_config(colonisationConfig: BaseConfig):
     This function configures the settings needed for the testing procedure,
     including input files, model, and output directory for results.
     """
-    set("run_mode", "colonisation")
+    set_("run_mode", "colonisation")
     set_device(colonisationConfig.device)
     files = find_files_in_directory(colonisationConfig.inputFiles)
-    set("input_files", files)
+    set_("input_files", files)
 
-    set("use_db", colonisationConfig.useDb)
-    set("colonisation_type", colonisationConfig.colonisationType)
-    set("tile_edge", colonisationConfig.tileEdge)
+    set_("use_db", colonisationConfig.useDb)
+    set_("colonisation_type", colonisationConfig.colonisationType)
+    set_("tile_edge", colonisationConfig.tileEdge)
 
     if colonisationConfig.outdir is None or colonisationConfig.outdir == "":
         results_dir = create_results_dir("colonisation_results")
-        set("outdir", results_dir)
+        set_("outdir", results_dir)
     else:
-        set("outdir", colonisationConfig.outdir)
+        set_("outdir", colonisationConfig.outdir)
 
 
 def set_convert_config(convertConfig: ConvertConfig):
@@ -1670,21 +1670,21 @@ def set_convert_config(convertConfig: ConvertConfig):
     This function defines the necessary settings for annotations conversion,
     including input files, colonisation type, threshold, and output directory.
     """
-    set("run_mode", "convert")
+    set_("run_mode", "convert")
     set_device(convertConfig.device)
     files = find_files_in_directory(convertConfig.inputFiles)
-    set("input_files", files)
-    set("use_db", convertConfig.useDb)
-    set("aggregate_tiles", convertConfig.aggregateTiles)
-    set("colonisation_type", convertConfig.colonisationType)
-    set("threshold", convertConfig.threshold)
-    set("tile_edge", convertConfig.tileEdge)
-    set("use_contextual_confidence", convertConfig.useContextualConfidence)
+    set_("input_files", files)
+    set_("use_db", convertConfig.useDb)
+    set_("aggregate_tiles", convertConfig.aggregateTiles)
+    set_("colonisation_type", convertConfig.colonisationType)
+    set_("threshold", convertConfig.threshold)
+    set_("tile_edge", convertConfig.tileEdge)
+    set_("use_contextual_confidence", convertConfig.useContextualConfidence)
 
     if convertConfig.outdir is None or convertConfig.outdir == "":
-        set("outdir", clean_path(convertConfig.inputFiles))
+        set_("outdir", clean_path(convertConfig.inputFiles))
     else:
-        set("outdir", convertConfig.outdir)
+        set_("outdir", convertConfig.outdir)
 
 
 def set_tif_conversion_config(tifConversionConfig: TifConversionConfig):
@@ -1697,19 +1697,19 @@ def set_tif_conversion_config(tifConversionConfig: TifConversionConfig):
 
     This function defines the necessary settings for tif file conversion.
     """
-    set("run_mode", "tifconversion")
+    set_("run_mode", "tifconversion")
     set_device(tifConversionConfig.device)
     files = find_files_in_directory(tifConversionConfig.inputFiles, convert_tiff=True)
-    set("input_files", files)
-    set("use_db", tifConversionConfig.useDb)
-    set("colonisation_type", tifConversionConfig.colonisationType)
-    set("convert_image_file_type", tifConversionConfig.convertImageFileType)
-    set("tile_edge", tifConversionConfig.tileEdge)
+    set_("input_files", files)
+    set_("use_db", tifConversionConfig.useDb)
+    set_("colonisation_type", tifConversionConfig.colonisationType)
+    set_("convert_image_file_type", tifConversionConfig.convertImageFileType)
+    set_("tile_edge", tifConversionConfig.tileEdge)
 
     if tifConversionConfig.outdir is None or tifConversionConfig.outdir == "":
-        set("outdir", clean_path(tifConversionConfig.inputFiles))
+        set_("outdir", clean_path(tifConversionConfig.inputFiles))
     else:
-        set("outdir", tifConversionConfig.outdir)
+        set_("outdir", tifConversionConfig.outdir)
 
 
 def set_calibrate_config(calibrateConfig: CalibrateConfig):
@@ -1723,39 +1723,39 @@ def set_calibrate_config(calibrateConfig: CalibrateConfig):
     This function sets parameters necessary for calibration models, including
     input files, model, and output directory for results.
     """
-    set("run_mode", "calibration")
+    set_("run_mode", "calibration")
     set_device(calibrateConfig.device)
     files = find_files_in_directory(calibrateConfig.inputFiles)
-    set("input_files", files)
-    set("use_db", calibrateConfig.useDb)
-    set("colonisation_type", calibrateConfig.colonisationType)
-    set("model", calibrateConfig.model)
-    set("model_erm", calibrateConfig.modelErm)
-    set("tile_edge", calibrateConfig.tileEdge)
+    set_("input_files", files)
+    set_("use_db", calibrateConfig.useDb)
+    set_("colonisation_type", calibrateConfig.colonisationType)
+    set_("model", calibrateConfig.model)
+    set_("model_erm", calibrateConfig.modelErm)
+    set_("tile_edge", calibrateConfig.tileEdge)
 
     if calibrateConfig.outdir is None or calibrateConfig.outdir == "":
         results_dir = create_results_dir("calibrate")
-        set("outdir", results_dir)
+        set_("outdir", results_dir)
     else:
-        set("outdir", calibrateConfig.outdir)
+        set_("outdir", calibrateConfig.outdir)
 
 
 def set_device(device):
     # Get the device setting
     if device == "automatic":
         if torch.cuda.is_available():
-            set("device", "cuda:0")
+            set_("device", "cuda:0")
             AmfLog.text("Device set on automatic mode. Running via gpu")
 
         else:
-            set("num_workers", 0)
-            set("device", "cpu")
+            set_("num_workers", 0)
+            set_("device", "cpu")
             AmfLog.text(
                 "Device set on automatic mode. CUDA is not available. Running via cpu"
             )
 
     elif device == "cpu":
-        set("num_workers", 0)
+        set_("num_workers", 0)
         AmfLog.text("Device manually set to cpu")
 
     elif device == "cuda:0" and torch.cuda.is_available():
@@ -1777,8 +1777,8 @@ def initialize():
     par = parser.parse_known_args()[0]
 
     # Main arguments.
-    set("run_mode", par.run_mode)
-    set("colonisation_type", par.colonisation_type)
+    set_("run_mode", par.run_mode)
+    set_("colonisation_type", par.colonisation_type)
     convert_tiff = False
     if par.run_mode == "tifconversion":
         convert_tiff = True
@@ -1786,119 +1786,119 @@ def initialize():
     semi_supervised = False
     if par.run_mode == "test" or par.run_mode == "train":
         semi_supervised = par.semi_supervised
-        set("semi_supervised", semi_supervised)
+        set_("semi_supervised", semi_supervised)
         if semi_supervised:
-            set("root_path", par.images)
+            set_("root_path", par.images)
 
     if not semi_supervised:
         files = find_files_in_directory(par.images, convert_tiff)
-        set("input_files", files)
+        set_("input_files", files)
 
-    set("use_db", par.use_db)
+    set_("use_db", par.use_db)
 
     if par.run_mode == "train":
         if par.train_active_learning:
-            set("learning_rate_active_learning", par.learning_rate_active_learning)
-            set("epochs_active_learning", par.epochs_active_learning)
+            set_("learning_rate_active_learning", par.learning_rate_active_learning)
+            set_("epochs_active_learning", par.epochs_active_learning)
         else:
-            set("learning_rate", par.learning_rate)
-            set("epochs", par.epochs)
+            set_("learning_rate", par.learning_rate)
+            set_("epochs", par.epochs)
 
-        set("mlflow_flag", par.mlflow_flag)
-        set("batch_size", par.batch_size)
-        set("adam_beta1", par.adam_beta1)
-        set("adam_beta2", par.adam_beta2)
-        set("balance_factor", par.balance_factor)
-        set("model", par.model)
-        set("model_erm", par.model_erm)
-        set("model_type", par.model_type)
-        set("pre_trained", par.pre_trained)
-        set("vfrac", par.vfrac)
-        set("data_augm", par.data_augm)
-        set("summary", par.summary)
-        set("outdir", par.outdir)
-        set("patience_e", par.patience_e)
-        set("patience_r", par.patience_r)
+        set_("mlflow_flag", par.mlflow_flag)
+        set_("batch_size", par.batch_size)
+        set_("adam_beta1", par.adam_beta1)
+        set_("adam_beta2", par.adam_beta2)
+        set_("balance_factor", par.balance_factor)
+        set_("model", par.model)
+        set_("model_erm", par.model_erm)
+        set_("model_type", par.model_type)
+        set_("pre_trained", par.pre_trained)
+        set_("vfrac", par.vfrac)
+        set_("data_augm", par.data_augm)
+        set_("summary", par.summary)
+        set_("outdir", par.outdir)
+        set_("patience_e", par.patience_e)
+        set_("patience_r", par.patience_r)
 
         # if an outdir has not been specified, create one in the default loc
         if par.outdir is None:
             results_dir = create_results_dir("train")
-            set("outdir", results_dir)
+            set_("outdir", results_dir)
 
-        set(
+        set_(
             "get_tiles_for_labelling_using_active_learning",
             par.get_tiles_for_labelling_using_active_learning,
         )
-        set("active_learning_method", par.active_learning_method)
-        set("num_samples_for_labelling", par.num_samples_for_labelling)
-        set("mc_samples", par.mc_samples)
-        set("dropout_rate", par.dropout_rate)
-        set("tile_edge", par.edge)
+        set_("active_learning_method", par.active_learning_method)
+        set_("num_samples_for_labelling", par.num_samples_for_labelling)
+        set_("mc_samples", par.mc_samples)
+        set_("dropout_rate", par.dropout_rate)
+        set_("tile_edge", par.edge)
 
-        set("collapse", par.collapse)
+        set_("collapse", par.collapse)
 
     elif par.run_mode == "predict":
-        set("tile_edge", par.edge)
-        set("model", par.model)
-        set("model_erm", par.model_erm)
-        set("temperature_factor_path", par.temperature_factor_path)
-        set("temperature_factor_path_erm", par.temperature_factor_path_erm)
-        set("use_contextual_confidence", par.use_contextual_confidence)
-        set("contextual_confidence_threshold", par.contextual_confidence_threshold)
-        set("outdir", par.outdir)
+        set_("tile_edge", par.edge)
+        set_("model", par.model)
+        set_("model_erm", par.model_erm)
+        set_("temperature_factor_path", par.temperature_factor_path)
+        set_("temperature_factor_path_erm", par.temperature_factor_path_erm)
+        set_("use_contextual_confidence", par.use_contextual_confidence)
+        set_("contextual_confidence_threshold", par.contextual_confidence_threshold)
+        set_("outdir", par.outdir)
 
-        set("collapse", par.collapse)
+        set_("collapse", par.collapse)
 
         if par.outdir is None:
-            set("outdir", clean_path(par.images))
+            set_("outdir", clean_path(par.images))
 
     elif par.run_mode == "test":
-        set("model", par.model)
-        set("model_erm", par.model_erm)
-        set("outdir", par.outdir)
-        set("tile_edge", par.edge)
-        set("fixmatch_results_directory", par.fixmatch_results_directory)
-        set("temperature_factor_path", par.temperature_factor_path)
-        set("temperature_factor_path_erm", par.temperature_factor_path_erm)
-        set("use_contextual_confidence", par.use_contextual_confidence)
-        set("contextual_confidence_threshold", par.contextual_confidence_threshold)
+        set_("model", par.model)
+        set_("model_erm", par.model_erm)
+        set_("outdir", par.outdir)
+        set_("tile_edge", par.edge)
+        set_("fixmatch_results_directory", par.fixmatch_results_directory)
+        set_("temperature_factor_path", par.temperature_factor_path)
+        set_("temperature_factor_path_erm", par.temperature_factor_path_erm)
+        set_("use_contextual_confidence", par.use_contextual_confidence)
+        set_("contextual_confidence_threshold", par.contextual_confidence_threshold)
 
-        set("collapse", par.collapse)
+        set_("collapse", par.collapse)
 
         # if an outdir has not been specified, create one in the default loc
         if par.outdir is None and not semi_supervised:
             results_dir = create_results_dir("test")
-            set("outdir", results_dir)
+            set_("outdir", results_dir)
 
     elif par.run_mode == "colonisation":
-        set("outdir", par.outdir)
-        set("tile_edge", par.edge)
+        set_("outdir", par.outdir)
+        set_("tile_edge", par.edge)
 
         # if an outdir has not been specified, create one in the default loc
         if par.outdir is None:
             results_dir = create_results_dir("colonisation_results")
-            set("outdir", results_dir)
+            set_("outdir", results_dir)
 
     elif par.run_mode == "convert":
-        set("threshold", par.threshold)
-        set("aggregate_tiles", par.aggregate_tiles)
-        set("tile_edge", par.edge)
-        set("use_contextual_confidence", par.use_contextual_confidence)
-        set("collapse", par.collapse)
+        set_("threshold", par.threshold)
+        set_("aggregate_tiles", par.aggregate_tiles)
+        set_("tile_edge", par.edge)
+        set_("use_contextual_confidence", par.use_contextual_confidence)
+        set_("collapse", par.collapse)
 
     elif par.run_mode == "tifconversion":
-        set("convert_image_file_type", par.convert_image_file_type)
-        set("tile_edge", par.edge)
+        set_("convert_image_file_type", par.convert_image_file_type)
+        set_("tile_edge", par.edge)
 
     elif par.run_mode == "calibrate":
-        set("model", par.model)
-        set("model_erm", par.model_erm)
-        set("tile_edge", par.edge)
-        set("outdir", par.outdir)
+        set_("model", par.model)
+        set_("model_erm", par.model_erm)
+        set_("tile_edge", par.edge)
+        set_("outdir", par.outdir)
 
         if par.outdir is None:
             results_dir = create_results_dir("calibrate")
-            set("outdir", results_dir)
+            set_("outdir", results_dir)
 
     else:
         pass

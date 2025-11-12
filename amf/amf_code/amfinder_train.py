@@ -379,13 +379,13 @@ def run(input_files, flag, train_active_learning=False):
             ):  # TODO: This needs to be tied to the config file!
                 AmfLog.text("Early stopping mechanism active")
                 early_stopping.check_early_stop(model, avg_val_loss)
-                AmfConfig.set("early_stopping", early_stopping)
+                AmfConfig.set_("early_stopping", early_stopping)
                 if early_stopping.early_stop:
                     AmfLog.text("Early stopping triggered.")
                     model.load_state_dict(
                         early_stopping.best_weights
                     )  # Save best weights
-                    AmfConfig.set("early_break_epoch", epoch)
+                    AmfConfig.set_("early_break_epoch", epoch)
                     AmfSave.save_training_data(history, model, save_path)
                     break  # Exit the training loop if early stopping condition is met
 
@@ -402,7 +402,7 @@ def run(input_files, flag, train_active_learning=False):
             if reduce_lr is not None:
                 AmfLog.text("Reduce LR mechanism active")
                 reduce_lr.step(avg_val_loss)
-                AmfConfig.set("reduce_lr_on_plateau", reduce_lr)
+                AmfConfig.set_("reduce_lr_on_plateau", reduce_lr)
 
         model.load_state_dict(
             best_model_weights

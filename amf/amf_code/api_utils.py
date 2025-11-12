@@ -7,7 +7,7 @@ from fastapi import HTTPException, Response
 from api_objects import AnnotationValues, PredictionValues
 
 
-def fetch_items(crsr, name, id, type, cnn, colonisation_type):
+def fetch_items(crsr, name, id_, type_, cnn, colonisation_type):
     """
     Fetches items from the database based on provided parameters.
 
@@ -18,8 +18,8 @@ def fetch_items(crsr, name, id, type, cnn, colonisation_type):
     Parameters:
     crsr (cursor): The database cursor used to execute SQL queries.
     name (str): The name reference used to fetch image IDs; can be empty.
-    id (str): The specific ID reference for fetching item data; can be empty.
-    type (str): A string that represents predictions or annotations.
+    id_ (str): The specific ID reference for fetching item data; can be empty.
+    type_ (str): A string that represents predictions or annotations.
     cnn (str): A string that represents the CNN.
     colonisation_type (str): A string that represents am or erm
 
@@ -31,39 +31,39 @@ def fetch_items(crsr, name, id, type, cnn, colonisation_type):
     HTTPException: If both name and id are empty, or if the parameters do not
                    meet the expected input criteria.
     """
-    if name == "" and id == "":
+    if name == "" and id_ == "":
         raise HTTPException(
             status_code=400, detail="Name & id parameters are empty, please populate"
         )
 
-    if name != "" and id != "":
+    if name != "" and id_ != "":
         print("Both name and ID provided, name ignored in favour of more specific ID")
 
     values = {}
     image_ids = []
-    if id == "":
+    if id_ == "":
         fetch_image_id = "SELECT Id FROM ImageReference WHERE FileNameReference=%s"
         crsr.execute(fetch_image_id, (name,))
         image_ids = [row[0] for row in crsr.fetchall()]
     else:
-        image_ids.append(id)
+        image_ids.append(id_)
 
     fetch_values_query = (
-        f"SELECT * FROM Cnn{cnn}{type}{colonisation_type} WHERE ImageReferenceId=%s"
+        f"SELECT * FROM Cnn{cnn}{type_}{colonisation_type} WHERE ImageReferenceId=%s"
     )
-    for id in image_ids:
-        crsr.execute(fetch_values_query, (id,))
+    for id_ in image_ids:
+        crsr.execute(fetch_values_query, (id_,))
         preds = crsr.fetchall()
         out = []
         # Remove image reference
         for x in preds:
             out.append(x[1:])
-        values[id] = out
+        values[id_] = out
 
     return values
 
 
-def set_to_enabled_in_db(crsr, id):
+def set_to_enabled_in_db(crsr, id_):
     """
     Sets the 'Enabled' status of an image reference to true in the database for a given
     ID.
@@ -74,7 +74,7 @@ def set_to_enabled_in_db(crsr, id):
 
     Parameters:
     crsr (cursor): The database cursor used to execute SQL queries.
-    id (int or str): The unique identifier of the image reference to be updated.
+    id_ (int or str): The unique identifier of the image reference to be updated.
 
     Returns:
     str: The file name reference of the updated image.
@@ -89,7 +89,7 @@ def set_to_enabled_in_db(crsr, id):
         "WHERE Id = %s "
         "RETURNING filenamereference"
     )
-    crsr.execute(update_enabled_query, (id,))
+    crsr.execute(update_enabled_query, (id_,))
     file_name_reference = crsr.fetchone()[0]
     set_enabled_query = (
         "UPDATE imageReference "
@@ -101,7 +101,7 @@ def set_to_enabled_in_db(crsr, id):
         set_enabled_query,
         (
             file_name_reference,
-            id,
+            id_,
         ),
     )
 
@@ -459,15 +459,15 @@ def get_enabled(crsr, image_name):
             f"No enabled annotations for image {image_name}, return image with most "
             "recent timestamp instead."
         )
-        id = get_most_recent_timestamp(crsr, image_name)
-        if id is not None:
-            set_to_enabled_in_db(crsr, id)
-        return id
+        id_ = get_most_recent_timestamp(crsr, image_name)
+        if id_ is not None:
+            set_to_enabled_in_db(crsr, id_)
+        return id_
 
 
-def get_tile_edge(crsr, id):
+def get_tile_edge(crsr, id_):
     fetch_images = "SELECT TileEdge FROM ImageReference WHERE Id=%s"
-    crsr.execute(fetch_images, (id,))
+    crsr.execute(fetch_images, (id_,))
     return crsr.fetchone()
 
 
@@ -483,13 +483,13 @@ def check_entries_for_image(crsr, image_name, colonisation_type):
     return _get_existing_entries_for_image(crsr, colonisation_type, images)
 
 
-def check_entries_for_id(crsr, id, colonisation_type):
+def check_entries_for_id(crsr, id_, colonisation_type):
     fetch_images = (
         "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt "
         "FROM ImageReference "
         "WHERE Id=%s"
     )
-    crsr.execute(fetch_images, (id,))
+    crsr.execute(fetch_images, (id_,))
     images = crsr.fetchall()
 
     return _get_existing_entries_for_image(crsr, colonisation_type, images)
@@ -499,7 +499,7 @@ def _get_existing_entries_for_image(crsr, colonisation_type, images):
     output = {}
 
     for value in images:
-        id = value[0]
+        id_ = value[0]
         timestamp = value[1]
         enabled = value[2]
         tileEdge = value[3]
@@ -519,14 +519,14 @@ def _get_existing_entries_for_image(crsr, colonisation_type, images):
             )
         """
 
-        crsr.execute(cnn1_predictions_exist_query, (id,))
+        crsr.execute(cnn1_predictions_exist_query, (id_,))
         cnn1_predictions_exist = crsr.fetchone()[0]
 
-        crsr.execute(cnn1_annotations_exist_query, (id,))
+        crsr.execute(cnn1_annotations_exist_query, (id_,))
         cnn1_annotations_exist = crsr.fetchone()[0]
 
         if cnn1_annotations_exist or cnn1_predictions_exist:
-            output[id] = {
+            output[id_] = {
                 "timestamp": timestamp,
                 "enabled": enabled,
                 "tileEdge": tileEdge,
@@ -538,13 +538,13 @@ def _get_existing_entries_for_image(crsr, colonisation_type, images):
     return output
 
 
-def download_entries_as_csv(crsr, id, type, colonisation_type):
+def download_entries_as_csv(crsr, id_, type_, colonisation_type):
     output = io.StringIO()
 
     fetch_values_query = (
-        f"SELECT * FROM Cnn1{type}{colonisation_type} WHERE ImageReferenceId=%s"
+        f"SELECT * FROM Cnn1{type_}{colonisation_type} WHERE ImageReferenceId=%s"
     )
-    crsr.execute(fetch_values_query, (id,))
+    crsr.execute(fetch_values_query, (id_,))
     entries = crsr.fetchall()
     out = []
     for x in entries:
@@ -556,7 +556,7 @@ def download_entries_as_csv(crsr, id, type, colonisation_type):
     writer = csv.writer(output)
 
     if colonisation_type == "am":
-        if type.lower() == "annotations":
+        if type_.lower() == "annotations":
             writer.writerow(
                 [
                     "row",
@@ -586,7 +586,7 @@ def download_entries_as_csv(crsr, id, type, colonisation_type):
                 ]
             )
     else:
-        if type.lower() == "annotations":
+        if type_.lower() == "annotations":
             writer.writerow(
                 [
                     "row",
@@ -632,9 +632,9 @@ def download_entries_as_csv(crsr, id, type, colonisation_type):
     return csv_string
 
 
-def delete_image(crsr, id):
+def delete_image(crsr, id_):
     delete_query = "DELETE FROM ImageReference WHERE Id=%s"
-    crsr.execute(delete_query, (id,))
+    crsr.execute(delete_query, (id_,))
 
 
 def zip_files_for_transit(images):

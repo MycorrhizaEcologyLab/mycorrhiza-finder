@@ -125,12 +125,12 @@ export default class PredictionsApi {
   }
 
   static async fetchAnnotationsById(id, cnn, colonisation_type) {
-    const fetchAnnotationsUrl = `http://127.0.0.1:8001/fetch-annotations-cnn-${cnn}?id=${id}&colonisation_type=${colonisation_type}`;
+    const fetchAnnotationsUrl = `http://127.0.0.1:8001/fetch-annotations-cnn-${cnn}?id_=${id}&colonisation_type=${colonisation_type}`;
     return await this.getFromBackend(fetchAnnotationsUrl);
   }
 
   static async fetchPredictionsById(id, cnn, colonisation_type) {
-    const fetchPredictionsUrl = `http://127.0.0.1:8001/fetch-predictions-cnn-${cnn}?id=${id}&colonisation_type=${colonisation_type}`;
+    const fetchPredictionsUrl = `http://127.0.0.1:8001/fetch-predictions-cnn-${cnn}?id_=${id}&colonisation_type=${colonisation_type}`;
     return await this.getFromBackend(fetchPredictionsUrl);
   }
 
@@ -229,12 +229,12 @@ export default class PredictionsApi {
   }
 
   static async checkEntriesForId(id, colonisation_type) {
-    const checkEntriesForIdUrl = `http://127.0.0.1:8001/check-entries-for-id?id=${id}&colonisation_type=${colonisation_type}`;
+    const checkEntriesForIdUrl = `http://127.0.0.1:8001/check-entries-for-id?id_=${id}&colonisation_type=${colonisation_type}`;
     return await this.getFromBackend(checkEntriesForIdUrl);
   }
 
   static async downloadEntries(id, type, colonisation_type) {
-    const downloadEntriesUrl = `http://127.0.0.1:8001/download-entries?id=${id}&type=${type}&colonisation_type=${colonisation_type}`;
+    const downloadEntriesUrl = `http://127.0.0.1:8001/download-entries?id_=${id}&type=${type}&colonisation_type=${colonisation_type}`;
     return await this.getFromBackend(downloadEntriesUrl);
   }
 

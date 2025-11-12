@@ -59,9 +59,9 @@ def initialize_size(path):
     if AmfConfig.get("use_db"):
         conn = connect("amf")
         with conn, conn.cursor() as crsr:
-            id = get_enabled(crsr, image_name)
-            if id is not None:
-                tile_edge = get_tile_edge(crsr, id)
+            id_ = get_enabled(crsr, image_name)
+            if id_ is not None:
+                tile_edge = get_tile_edge(crsr, id_)
                 tile_size = tile_edge[0]
     else:
         dirname = os.path.split(path)[0]
@@ -163,29 +163,29 @@ def create_annotations(path, tile_size):
 
         conn = connect("amf")
         with conn, conn.cursor() as crsr:
-            id = get_enabled(crsr, image_name)
+            id_ = get_enabled(crsr, image_name)
 
-            if id is None:
+            if id_ is None:
                 AmfLog.info(
                     f"Skipping {path} as no entries are saved in DB for this image"
                 )
                 return
 
-            existing_entries = check_entries_for_id(crsr, id, colonisation_type)
+            existing_entries = check_entries_for_id(crsr, id_, colonisation_type)
 
-            if existing_entries[id]["cnn1_annotations_exist"]:
+            if existing_entries[id_]["cnn1_annotations_exist"]:
                 AmfLog.info(
                     f"Skipping {path} as annotations already exist for enabled image"
                 )
                 return
-            elif existing_entries[id]["cnn1_predictions_exist"]:
+            elif existing_entries[id_]["cnn1_predictions_exist"]:
                 csv = download_entries_as_csv(
-                    crsr, id, "Predictions", colonisation_type
+                    crsr, id_, "Predictions", colonisation_type
                 )
                 out = preds_to_python_annot(path, io.StringIO(csv))
                 cnn1results = out.values.tolist()
                 values = AnnotationValues(
-                    imageReferenceId=id,
+                    imageReferenceId=id_,
                     colonisationType=colonisation_type,
                     tileEdge=tile_size,
                     cnnOneValues=cnn1results,

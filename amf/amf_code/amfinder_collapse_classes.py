@@ -149,17 +149,17 @@ def collapse_classes(path):
 
         conn = connect("amf")
         with conn, conn.cursor() as crsr:
-            id = get_enabled(crsr, image_name)
+            id_ = get_enabled(crsr, image_name)
 
-            if id is None:
+            if id_ is None:
                 AmfLog.warning(
                     f"Skipping {path} as no entries are saved in DB for this image"
                 )
                 return
 
-            existing_entries = check_entries_for_id(crsr, id, colonisation_type)
+            existing_entries = check_entries_for_id(crsr, id_, colonisation_type)
 
-            if existing_entries[id]["cnn1_annotations_exist"]:
+            if existing_entries[id_]["cnn1_annotations_exist"]:
                 raise NotImplementedError(
                     "DB access for class collapsing disabled as DB schema would need "
                     "to be updated"

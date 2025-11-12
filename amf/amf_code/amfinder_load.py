@@ -585,7 +585,7 @@ class TileFilesandData(Dataset):
 
         for path, config, annots in dataset:
             edge = config["tile_edge"]
-            AmfConfig.set("tile_edge", edge)
+            AmfConfig.set_("tile_edge", edge)
 
             image = AmfSegm.load(path)
             for annot in annots.itertuples():
@@ -615,7 +615,7 @@ class TileFilesandData(Dataset):
         cols = []
         for path, config, annots in dataset:
             edge = config["tile_edge"]
-            AmfConfig.set("tile_edge", edge)
+            AmfConfig.set_("tile_edge", edge)
             image = AmfSegm.load(path)
             width, height = image.size
             nrows = int(height // edge)
@@ -972,13 +972,13 @@ def import_settings(path):
         if AmfConfig.get("use_db"):
             conn = connect("amf")
             with conn, conn.cursor() as crsr:
-                id = get_enabled(crsr, image_name)
+                id_ = get_enabled(crsr, image_name)
 
                 # Make sure there is an enabled image
-                if id is None:
+                if id_ is None:
                     raise ValueError(f"No enabled image found for {image_name}")
 
-                tile_edge = get_tile_edge(crsr, id)
+                tile_edge = get_tile_edge(crsr, id_)
                 return {"tile_edge": tile_edge[0]}
         else:
             dirname = os.path.split(path)[0]
@@ -1013,29 +1013,29 @@ def import_annotations(path, is_bald_folder=False):
 
             conn = connect("amf")
             with conn, conn.cursor() as crsr:
-                id = get_enabled(crsr, image_name)
+                id_ = get_enabled(crsr, image_name)
 
-                if id is None and is_bald_folder:
+                if id_ is None and is_bald_folder:
                     return None
 
-                if id is None:
+                if id_ is None:
                     raise ValueError(f"No enabled image found for {image_name}")
 
-                existing_entries = check_entries_for_id(crsr, id, colonisation_type)
+                existing_entries = check_entries_for_id(crsr, id_, colonisation_type)
 
                 # Check that annotations exist
 
                 if (
-                    not existing_entries[id]["cnn1_annotations_exist"]
+                    not existing_entries[id_]["cnn1_annotations_exist"]
                     and is_bald_folder
                 ):
                     return None
 
-                if not existing_entries[id]["cnn1_annotations_exist"]:
+                if not existing_entries[id_]["cnn1_annotations_exist"]:
                     raise ValueError(f"No annotations found for {image_name}")
 
                 csv = download_entries_as_csv(
-                    crsr, id, "Annotations", colonisation_type
+                    crsr, id_, "Annotations", colonisation_type
                 )
                 output = pd.read_csv(io.StringIO(csv), sep=",")
 

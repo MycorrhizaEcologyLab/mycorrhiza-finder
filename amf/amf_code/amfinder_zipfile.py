@@ -1339,7 +1339,7 @@ class ZipFile:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, _, value, traceback):
         self.close()
 
     def __repr__(self):
@@ -2330,8 +2330,8 @@ class Path:
         return self.__repr.format(self=self)
 
     def joinpath(self, add):
-        next = posixpath.join(self.at, add)
-        return self._next(self.root.resolve_dir(next))
+        next_ = posixpath.join(self.at, add)
+        return self._next(self.root.resolve_dir(next_))
 
     __truediv__ = joinpath
 

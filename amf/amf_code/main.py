@@ -116,15 +116,19 @@ async def serve_spa(request: Request):
 
 
 @app.get("/fetch-predictions-cnn-1")
-def fetch_predictions_cnn1(name: str = "", id: str = "", colonisation_type: str = "am"):
+def fetch_predictions_cnn1(
+    name: str = "", id_: str = "", colonisation_type: str = "am"
+):
     with conn, conn.cursor() as crsr:
-        return fetch_items(crsr, name, id, "Predictions", "1", colonisation_type)
+        return fetch_items(crsr, name, id_, "Predictions", "1", colonisation_type)
 
 
 @app.get("/fetch-annotations-cnn-1")
-def fetch_annotations_cnn1(name: str = "", id: str = "", colonisation_type: str = "am"):
+def fetch_annotations_cnn1(
+    name: str = "", id_: str = "", colonisation_type: str = "am"
+):
     with conn, conn.cursor() as crsr:
-        return fetch_items(crsr, name, id, "Annotations", "1", colonisation_type)
+        return fetch_items(crsr, name, id_, "Annotations", "1", colonisation_type)
 
 
 @app.post("/save-annotations")
@@ -152,27 +156,27 @@ def check_for_image(name: str = "", colonisation_type: str = "am"):
 
 
 @app.get("/check-entries-for-id")
-def check_for_id(id: str = "", colonisation_type: str = "am"):
+def check_for_id(id_: str = "", colonisation_type: str = "am"):
     with conn, conn.cursor() as crsr:
-        return check_entries_for_id(crsr, id, colonisation_type)
+        return check_entries_for_id(crsr, id_, colonisation_type)
 
 
 @app.get("/download-entries")
-def download(id, type, colonisation_type: str = "am"):
+def download(id_, type_, colonisation_type: str = "am"):
     with conn, conn.cursor() as crsr:
-        return download_entries_as_csv(crsr, id, type, colonisation_type)
+        return download_entries_as_csv(crsr, id_, type_, colonisation_type)
 
 
-@app.delete("/delete-image-reference/{id}")
-def delete_image_reference(id):
+@app.delete("/delete-image-reference/{id_}")
+def delete_image_reference(id_):
     with conn, conn.cursor() as crsr:
-        return delete_image(crsr, id)
+        return delete_image(crsr, id_)
 
 
 @app.patch("/set-to-enabled/{id}")
-def set_to_enabled(id):
+def set_to_enabled(id_):
     with conn, conn.cursor() as crsr:
-        return set_to_enabled_in_db(crsr, id)
+        return set_to_enabled_in_db(crsr, id_)
 
 
 @app.post("/calculate-predictions")
@@ -285,7 +289,7 @@ async def tile_image(file: UploadFile = File(...)):
             cropped_tile.save(img_byte_arr, format="JPEG")
             current_image[f"{i // edge}.{j // edge}"] = img_byte_arr.getvalue()
 
-        AmfConfig.set("tiles", current_image)
+        AmfConfig.set_("tiles", current_image)
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail="Something went wrong")
@@ -306,7 +310,7 @@ def get_tiles(startIndex: int, batchSize: int = 1000):
 
 @app.post("/set-tile-edge")
 def set_tile_edge(tileEdgeConfig: TileEdgeConfig):
-    AmfConfig.set("tile_edge", tileEdgeConfig.tileEdge)
+    AmfConfig.set_("tile_edge", tileEdgeConfig.tileEdge)
     print(f"[{AmfConfig.invite()}] Tile edge set to {tileEdgeConfig.tileEdge}")
     return 200
 

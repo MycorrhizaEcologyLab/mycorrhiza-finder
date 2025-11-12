@@ -53,11 +53,11 @@ def main():
     # Get the device setting
     if device == "automatic":
         if torch.cuda.is_available():
-            AmfConfig.set("device", "cuda:0")
+            AmfConfig.set_("device", "cuda:0")
             AmfLog.text("Device set on automatic mode. Running via gpu")
 
         else:
-            AmfConfig.set("device", "cpu")
+            AmfConfig.set_("device", "cpu")
             AmfLog.text(
                 "Device set on automatic mode. CUDA ist not available. Running via cpu"
             )
