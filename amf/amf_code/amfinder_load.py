@@ -90,11 +90,10 @@ class TileDatasetLoader(Dataset):
     Calls _prepare_dataset to load and augment data if necessary. Optionally computes
     class distribution statistics via _prepare_stats.
 
-    _prepare_dataset(input_files, use_augmentation, balance_factor):
+    _prepare_dataset(input_files, use_augmentation):
     Iterates through each input file, extracting image tiles and annotations. Normalizes
     image tiles by scaling pixel values to [0, 1].
-    Optionally applies data augmentation using specified transformations. Balances the
-    dataset according to the balance_factor parameter.
+    Optionally applies data augmentation using specified transformations.
 
         if use_augmentation is set to true:
         Utilizes a set of transformations (random flips, color jitter, etc.) to augment
@@ -151,9 +150,7 @@ class TileDatasetLoader(Dataset):
     ):
         self.use_augmentation = use_augmentation
         self.balance_factor = balance_factor
-        self.dataset = self._prepare_dataset(
-            input_files, self.use_augmentation, self.balance_factor
-        )
+        self.dataset = self._prepare_dataset(input_files, self.use_augmentation)
         self.labels = [label for _, label in self.dataset]  # Ensuring labels are stored
         self.calculate_distribution = calculate_distribution
 
@@ -162,7 +159,7 @@ class TileDatasetLoader(Dataset):
             AmfLog.info(f"Total images for train/val split: {len(input_files)}")
             self._prepare_stats()
 
-    def _prepare_dataset(self, input_files, use_augmentation, balance_factor):
+    def _prepare_dataset(self, input_files, use_augmentation):
         all_tiles = []
         all_labels = []
         # Integration of augmentation

@@ -222,7 +222,7 @@ class ConvolutionalBlocks(nn.Module):
 
 
 class FCLayers(nn.Module):
-    def __init__(self, fc_in_size, label="RS", output_size=1):  # activation='sigmoid'):
+    def __init__(self, fc_in_size, output_size=1):  # activation='sigmoid'):
         super(FCLayers, self).__init__()
 
         # Layers
@@ -270,7 +270,6 @@ class CNN1(nn.Module):
         self.conv = ConvolutionalBlocks()
         self.fc = FCLayers(
             fc_in_size=self.conv.flatten_size,
-            label="RS",
             output_size=len(AmfConfig.get("header")),
         )
 

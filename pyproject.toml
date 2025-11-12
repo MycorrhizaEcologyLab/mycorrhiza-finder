@@ -5,6 +5,7 @@ exclude = ["amf/analysis_code", "*.ipynb"]
 [tool.ruff.lint]
 extend-select = [
     "A",    # overwriting builtins
+    "ARG",  # unused arguments
     "E501", # line too long
     "I",    # import sorting
     "S101"  # no assert statements

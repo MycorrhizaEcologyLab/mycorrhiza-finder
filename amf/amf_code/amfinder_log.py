@@ -66,7 +66,7 @@ def invite():
     return f"[{datetime.datetime.now().strftime('%H:%M:%S')}]"
 
 
-def text(message, indent=0, **kwargs):
+def text(message, **kwargs):
     """
     Prints an message on standard output.
 
@@ -78,7 +78,7 @@ def text(message, indent=0, **kwargs):
     print(f"{invite()} {message}.", **kwargs)
 
 
-def info(message, indent=0, **kwargs):
+def info(message, **kwargs):
     """
     Prints an message on standard output.
 
@@ -90,7 +90,7 @@ def info(message, indent=0, **kwargs):
     print(f"{invite()} INFO: {message}.", **kwargs)
 
 
-def warning(message, indent=0, **kwargs):
+def warning(message, **kwargs):
     """
     Prints a warning message on standard error.
 
@@ -102,7 +102,7 @@ def warning(message, indent=0, **kwargs):
     print(f"{invite()} WARNING: {message}.", file=sys.stderr, **kwargs)
 
 
-def error(message, exit_code, indent=0, **kwargs):
+def error(message, exit_code, **kwargs):
     """
     Prints an error message on standard error and quits.
 

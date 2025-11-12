@@ -80,7 +80,7 @@ def shutdown():
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     yield
     shutdown()
 

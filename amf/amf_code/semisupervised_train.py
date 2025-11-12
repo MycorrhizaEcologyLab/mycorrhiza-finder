@@ -387,7 +387,7 @@ def train(
 
         if args.local_rank in [-1, 0]:
             test_loss, test_acc, f1, fp, fn, tp, tn = test(
-                args, test_loader, test_model, epoch
+                args, test_loader, test_model
             )
             epsilon = 1e-10  # A small number to prevent division by zero
 
@@ -438,7 +438,7 @@ def train(
         AmfLog.info(f"Main modelling output is saved in: {args.out}")
 
 
-def test(args, test_loader, model, epoch):
+def test(args, test_loader, model):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()

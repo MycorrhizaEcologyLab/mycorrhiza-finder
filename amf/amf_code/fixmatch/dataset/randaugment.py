@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 PARAMETER_MAX = 10
 
 
-def AutoContrast(img, **kwarg):
+def AutoContrast(img, **_):
     return PIL.ImageOps.autocontrast(img)
 
 
@@ -35,7 +35,7 @@ def Contrast(img, v, max_v, bias=0):
     return PIL.ImageEnhance.Contrast(img).enhance(v)
 
 
-def CutoutAbs(img, v, **kwarg):
+def CutoutAbs(img, v, **_):
     w, h = img.size
     x0 = np.random.uniform(0, w)
     y0 = np.random.uniform(0, h)
@@ -51,11 +51,11 @@ def CutoutAbs(img, v, **kwarg):
     return img
 
 
-def Equalize(img, **kwarg):
+def Equalize(img, **_):
     return PIL.ImageOps.equalize(img)
 
 
-def Identity(img, **kwarg):
+def Identity(img, **_):
     return img
 
 
