@@ -514,7 +514,7 @@ def _get_existing_entries_for_image(crsr, colonisation_type, images):
         cnn1_annotations_exist_query = f"""
             SELECT EXISTS(
                 SELECT 1
-                FROM cnn1annotations{colonisation_type}"
+                FROM cnn1annotations{colonisation_type}
                 WHERE ImageReferenceId=%s
             )
         """
