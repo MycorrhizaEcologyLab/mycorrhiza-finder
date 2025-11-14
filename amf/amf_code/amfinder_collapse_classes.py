@@ -1,18 +1,15 @@
-import io
 import os
 import re
 
 import pandas as pd
 
-from api_objects import AnnotationValues
+import amfinder_config as AmfConfig
+import amfinder_log as AmfLog
 from api_utils import (
     check_entries_for_id,
-    download_entries_as_csv,
     get_enabled,
 )
 from db_config import connect
-import amfinder_log as AmfLog
-import amfinder_config as AmfConfig
 
 
 def collapse_annots(annotation_data):
@@ -27,7 +24,8 @@ def collapse_annots(annotation_data):
         num_questions = annotation_data["Question"].sum()
         if num_questions > 0:
             raise Exception(
-                f"Cannot carry out tile conversion if questions exist, currently there are {num_questions} question(s)"
+                f"Cannot carry out tile conversion if questions exist, currently there "
+                f"are {num_questions} question(s)"
             )
 
         # Drop questions column
@@ -78,7 +76,8 @@ def collapse_annots(annotation_data):
 
             collapsed_annots.append(this_result)
     else:
-        # Collapse ErM to 7 classes, merging blue coils, brown coils, type two and hybrid ErM to ErMColonised
+        # Collapse ErM to 7 classes, merging blue coils, brown coils, type two and
+        # hybrid ErM to ErMColonised
         for _, row in annotation_data.iterrows():
             if "BlueCoils" not in annotation_data.columns:
                 raise Exception(
@@ -141,7 +140,8 @@ def collapse_classes(path):
     if AmfConfig.get("use_db"):
         # TODO DB schema would need to be updated to save annotations to DB.
         AmfLog.error(
-            "DB access for class collapsing disabled as DB schema would need to be updated",
+            "DB access for class collapsing disabled as DB schema would need to be "
+            "updated",
             AmfLog.ERR_INVALID_DATA,
         )
 
@@ -149,29 +149,33 @@ def collapse_classes(path):
 
         conn = connect("amf")
         with conn, conn.cursor() as crsr:
-            id = get_enabled(crsr, image_name)
+            id_ = get_enabled(crsr, image_name)
 
-            if id == None:
+            if id_ is None:
                 AmfLog.warning(
                     f"Skipping {path} as no entries are saved in DB for this image"
                 )
                 return
 
-            existing_entries = check_entries_for_id(crsr, id, colonisation_type)
+            existing_entries = check_entries_for_id(crsr, id_, colonisation_type)
 
-            if existing_entries[id]["cnn1_annotations_exist"]:
-                csv = download_entries_as_csv(
-                    crsr, id, "Annotations", colonisation_type
+            if existing_entries[id_]["cnn1_annotations_exist"]:
+                raise NotImplementedError(
+                    "DB access for class collapsing disabled as DB schema would need "
+                    "to be updated"
                 )
-                out = collapse_annots(io.StringIO(csv))
-                cnn1results = out.values.tolist()
-                values = AnnotationValues(
-                    imageReferenceId=id,
-                    colonisationType=colonisation_type,
-                    cnnOneValues=cnn1results,
-                )
+                # csv = download_entries_as_csv(
+                #     crsr, id, "Annotations", colonisation_type
+                # )
+                # out = collapse_annots(io.StringIO(csv))
+                # cnn1results = out.values.tolist()
+                # values = AnnotationValues(
+                #     imageReferenceId=id,
+                #     colonisationType=colonisation_type,
+                #     cnnOneValues=cnn1results,
+                # )
                 # save_annotations_to_db(crsr, values)
-                return
+                # return
 
             AmfLog.warning(f"Skipping {path} as no annotations could be found")
 
@@ -199,7 +203,8 @@ def collapse_classes(path):
             AmfLog.info(f"Saved collapsed annotations to {out_annotation_path}")
         else:
             AmfLog.warning(
-                f"Multiple annotation files found for {image_name}. Skipping processing."
+                f"Multiple annotation files found for {image_name}. "
+                "Skipping processing."
             )
 
 

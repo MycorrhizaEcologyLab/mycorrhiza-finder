@@ -1,5 +1,10 @@
 # Credits to https://github.com/BlackHC/BatchBALD
-__all__ = ['compute_conditional_entropy', 'compute_entropy', 'CandidateBatch', 'get_batchbald_batch']
+__all__ = [
+    "compute_conditional_entropy",
+    "compute_entropy",
+    "CandidateBatch",
+    "get_batchbald_batch",
+]
 
 
 import math
@@ -9,6 +14,7 @@ from typing import List
 import torch
 from toma import toma
 from tqdm.auto import tqdm
+
 import joint_entropy
 
 
@@ -51,7 +57,6 @@ def compute_entropy(log_probs_N_K_C: torch.Tensor) -> torch.Tensor:
     return entropies_N
 
 
-
 @dataclass
 class CandidateBatch:
     scores: List[float]
@@ -59,7 +64,11 @@ class CandidateBatch:
 
 
 def get_batchbald_batch(
-    log_probs_N_K_C: torch.Tensor, batch_size: int, num_samples: int, dtype=None, device=None
+    log_probs_N_K_C: torch.Tensor,
+    batch_size: int,
+    num_samples: int,
+    dtype=None,
+    device=None,
 ) -> CandidateBatch:
     N, K, C = log_probs_N_K_C.shape
 
@@ -83,7 +92,9 @@ def get_batchbald_batch(
     for i in tqdm(range(batch_size), desc="BatchBALD", leave=False):
         if i > 0:
             latest_index = candidate_indices[-1]
-            batch_joint_entropy.add_variables(log_probs_N_K_C[latest_index : latest_index + 1])
+            batch_joint_entropy.add_variables(
+                log_probs_N_K_C[latest_index : latest_index + 1]
+            )
 
         shared_conditinal_entropies = conditional_entropies_N[candidate_indices].sum()
 

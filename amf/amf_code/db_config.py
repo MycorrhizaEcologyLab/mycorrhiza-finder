@@ -1,11 +1,11 @@
-from configparser import ConfigParser
-import sys
 import os
+import sys
+from configparser import ConfigParser
+
 import psycopg2
 from psycopg2 import sql
 
 import amfinder_log as AmfLog
-
 
 try:
     wd = sys._MEIPASS
@@ -35,14 +35,15 @@ def connect(db_name, password=None):
     try:
         params = config()
         params["database"] = db_name
-        if password != None:
+        if password is not None:
             params["password"] = password
         connection = psycopg2.connect(**params)
         connection.autocommit = True
         return connection
     except (Exception, psycopg2.DatabaseError) as error:
         AmfLog.error(
-            f"Cannot connect to database, consider restarting your postgres service: {error}",
+            "Cannot connect to database, consider restarting your postgres service: "
+            f"{error}",
             exit_code=AmfLog.ERR_NO_DATABASE_CONNECTION,
         )
 
@@ -62,7 +63,8 @@ def create_database_if_not_exists(db_name, user, password):
         if not exists:
             crsr.execute(
                 sql.SQL(
-                    "CREATE DATABASE {} WITH OWNER = {} ENCODING = 'UTF8' CONNECTION LIMIT = -1;"
+                    "CREATE DATABASE {} WITH OWNER = {} ENCODING = 'UTF8' CONNECTION "
+                    "LIMIT = -1;"
                 ).format(sql.Identifier(db_name), sql.Identifier(user))
             )
             print(f"Database '{db_name}' created.")

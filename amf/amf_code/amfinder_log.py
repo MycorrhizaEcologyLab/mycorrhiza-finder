@@ -45,9 +45,8 @@ Functions
 
 """
 
-import sys
 import datetime
-
+import sys
 
 ERR_NO_DATA = 10
 ERR_INVALID_DATA = 11
@@ -64,10 +63,10 @@ def invite():
     """
     Command-line invite.
     """
-    return f'[{datetime.datetime.now().strftime("%H:%M:%S")}]'
+    return f"[{datetime.datetime.now().strftime('%H:%M:%S')}]"
 
 
-def text(message, indent=0, **kwargs):
+def text(message, **kwargs):
     """
     Prints an message on standard output.
 
@@ -79,7 +78,7 @@ def text(message, indent=0, **kwargs):
     print(f"{invite()} {message}.", **kwargs)
 
 
-def info(message, indent=0, **kwargs):
+def info(message, **kwargs):
     """
     Prints an message on standard output.
 
@@ -91,7 +90,7 @@ def info(message, indent=0, **kwargs):
     print(f"{invite()} INFO: {message}.", **kwargs)
 
 
-def warning(message, indent=0, **kwargs):
+def warning(message, **kwargs):
     """
     Prints a warning message on standard error.
 
@@ -103,7 +102,7 @@ def warning(message, indent=0, **kwargs):
     print(f"{invite()} WARNING: {message}.", file=sys.stderr, **kwargs)
 
 
-def error(message, exit_code, indent=0, **kwargs):
+def error(message, exit_code, **kwargs):
     """
     Prints an error message on standard error and quits.
 
@@ -116,7 +115,6 @@ def error(message, exit_code, indent=0, **kwargs):
     print(f"{invite()} ERROR: {message}.", file=sys.stderr, **kwargs)
 
     if exit_code is not None and exit_code != 0:
-
         sys.exit(exit_code)
 
 
@@ -130,7 +128,6 @@ def progress_bar(iteration, total, indent=0):
     """
 
     if total > 0:
-
         percent = 100.0 * iteration / float(total)
 
         completed = round(50.0 * iteration / total)
@@ -141,5 +138,4 @@ def progress_bar(iteration, total, indent=0):
         print(" " * 4 * indent + f"- processing |{bar}| {percent:.1f}%", end="\r")
 
         if iteration == total:
-
             print()  # newline

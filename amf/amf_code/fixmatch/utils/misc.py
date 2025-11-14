@@ -1,26 +1,16 @@
-"""Some helper functions for PyTorch.
-"""
+"""Some helper functions for PyTorch."""
 
 import logging
 
-import numpy as np
-import torch
-from sklearn.metrics import confusion_matrix
-import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
 
 logger = logging.getLogger(__name__)
 
-__all__ = [
-    "accuracy",
-    "AverageMeter",
-    "get_confusion_matrix",
-    "get_per_class_accuracies",
-]
-
 
 def get_confusion_matrix(outputs, targets, to_cpu=True):
-
     if to_cpu:
         _, pred = outputs.cpu().topk(1, dim=1)
         pred = pred.squeeze(1)
@@ -55,7 +45,7 @@ def get_per_class_accuracies(conf_matrix, class_names, save_path):
     # Print per-class accuracies
     print("\nPer-Class Accuracies:")
     for class_name, accuracy in zip(class_names, per_class_accuracies):
-        print(f"{class_name}: {accuracy*100:.2f}%")
+        print(f"{class_name}: {accuracy * 100:.2f}%")
 
     return per_class_accuracies
 

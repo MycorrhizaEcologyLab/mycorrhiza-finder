@@ -33,28 +33,25 @@ Functions
 """
 
 import os
-import re
-import pandas as pd
-import numpy as np
-from itertools import zip_longest
 import random
-from datetime import datetime
-import torch.nn.functional as F
-import torch
 from collections import Counter
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn.functional as F
+
+import amfinder_config as AmfConfig
+import amfinder_log as AmfLog
+import amfinder_model as AmfModel
+import amfinder_save as AmfSave
+import amfinder_segmentation as AmfSegm
 
 random.seed(42)
 
-import random
-import amfinder_log as AmfLog
-import amfinder_save as AmfSave
-import amfinder_model as AmfModel
-import amfinder_config as AmfConfig
-import amfinder_segmentation as AmfSegm
-
 
 def table_header():
-
     return ["row", "col"] + AmfConfig.get("header")
 
 
@@ -129,12 +126,15 @@ def apply_contextual_confidence(table, image, model, base):
     if len(low_confidence_indices) == 0:
         # No low confidence predictions to refine
         AmfLog.info(
-            f"Found 0 predictions that are under the context threshold of {contextual_confidence_threshold}, so don't make any changes."
+            "Found 0 predictions that are under the context threshold of "
+            f"{contextual_confidence_threshold}, so don't make any changes."
         )
         return table, pd.DataFrame()
 
     AmfLog.info(
-        f"Found {len(low_confidence_indices)} predictions that are under the context threshold of {contextual_confidence_threshold}. Applying contextual refinement"
+        f"Found {len(low_confidence_indices)} predictions that are under the context "
+        f"threshold of {contextual_confidence_threshold}. "
+        "Applying contextual refinement."
     )
 
     # Create a mapping from class names to indices
@@ -274,7 +274,6 @@ def predict_level1(image, nrows, ncols, model, temperature_factor, base):
 def prepare_metrics(
     path: str, tile_results_table: pd.DataFrame, include_hybrid: bool = True
 ) -> dict:
-
     tile_results_table.drop("ContextualLabel", axis=1, inplace=True)
     """
     Generate a dictionary of summary metrics for an image,
@@ -308,29 +307,28 @@ def prepare_metrics(
 
     if col_type == "am":
         # Save number of root tilesclasses in results_dict
-        # Takes the numer of tiles for each class from results_dict and sums them up, substracts background images and unreadable
-        # The first two values of results_dict are exclude, since they are defined as strings
+        # Takes the numer of tiles for each class from results_dict and sums them up,
+        # subtracts background images and unreadable
+        # The first two values of results_dict are exclude, since they are defined as
+        # strings
         total_root_tiles = (
             sum(value for _, value in list(results_dict.items())[2:])
             - results_dict[col_headers[2]]  # Remove class Background
             - results_dict[col_headers[3]]  # Remove class Unreadable
         )
 
-        # Ensures that the Hybrid class is included in or excluded from the percentage calculation depending on the include_hybrid parameter
+        # Ensures that the Hybrid class is included in or excluded from the percentage
+        # calculation depending on the include_hybrid parameter
         hybrid_addition = results_dict[col_headers[5]] if include_hybrid else 0
 
         # Calculate % AM colonised as a ratio to all root tiles
         results_dict["am_colonised_percentage"] = (
-            100
-            * (results_dict[col_headers[0]] + hybrid_addition)
-            / total_root_tiles
+            100 * (results_dict[col_headers[0]] + hybrid_addition) / total_root_tiles
         )
 
         # Calculate % DSE colonised as a ratio to all root tiles
         results_dict["dse_colonised_percentage"] = (
-            100
-            * (results_dict[col_headers[4]] + hybrid_addition)
-            / total_root_tiles
+            100 * (results_dict[col_headers[4]] + hybrid_addition) / total_root_tiles
         )
 
         # Calculate % total colonised as a ratio to all root tiles
@@ -348,7 +346,8 @@ def prepare_metrics(
             - results_dict[col_headers[6]]  # Remove class Unreadable
         )
 
-        # Ensures that the Hybrid class is included in or excluded from the percentage calculation depending on the include_hybrid parameter
+        # Ensures that the Hybrid class is included in or excluded from the percentage
+        # calculation depending on the include_hybrid parameter
         hybriderm_addition = results_dict[col_headers[8]]
         hybriddse_addition = results_dict[col_headers[9]]
 
@@ -369,9 +368,7 @@ def prepare_metrics(
 
         # Calculate % DSE colonised as a ratio to all root tiles
         results_dict["dse_colonised_percentage"] = (
-            100
-            * (results_dict[col_headers[7]] + hybriddse_addition)
-            / total_root_tiles
+            100 * (results_dict[col_headers[7]] + hybriddse_addition) / total_root_tiles
         )
 
         # Calculate % total colonised as a ratio to all root tiles
@@ -605,7 +602,6 @@ def run(input_images, postprocess=None):
     collated_metrics = []  # Get results from each image together
     class_changes_total = []
     for path in input_images:
-
         base = os.path.basename(path)
         AmfLog.text(f"Image {base}")
 
@@ -620,12 +616,10 @@ def run(input_images, postprocess=None):
         ncols = width // edge
 
         if nrows == 0 or ncols == 0:
-
             AmfLog.warning("Tile size ({edge} pixels) is too large")
             continue
 
         else:
-
             # run the model and make predictions on a single test image
             # and produce a table of predictions including the position of the
             # tile corresponding to those predictions.
@@ -636,7 +630,6 @@ def run(input_images, postprocess=None):
 
             # Save results or use continuation for further processing.
             if postprocess is None:
-
                 # None was cams, reuse for super-resolution.
                 AmfSave.prediction_table(table, path)
                 AmfLog.info("Preparing metrics for prediction output")
@@ -644,7 +637,6 @@ def run(input_images, postprocess=None):
                 collated_metrics.append(these_metrics)
 
             else:
-
                 postprocess(image, table, path)
 
     timestamp_string = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -694,11 +686,9 @@ def bootstrap_distribution(df_cal_probs, n_samples=1000):
 
 
 def get_relative_conf_intervals(bootstrap_distribution, include_hybrid, metric):
-
     col_type = AmfConfig.get("colonisation_type")
 
     if col_type == "am":
-
         numerator = bootstrap_distribution[:, 5] * include_hybrid
         denominator = (
             bootstrap_distribution[:, 0]
@@ -715,7 +705,8 @@ def get_relative_conf_intervals(bootstrap_distribution, include_hybrid, metric):
             numerator += bootstrap_distribution[:, 0] + bootstrap_distribution[:, 4]
         else:
             raise ValueError(
-                "Not a possible metric. Choose either am_colonised_percentage, dse_colonised_percentage or total_colonised_percentage"
+                "Not a possible metric. Choose either am_colonised_percentage, "
+                "dse_colonised_percentage or total_colonised_percentage"
             )
 
     else:
@@ -747,7 +738,9 @@ def get_relative_conf_intervals(bootstrap_distribution, include_hybrid, metric):
             )
         else:
             raise ValueError(
-                "Not a possible metric. Choose either BlueCoils_colonised_percentage, BrownCoils_colonised_percentage, TypeTwo_colonised_percentage, dse_colonised_percentage or total_colonised_percentage"
+                "Not a possible metric. Choose either BlueCoils_colonised_percentage, "
+                "BrownCoils_colonised_percentage, TypeTwo_colonised_percentage, "
+                "dse_colonised_percentage or total_colonised_percentage"
             )
 
     percentages = np.where(denominator != 0, (numerator / denominator), np.nan)
@@ -764,7 +757,6 @@ def get_relative_conf_intervals(bootstrap_distribution, include_hybrid, metric):
 
 
 def add_conf_intervals(bootstrap_distribution, metrics_dict, include_hybrid):
-
     # Calculate relevant metrics for creating confidence intervals
     mean = np.mean(bootstrap_distribution, axis=0)
     std_dev = np.std(bootstrap_distribution, axis=0)
@@ -775,7 +767,6 @@ def add_conf_intervals(bootstrap_distribution, metrics_dict, include_hybrid):
     res = {}
 
     for header in dict_keys:
-
         if header in headers:
             i = headers.index(header)
             res[header + "_Mean"] = max(mean[i], 0)
@@ -797,7 +788,6 @@ def add_conf_intervals(bootstrap_distribution, metrics_dict, include_hybrid):
 
 
 def get_num_tiles_per_confidence(df_cal_probs):
-
     max_probs = df_cal_probs.iloc[:, 2:].max(axis=1)
     thresholds = np.linspace(0.1, 1.0, 10)
     counts, _ = np.histogram(max_probs, bins=np.concatenate(([0], thresholds)))

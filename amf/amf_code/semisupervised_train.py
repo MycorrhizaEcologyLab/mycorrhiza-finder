@@ -1,4 +1,4 @@
-import argparse
+import datetime
 import logging
 import math
 import os
@@ -6,29 +6,27 @@ import random
 import shutil
 import sys
 import time
-import mlflow
-import yaml
 from types import SimpleNamespace
-import datetime
+
+import mlflow
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+import yaml
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
-import yaml
 
-from fixmatch.dataset.amf_fixmatch import get_amf
-
+import amfinder_config as AmfConfig
 import amfinder_log as AmfLog
 import amfinder_model as AmfModel
-import amfinder_config as AmfConfig
-
+from fixmatch.dataset.amf_fixmatch import get_amf
 from fixmatch.utils import AverageMeter, accuracy, get_confusion_matrix
 
-# TODO constants that use AmfConfig need to be moved to local variables to work with FastAPI
+# TODO constants that use AmfConfig need to be moved to local variables to work with
+# FastAPI
 COLONISATION_TYPE = AmfConfig.get("colonisation_type")
 CLASS_NAMES = AmfConfig.get("class_names")[COLONISATION_TYPE]
 
@@ -242,7 +240,10 @@ def run(image_path):
 
     if args.resume:
         AmfLog.info("==> Resuming from checkpoint..")
-        assert os.path.isfile(args.resume), "Error: no checkpoint directory found!"
+        if not os.path.isfile(args.resume):
+            raise FileNotFoundError(
+                f"Error: no checkpoint directory found at {args.resume}"
+            )
         args.out = os.path.dirname(args.resume)
         checkpoint = torch.load(args.resume)
         best_acc = checkpoint["best_acc"]
@@ -263,7 +264,7 @@ def run(image_path):
     AmfLog.info(f"  Task = {args.dataset}@{args.num_labeled}")
     AmfLog.info(f"  Num Epochs = {args.epochs}")
     AmfLog.info(f"  Batch size per GPU = {args.batch_size}")
-    AmfLog.info(f"  Total train batch size = {args.batch_size*args.world_size}")
+    AmfLog.info(f"  Total train batch size = {args.batch_size * args.world_size}")
     AmfLog.info(f"  Total optimization steps = {args.total_steps}")
 
     model.zero_grad()
@@ -358,7 +359,12 @@ def train(
             mask_probs.update(mask.mean().item())
             if not args.no_progress:
                 p_bar.set_description(
-                    "Train Epoch: {epoch}/{epochs:4}. Iter: {batch:4}/{iter:4}. LR: {lr:.4f}. Data: {data:.3f}s. Batch: {bt:.3f}s. Loss: {loss:.4f}. Loss_x: {loss_x:.4f}. Loss_u: {loss_u:.4f}. Mask: {mask:.2f}. ".format(
+                    (
+                        "Train Epoch: {epoch}/{epochs:4}. Iter: {batch:4}/{iter:4}. "
+                        "LR: {lr:.4f}. Data: {data:.3f}s. Batch: {bt:.3f}s. "
+                        "Loss: {loss:.4f}. Loss_x: {loss_x:.4f}. Loss_u: {loss_u:.4f}. "
+                        "Mask: {mask:.2f}. "
+                    ).format(
                         epoch=epoch + 1,
                         epochs=args.epochs,
                         batch=batch_idx + 1,
@@ -381,7 +387,7 @@ def train(
 
         if args.local_rank in [-1, 0]:
             test_loss, test_acc, f1, fp, fn, tp, tn = test(
-                args, test_loader, test_model, epoch
+                args, test_loader, test_model
             )
             epsilon = 1e-10  # A small number to prevent division by zero
 
@@ -432,7 +438,7 @@ def train(
         AmfLog.info(f"Main modelling output is saved in: {args.out}")
 
 
-def test(args, test_loader, model, epoch):
+def test(args, test_loader, model):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -486,7 +492,10 @@ def test(args, test_loader, model, epoch):
             end = time.time()
             if not args.no_progress:
                 test_loader.set_description(
-                    "Test Iter: {batch:4}/{iter:4}. Data: {data:.3f}s. Batch: {bt:.3f}s. Loss: {loss:.4f}. top1: {top1:.2f}. ".format(
+                    (
+                        "Test Iter: {batch:4}/{iter:4}. Data: {data:.3f}s. "
+                        "Batch: {bt:.3f}s. Loss: {loss:.4f}. top1: {top1:.2f}. "
+                    ).format(
                         batch=batch_idx + 1,
                         iter=len(test_loader),
                         data=data_time.avg,

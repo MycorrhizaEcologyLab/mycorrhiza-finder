@@ -1,23 +1,20 @@
-import amfinder_log as AmfLog
-import amfinder_load as AmfLoad
-import amfinder_config as AmfConfig
-import amfinder_model as AmfModel
-import torch
-import torch.nn.functional as F
-import torch
-from torch.utils.data import DataLoader
 import os
+import time
 
 # Import from https://github.com/markus93/NN_calibration/blob/master/scripts/calibration/cal_methods.py
 import numpy as np
-from scipy.optimize import minimize
-from sklearn.metrics import log_loss
 import pandas as pd
-import time
-from sklearn.metrics import log_loss, f1_score
 import sklearn.metrics as metrics
-
+import torch
+from scipy.optimize import minimize
+from sklearn.metrics import f1_score, log_loss
+from torch.utils.data import DataLoader
 from tqdm import tqdm
+
+import amfinder_config as AmfConfig
+import amfinder_load as AmfLoad
+import amfinder_log as AmfLog
+import amfinder_model as AmfModel
 
 
 # Defining relevant functions
@@ -103,7 +100,8 @@ def compute_acc_bin(conf_thresh_lower, conf_thresh_upper, conf, pred, true):
         true (numpy.ndarray): list of true labels
 
     Returns:
-        (accuracy, avg_conf, len_bin): accuracy of bin, confidence of bin and number of elements in bin.
+        (accuracy, avg_conf, len_bin): accuracy of bin, confidence of bin and number of
+            elements in bin.
     """
     filtered_tuples = [
         x
@@ -126,14 +124,14 @@ def compute_acc_bin(conf_thresh_lower, conf_thresh_upper, conf, pred, true):
 
 # Defining model for TemperatureScaling
 class TemperatureScaling:
-
     def __init__(self, temp=1, maxiter=50, solver="BFGS"):
         """
         Initialize class
 
         Params:
             temp (float): starting temperature, default 1
-            maxiter (int): maximum iterations done by optimizer, however 8 iterations have been maximum.
+            maxiter (int): maximum iterations done by optimizer, however 8 iterations
+                have been maximum.
         """
         self.temp = temp
         self.maxiter = maxiter
@@ -151,7 +149,8 @@ class TemperatureScaling:
         Trains the model and finds optimal temperature
 
         Params:
-            logits: the output from neural network for each class (shape [samples, classes])
+            logits: the output from neural network for each class
+                (shape [samples, classes]).
             true: one-hot-encoding of true labels.
 
         Returns:
@@ -175,7 +174,8 @@ class TemperatureScaling:
         Scales logits based on the temperature and returns calibrated probabilities
 
         Params:
-            logits: logits values of data (output from neural network) for each class (shape [samples, classes])
+            logits: logits values of data (output from neural network) for each class
+                (shape [samples, classes])
             temp: if not set use temperatures find by model or previously set.
 
         Returns:
@@ -190,13 +190,16 @@ class TemperatureScaling:
 
 def evaluate(probs, y_true, verbose=False, normalize=False, bins=15):
     """
-    Evaluate model using various scoring measures: Error Rate, ECE, MCE, NLL, MacroF1 Score
+    Evaluate model using various scoring measures: Error Rate, ECE, MCE, NLL, MacroF1
+    Score
 
     Params:
-        probs: a list containing probabilities for all the classes with a shape of (samples, classes)
+        probs: a list containing probabilities for all the classes with a shape of
+            (samples, classes)
         y_true: a list containing the actual class labels
         verbose: (bool) are the scores printed out. (default = False)
-        normalize: (bool) in case of 1-vs-K calibration, the probabilities need to be normalized.
+        normalize: (bool) in case of 1-vs-K calibration, the probabilities need to be
+            normalized.
         bins: (int) - into how many bins are probabilities divided (default = 15)
 
     Returns:
@@ -243,17 +246,23 @@ def cal_results(fn, logits_data, m_kwargs={}):
     There are implemented to different approaches "all" and "1-vs-K" for calibration,
     the approach of calibration should match with function used for calibration.
 
-    TODO: split calibration of single and all into separate functions for more use cases.
+    TODO: split calibration of single and all into separate functions for more use
+    cases.
 
     Params:
-        fn (class): class of the calibration method used. It must contain methods "fit" and "predict",
-                    where first fits the models and second outputs calibrated probabilities.
-        logits_data (tuple): Tuple containing two arrays - (logits and one-hot-encoded labels)
-        m_kwargs (dictionary): keyword arguments for the calibration class initialization
-        approach (string): "all" for multiclass calibration and "1-vs-K" for 1-vs-K approach.
+        fn (class): class of the calibration method used. It must contain methods "fit"
+            and "predict",
+            where first fits the models and second outputs calibrated probabilities.
+        logits_data (tuple): Tuple containing two arrays - (logits and one-hot-encoded
+            labels)
+        m_kwargs (dictionary): keyword arguments for the calibration class
+            initialization
+        approach (string): "all" for multiclass calibration and "1-vs-K" for 1-vs-K
+            approach.
 
     Returns:
-        df (pandas.DataFrame): dataframe with calibrated and uncalibrated results for all the input files.
+        df (pandas.DataFrame): dataframe with calibrated and uncalibrated results for
+            all the input files.
 
     """
 
@@ -316,9 +325,6 @@ def run(input_files):
     # Categorise train path for logistic regression
     cal_img_list = AmfLoad.categorise_path(input_files)["train"]
 
-    # Grab class names
-    class_names = AmfConfig.get("header")
-
     # Validate input folder structure
     if not cal_img_list:
         AmfLog.error("There is no train subfolder", AmfLog.ERR_NO_DATA)
@@ -373,9 +379,11 @@ def run(input_files):
 
     # Create results dataframe
     # Assuming 'calibrated_probs' has one probability set per sample
-    assert (
-        len(filenames) == len(rows) == len(cols) == len(calibrated_probs)
-    ), "Length mismatch"
+    if not len(filenames) == len(rows) == len(cols) == len(calibrated_probs):
+        raise ValueError(
+            f"Length mismatch: {len(filenames)} filenames, {len(rows)} rows, "
+            f"{len(cols)} cols, {len(calibrated_probs)} calibrated_probs"
+        )
 
     colonisation_type = AmfConfig.get("colonisation_type")
 

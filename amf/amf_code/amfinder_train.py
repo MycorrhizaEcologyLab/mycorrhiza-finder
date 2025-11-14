@@ -44,28 +44,26 @@ Functions
 
 # New total imports log for train_flx
 # Original AMFinder imports.
-import os
-import psutil
 import random
-from tqdm import tqdm
-import numpy as np
 
-import amfinder_save as AmfSave
-import amfinder_model as AmfModel
-import amfinder_config as AmfConfig
-import amfinder_load as AmfLoad
-import amfinder_log as AmfLog
+# from torch.utils.data.distributed import DistributedSampler
+# from torch.utils.tensorboard import SummaryWriter
+import mlflow
+import mlflow.pytorch
+import numpy as np
 
 # Semi-Supervised Imports (pruned with respect to earlier imports).
 import torch
 import torch.nn as nn
 import torch.optim
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-# from torch.utils.data.distributed import DistributedSampler
-# from torch.utils.tensorboard import SummaryWriter
-import mlflow
-import mlflow.pytorch
+import amfinder_config as AmfConfig
+import amfinder_load as AmfLoad
+import amfinder_log as AmfLog
+import amfinder_model as AmfModel
+import amfinder_save as AmfSave
 
 # logger = tf.get_logger()
 # logger.setLevel(logging.ERROR)
@@ -82,8 +80,10 @@ def class_weights(y, weight_type="inverse_freq", beta=0.9999, epsilon=1e-6):
     :rtype: dict
 
     Args:
-    - y (torch.Tensor): One-hot encoded label tensor with shape (N, C), where C is the number of classes.
-    - weight_type (str): Method for calculating class weights. Options are 'inverse_freq', 'effective_num',
+    - y (torch.Tensor): One-hot encoded label tensor with shape (N, C), where C is the
+        number of classes.
+    - weight_type (str): Method for calculating class weights. Options are
+        'inverse_freq', 'effective_num',
     - beta (float): Smoothing parameter for effective number of samples (default 0.99).
     - epsilon (float): Small constant to avoid division by zero (default 1e-6).
     """
@@ -119,6 +119,7 @@ def class_weights(y, weight_type="inverse_freq", beta=0.9999, epsilon=1e-6):
         dict(enumerate(final_class_weights)),
         final_class_weights,
     ]  # class wegiths as a dict and array respectively.
+
 
 # PyTorch implementation of earlier Keras functionality for early stopping.
 
@@ -241,9 +242,7 @@ def run(input_files, flag, train_active_learning=False):
     val_dataset = AmfLoad.CustomNormalisedDataset(x_val, y_val)
 
     # Initialise variables to prepare training and validation datasets
-    labels = np.stack(
-        [full_dataset.labels[i] for i in range(len(full_dataset.labels))]
-    )
+    labels = np.stack([full_dataset.labels[i] for i in range(len(full_dataset.labels))])
     labels = torch.from_numpy(labels)
     labels = labels.type(torch.float32)
     weights = class_weights(labels, "effective_num")
@@ -290,7 +289,6 @@ def run(input_files, flag, train_active_learning=False):
     )
     save_directory = AmfConfig.get("outdir")
     # Optional
-    e = EarlyStopping(patience=AmfConfig.get("patience_e"), verbose=True)
     r = ReduceLROnPlateau(
         optimiser=optim,
         factor=0.5,
@@ -366,28 +364,28 @@ def run(input_files, flag, train_active_learning=False):
 
             # Log losses
             AmfLog.text(
-                f"Epoch {epoch+1}/{num_epochs}, Average validation loss: {avg_val_loss:.4f}"
+                f"Epoch {epoch + 1}/{num_epochs}, "
+                f"Average validation loss: {avg_val_loss:.4f}"
             )
 
             if flag:
                 # Logging the metrics after each epoch
                 mlflow.log_metric("Training loss", avg_loss, step=epoch)
                 mlflow.log_metric("Validation loss", avg_val_loss, step=epoch)
-                # mlflow.log_metric("Learning Rate", r.optimiser.param_groups["lr"], step=epoch)
 
             # Check for early stopping
             if (
-                early_stopping != None
+                early_stopping is not None
             ):  # TODO: This needs to be tied to the config file!
                 AmfLog.text("Early stopping mechanism active")
                 early_stopping.check_early_stop(model, avg_val_loss)
-                AmfConfig.set("early_stopping", early_stopping)
+                AmfConfig.set_("early_stopping", early_stopping)
                 if early_stopping.early_stop:
                     AmfLog.text("Early stopping triggered.")
                     model.load_state_dict(
                         early_stopping.best_weights
                     )  # Save best weights
-                    AmfConfig.set("early_break_epoch", epoch)
+                    AmfConfig.set_("early_break_epoch", epoch)
                     AmfSave.save_training_data(history, model, save_path)
                     break  # Exit the training loop if early stopping condition is met
 
@@ -401,10 +399,10 @@ def run(input_files, flag, train_active_learning=False):
                 )  # Always store best performing model weights.
 
             # Step the learning rate scheduler
-            if reduce_lr != None:
+            if reduce_lr is not None:
                 AmfLog.text("Reduce LR mechanism active")
                 reduce_lr.step(avg_val_loss)
-                AmfConfig.set("reduce_lr_on_plateau", reduce_lr)
+                AmfConfig.set_("reduce_lr_on_plateau", reduce_lr)
 
         model.load_state_dict(
             best_model_weights
@@ -434,7 +432,6 @@ def run(input_files, flag, train_active_learning=False):
 
     # Save model information (layers and graph) upon user request.
     if AmfConfig.get("summary"):
-
         AmfSave.save_model_architecture(model, device, AmfConfig.get("tile_edge"))
 
     return output

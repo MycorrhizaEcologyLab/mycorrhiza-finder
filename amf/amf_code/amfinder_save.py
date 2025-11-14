@@ -34,24 +34,25 @@ Functions
 :function prediction_table: Saves or append predictions to an archive.
 """
 
+import datetime
 import json
 import os
-import h5py
 import pickle
-import datetime
+from contextlib import redirect_stdout
+
+import h5py
 import numpy as np
-from db_config import connect
-from api_utils import save_predictions_to_db
-import amfinder_zipfile as zf
 import torch
 from torchinfo import summary
 from torchview import draw_graph
-from contextlib import redirect_stdout
 
-import amfinder_plot as AmfPlot
 import amfinder_config as AmfConfig
 import amfinder_log as AmfLog
+import amfinder_plot as AmfPlot
+import amfinder_zipfile as zf
 from api_objects import PredictionValues
+from api_utils import save_predictions_to_db
+from db_config import connect
 
 
 def now():
@@ -92,7 +93,8 @@ def save_training_data(history, model, save_path):
                 )  # Numpy array conversion
 
         z.writestr("model.h5", open(model_path, "rb").read())
-        ## TODO: An additional model load class (loading the state dict seperately to the architecture) would be required in the case of HDF5
+        ## TODO: An additional model load class (loading the state dict seperately to
+        # the architecture) would be required in the case of HDF5
 
         # Option 2: Save the model state_dict as pth
         model_path = os.path.join(save_path, "model.pth")
@@ -100,13 +102,15 @@ def save_training_data(history, model, save_path):
         z.writestr("model.pth", open(model_path, "rb").read())
 
         # Optionally, save additional plots or metrics here
-        # In the original AMFinder version, the accuracy was tracked throughout the training process.
-        # As this metric is not used any longer, it is not included in the PyTorch version of the code.´
+        # In the original AMFinder version, the accuracy was tracked throughout the
+        # training process.
+        # As this metric is not used any longer, it is not included in the PyTorch
+        # version of the code.´
 
         # TODO: Integrate save mechanism when Early Stopping is triggered.
         # With early stopping implemented
         early = AmfConfig.get("early_stopping")
-        if early != None and early.early_stop:
+        if early is not None and early.early_stop:
             break_epoch = AmfConfig.get("early_break_epoch")
             x_range = np.arange(0, break_epoch)
 
@@ -134,8 +138,8 @@ def save_model_architecture(model, device, tile_size):
     :param model: Model to save.
     """
 
-    path_summary = os.path.join(AmfConfig.get("outdir"), f"CNN1_summary.txt")
-    path_graph = os.path.join(AmfConfig.get("outdir"), f"CNN1_graph")
+    path_summary = os.path.join(AmfConfig.get("outdir"), "CNN1_summary.txt")
+    path_graph = os.path.join(AmfConfig.get("outdir"), "CNN1_graph")
     input_tensor = torch.randn(1, 3, tile_size, tile_size).to(device)
 
     with open(path_summary, "w") as sf:
@@ -144,7 +148,8 @@ def save_model_architecture(model, device, tile_size):
             summary(model, input_data=input_tensor)
 
     draw_graph(model, input_data=input_tensor, filename=path_graph, save_graph=True)
-    # TODO Currently this creates three files: "CNN1_summary.txt", "CNN1_graph.png" and "CNN1_graph". The third file is not required in theory.
+    # TODO Currently this creates three files: "CNN1_summary.txt", "CNN1_graph.png" and
+    # "CNN1_graph". The third file is not required in theory.
 
 
 def save_settings(path):
@@ -182,7 +187,7 @@ def save_metrics(metrics_collector, path):
                 metrics_type="class"
             )
             class_metrics_csv = class_metrics_df.to_csv(index=False)
-            class_metrics_file_name = f"class_metrics.csv"
+            class_metrics_file_name = "class_metrics.csv"
             z.writestr(class_metrics_file_name, class_metrics_csv)
 
         # Handle file-specific metrics
@@ -191,7 +196,7 @@ def save_metrics(metrics_collector, path):
                 metrics_type="file_metrics"
             )
             file_metrics_csv = file_metrics_df.to_csv(index=False)
-            file_metrics_file_name = f"file_metrics.csv"
+            file_metrics_file_name = "file_metrics.csv"
             z.writestr(file_metrics_file_name, file_metrics_csv)
 
         # Handle generic metrics
@@ -200,7 +205,7 @@ def save_metrics(metrics_collector, path):
                 metrics_type="generic"
             )
             generic_metrics_csv = generic_metrics_df.to_csv(index=False)
-            generic_metrics_file_name = f"generic_metrics.csv"
+            generic_metrics_file_name = "generic_metrics.csv"
             z.writestr(generic_metrics_file_name, generic_metrics_csv)
 
         for image_name, image in metrics_collector.images.items():
@@ -250,5 +255,3 @@ def prediction_table(results, path):
             save_settings(path)
 
             AmfLog.info(f"Saved results to CSV at {path}")
-
-            # print(f"Saved results to {os.path.join(directory, image_name + uniq + "cnn_1_predictions.csv")} file")

@@ -1,24 +1,25 @@
 import argparse
+import copy
+import random
+from copy import deepcopy
+
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-import numpy as np
-import random
-import copy
+import torch.optim as optim
 from sklearn.metrics import confusion_matrix, f1_score
-import amfinder_load as AmfLoad
-import amfinder_config as AmfConfig
-import amfinder_model as AmfModel
-from amfinder_train import class_weights
-from torch.utils.data import DataLoader, TensorDataset, Dataset
-from tqdm import tqdm
+from torch.utils.data import DataLoader
 
 # from torchsummary import summary
 from torchinfo import summary
-from copy import deepcopy
+from tqdm import tqdm
+
+import amfinder_config as AmfConfig
+import amfinder_load as AmfLoad
+import amfinder_model as AmfModel
 from acquisition_functions import get_batchbald_batch
+from amfinder_train import class_weights
 
 
 def add_dropout_layers(model: nn.Module, p: float = 0.25) -> nn.Module:
@@ -185,7 +186,8 @@ def balance_dataset(x, y, factor=1.0):  # factor is a hyperparameter
                 # Skip if no samples are available for the current class
                 continue
 
-            # Clip samples to the minimum of `factor * class_0_samples` or the class size
+            # Clip samples to the minimum of `factor * class_0_samples`
+            # or the class size
             num_samples_to_select = min(
                 int(class_0_samples * factor), num_class_samples
             )
@@ -197,7 +199,8 @@ def balance_dataset(x, y, factor=1.0):  # factor is a hyperparameter
                 )
                 indices_to_keep.extend(idx_selected_samples)
             else:
-                # Retain all samples if the number to select exceeds or equals the class size
+                # Retain all samples if the number to select exceeds
+                # or equals the class size
                 indices_to_keep.extend(idx_class_samples)
 
     # Update the input data (x) and labels (y) to retain only the selected indices
@@ -510,9 +513,9 @@ def main(data_directory_name):
     y_train = []
     x_val, y_val = splitter._get_dataset("val")
 
-
-
-    dataset_loader_unlabelled = AmfLoad.TileFilesandData(unlabelled_images, is_bald_folder=True)
+    dataset_loader_unlabelled = AmfLoad.TileFilesandData(
+        unlabelled_images, is_bald_folder=True
+    )
     x_unlabelled, y_unlabelled, _, _, _ = dataset_loader_unlabelled.get_all_data()
 
     dataset_loader_test = AmfLoad.TileFilesandData(test_images, is_bald_folder=True)
@@ -611,14 +614,18 @@ def main(data_directory_name):
     num_iterations = len(loss_array_bald)
     print("Comparison of BALD and Random Methods:")
     for i in range(num_iterations):
-        print(f"\nIteration {i+1}:")
+        print(f"\nIteration {i + 1}:")
 
         # Output for BALD method
         loss_bald = loss_array_bald[i]
         f1_scores_bald = f1_scores_array_bald[i]
         f1_bald_formatted = [f"{score:.2f}" for score in f1_scores_bald]
         print(
-            f"  BALD - Loss: {loss_bald:.2f}, F1 Scores (per class): {f1_bald_formatted}, Macro F1: {f1_scores_bald.mean():.2f},Confusion Matrix: {conf_matrix_array_bald[i]}, Class Dictionary: {class_dict_in_selected_labels_array_bald[i]}"
+            f"  BALD - Loss: {loss_bald:.2f}, "
+            f"F1 Scores (per class): {f1_bald_formatted}, "
+            f"Macro F1: {f1_scores_bald.mean():.2f}, "
+            f"Confusion Matrix: {conf_matrix_array_bald[i]}, "
+            f"Class Dictionary: {class_dict_in_selected_labels_array_bald[i]}"
         )
 
         # Output for Random method
@@ -626,7 +633,11 @@ def main(data_directory_name):
         f1_scores_random = f1_scores_array_random[i]
         f1_random_formatted = [f"{score:.2f}" for score in f1_scores_random]
         print(
-            f"  Random - Loss: {loss_random:.2f}, F1 Scores (per class): {f1_random_formatted}, Macro F1: {f1_scores_random.mean():.2f},Confusion Matrix: {conf_matrix_array_random[i]}, Class Dictionary: {class_dict_in_selected_labels_array_random[i]}"
+            f"  Random - Loss: {loss_random:.2f}, "
+            f"F1 Scores (per class): {f1_random_formatted}, "
+            f"Macro F1: {f1_scores_random.mean():.2f}, "
+            f"Confusion Matrix: {conf_matrix_array_random[i]}, "
+            f"Class Dictionary: {class_dict_in_selected_labels_array_random[i]}"
         )
 
         # Output for BatchBALD method
@@ -634,7 +645,11 @@ def main(data_directory_name):
         f1_scores_batch_bald = f1_scores_array_batch_bald[i]
         f1_batch_bald_formatted = [f"{score:.2f}" for score in f1_scores_batch_bald]
         print(
-            f"  BatchBALD - Loss: {loss_batch_bald:.2f}, F1 Scores (per class): {f1_batch_bald_formatted}, Macro F1: {f1_scores_batch_bald.mean():.2f},Confusion Matrix: {conf_matrix_array_batch_bald[i]}, Class Dictionary: {class_dict_in_selected_labels_array_batch_bald[i]}"
+            f"  BatchBALD - Loss: {loss_batch_bald:.2f}, "
+            f"F1 Scores (per class): {f1_batch_bald_formatted}, "
+            f"Macro F1: {f1_scores_batch_bald.mean():.2f}, "
+            f"Confusion Matrix: {conf_matrix_array_batch_bald[i]}, "
+            f"Class Dictionary: {class_dict_in_selected_labels_array_batch_bald[i]}"
         )
 
     print("macro f1 for bald: ", [i.mean() for i in f1_scores_array_bald])

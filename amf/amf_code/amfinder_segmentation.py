@@ -37,18 +37,14 @@ Functions
 :function preprocess: Convert a tile list to NumPy array and normalise pixels.
 """
 
+import numpy as np
 from PIL import Image
+
+import amfinder_config as AmfConfig
 
 # This allows any size image
 Image.MAX_IMAGE_PIXELS = None
-
-import random
-
-random.seed(42)
-import numpy as np
-import amfinder_log as AmfLog
-import amfinder_model as AmfModel
-import amfinder_config as AmfConfig
+np.random.seed(42)
 
 
 def load(image_path):
@@ -70,8 +66,10 @@ def get_contextual_tiles(
     :param c: The column index of the central tile.
     :param edge: The size of each tile edge. Defaults to configuration if None.
     :param overlap: The fraction of overlap between central and surrounding tiles (0-1).
-    :param overlap_method: Method to extract tiles - 'cardinal' (top, bottom, left, right)
-                          or 'diagonal' (top-left, top-right, bottom-left, bottom-right).
+    :param overlap_method: Method to extract tiles - 'cardinal'
+                           (top, bottom, left, right)
+                           or 'diagonal'
+                           (top-left, top-right, bottom-left, bottom-right).
     :return: List of tiles based on overlap_method, each as a NumPy array or None.
     """
     # Validate overlap parameter

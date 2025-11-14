@@ -5,28 +5,27 @@
 # Evaluates the model on the test roots to obtain metrics.
 
 import os
-import numpy as np
 import random
-import os
+import time
 from collections import Counter
 
-import time
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+import amfinder_config as AmfConfig
+import amfinder_load as AmfLoad
+import amfinder_log as AmfLog
+import amfinder_model as AmfModel
+import amfinder_save as AmfSave
+import amfinder_segmentation as AmfSegm
+from metrics_collector import MetricsCollector
+from test_metrics import TestMetrics
 
 random.seed(42)
-import amfinder_save as AmfSave
-import amfinder_model as AmfModel
-import amfinder_load as AmfLoad
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-from test_metrics import TestMetrics
-from metrics_collector import MetricsCollector
-import torch.nn.functional as F
-import torch
-from torch.utils.data import DataLoader
-import amfinder_segmentation as AmfSegm
-import pandas as pd
-
-from tqdm import tqdm
 
 
 def get_test_results(
@@ -45,12 +44,14 @@ def get_test_results(
 
     This function performs the following steps:
     1. Sets the model to evaluation mode and assigns the computational device.
-    2. Iterates through the test data to compute predictions, calculate loss, and evaluate accuracy.
-    3. Collects predicted labels, one-hot encoded predictions, and probabilities for all test samples.
+    2. Iterates through the test data to compute predictions, calculate loss, and
+        evaluate accuracy.
+    3. Collects predicted labels, one-hot encoded predictions, and probabilities for all
+        test samples.
     4. Converts predictions and probabilities to numpy arrays for further processing.
     5. For predictions with low confidence, applies max voting using surrounding tiles.
-    6. Initializes a `TestMetrics` object to calculate and save various performance metrics, such as
-       confusion matrices, per-file and per-class metrics.
+    6. Initializes a `TestMetrics` object to calculate and save various performance
+        metrics, such as confusion matrices, per-file and per-class metrics.
 
     Parameters:
     - x_test: np.ndarray
@@ -66,7 +67,8 @@ def get_test_results(
     - test_dataset: torch.utils.data.DataSet
         Datset object containing the test tiles alongside corresponding labels.
     - test_loader: torch.utils.data.DataLoader
-        DataLoader object providing batches of test data. Expecting numpy arrays as input but using normalised torch tensors in batches.
+        DataLoader object providing batches of test data. Expecting numpy arrays as
+        input but using normalised torch tensors in batches.
     - metrics_collector: MetricsCollector
         Object responsible for storing and managing calculated metrics.
     - rows: int
@@ -162,7 +164,6 @@ def get_test_results(
             probabilities = torch.softmax(outputs / temperature_factor, dim=1)
             class_indices = torch.argmax(probabilities, dim=1)
             num_classes = probabilities.size(1)
-            one_hot_predictions = F.one_hot(class_indices, num_classes=num_classes)
 
             # Accumulate metrics
             total += batch_y.size(0)
@@ -186,7 +187,7 @@ def get_test_results(
     metrics_collector.add_generic_metric("Loss", avg_loss)
 
     # Convert to numpy arrays
-    print(f"Converting to numpy arrays")
+    print("Converting to numpy arrays")
     predicted_labels = np.array(predicted_labels)
     true_labels = np.array(true_labels)
     all_probs = np.array(all_probs)
@@ -210,7 +211,8 @@ def get_test_results(
 
         if len(low_confidence_indices) > 0:
             AmfLog.info(
-                f"Found {len(low_confidence_indices)} predictions with confidence lower than {contextual_confidence_threshold}. Applying max voting"
+                f"Found {len(low_confidence_indices)} predictions with confidence "
+                f"lower than {contextual_confidence_threshold}. Applying max voting"
             )
 
             # Group by image to minimize image loading
@@ -233,9 +235,8 @@ def get_test_results(
 
                 # Batch process all low-confidence tiles from this image
                 all_contextual_tile_sets = []
-                num_contextual_tiles_mapping = (
-                    []
-                )  # Number of contextual tiles for a given tile index
+                # Number of contextual tiles for a given tile index
+                num_contextual_tiles_mapping = []
 
                 for idx, r, c in indices_with_coords:
                     # Get surrounding tiles
@@ -276,7 +277,10 @@ def get_test_results(
                     for batch_x, batch_y in tqdm(
                         contextual_tile_loader,
                         total=len(contextual_tile_loader),
-                        desc=f"Processing contextual predictions for {os.path.splitext(os.path.basename(file_path))[0]}",
+                        desc=(
+                            "Processing contextual predictions for "
+                            f"{os.path.splitext(os.path.basename(file_path))[0]}"
+                        ),
                     ):
                         batch_x, batch_y = batch_x.to(device), batch_y.to(device)
                         outputs = model(batch_x)
@@ -359,17 +363,19 @@ def get_test_results(
                     csv_path = os.path.join(results_dir, "tile_class_changes.csv")
                     changes_df.to_csv(csv_path, index=False)
                     AmfLog.info(
-                        f"Saved {len(individual_tile_changes)} individual tile changes to {csv_path}"
+                        f"Saved {len(individual_tile_changes)} individual tile changes "
+                        f"to {csv_path}"
                     )
             else:
                 AmfLog.info("No class changes occurred after max voting.")
         else:
             AmfLog.info(
-                f"Didn't find any predictions with confidence lower than {contextual_confidence_threshold}, so do not use context"
+                "Didn't find any predictions with confidence lower than "
+                f"{contextual_confidence_threshold}, so do not use context"
             )
 
     # Check the shape of the arrays before forwarding them to TestMetrics
-    AmfLog.info(f"Calling TestMetrics and initializing metrics")
+    AmfLog.info("Calling TestMetrics and initializing metrics")
 
     metrics = TestMetrics(
         x_test,
@@ -398,7 +404,7 @@ def get_test_results(
     AmfLog.info("Calculating test metrics per confidence threshold")
     metrics.get_metrics_with_threshold_comparison()
 
-    AmfLog.info(f"Saving metrics function.")
+    AmfLog.info("Saving metrics function.")
     AmfSave.save_metrics(metrics.metrics_collector, results_dir)
 
     # End timing

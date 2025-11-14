@@ -1,64 +1,38 @@
-from argparse import ArgumentParser, RawTextHelpFormatter
 import io
 import os
-from contextlib import asynccontextmanager
 import signal
+import sys
+import threading
+import webbrowser
+from argparse import ArgumentParser, RawTextHelpFormatter
+from contextlib import asynccontextmanager
+from itertools import product
+
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.gzip import GZipMiddleware
-import webbrowser
-import threading
-
-import sys
-import os
-
-from itertools import product
 from PIL import Image
 
-# This allows any size image
-Image.MAX_IMAGE_PIXELS = None
-
-try:
-    wd = sys._MEIPASS
-except AttributeError:
-    wd = os.getcwd()
-
-import amfinder_train as AmfTrain
-import amfinder_config as AmfConfig
-import amfinder_convert as AmfConvert
-import amfinder_convert_tile_size as AmfConvertTileSize
-import amfinder_convert_image_type as AmfConvertImageType
-import amfinder_predict as AmfPredict
-import amfinder_test as AmfTest
 import amfinder_bald as AmfBald
 import amfinder_calibrate as AmfCalibrate
 import amfinder_colonisation as AmfColonisation
-import semisupervised_train as AmfSemiSupervisedTrain
+import amfinder_config as AmfConfig
+import amfinder_convert as AmfConvert
+import amfinder_convert_image_type as AmfConvertImageType
+import amfinder_convert_tile_size as AmfConvertTileSize
+import amfinder_predict as AmfPredict
+import amfinder_test as AmfTest
+import amfinder_train as AmfTrain
 import semisupervised_evaluate as AmfSemiSupervisedEvaluate
-from api_utils import (
-    change_setting_to_default_in_db,
-    check_entries_for_id,
-    delete_image,
-    download_entries_as_csv,
-    fetch_items,
-    get_all_settings_from_db,
-    save_annotations_to_db,
-    get_images,
-    check_entries_for_image,
-    save_predictions_to_db,
-    set_to_enabled_in_db,
-    update_setting_in_db,
-    zip_files_for_transit,
-)
-from db_config import connect, create_database_if_not_exists
+import semisupervised_train as AmfSemiSupervisedTrain
 from api_objects import (
+    AnnotationValues,
     BaseConfig,
     CalibrateConfig,
     ConvertConfig,
-    AnnotationValues,
     PredictionConfig,
     PredictionValues,
     Setting,
@@ -68,6 +42,31 @@ from api_objects import (
     TileEdgeConfig,
     TrainConfig,
 )
+from api_utils import (
+    change_setting_to_default_in_db,
+    check_entries_for_id,
+    check_entries_for_image,
+    delete_image,
+    download_entries_as_csv,
+    fetch_items,
+    get_all_settings_from_db,
+    get_images,
+    save_annotations_to_db,
+    save_predictions_to_db,
+    set_to_enabled_in_db,
+    update_setting_in_db,
+    zip_files_for_transit,
+)
+from db_config import connect, create_database_if_not_exists
+
+# This allows any size image
+Image.MAX_IMAGE_PIXELS = None
+
+try:
+    wd = sys._MEIPASS
+except AttributeError:
+    wd = os.getcwd()
+
 
 ### CONFIG
 
@@ -81,7 +80,7 @@ def shutdown():
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     yield
     shutdown()
 
@@ -117,15 +116,19 @@ async def serve_spa(request: Request):
 
 
 @app.get("/fetch-predictions-cnn-1")
-def fetch_predictions_cnn1(name: str = "", id: str = "", colonisation_type: str = "am"):
+def fetch_predictions_cnn1(
+    name: str = "", id_: str = "", colonisation_type: str = "am"
+):
     with conn, conn.cursor() as crsr:
-        return fetch_items(crsr, name, id, "Predictions", "1", colonisation_type)
+        return fetch_items(crsr, name, id_, "Predictions", "1", colonisation_type)
 
 
 @app.get("/fetch-annotations-cnn-1")
-def fetch_annotations_cnn1(name: str = "", id: str = "", colonisation_type: str = "am"):
+def fetch_annotations_cnn1(
+    name: str = "", id_: str = "", colonisation_type: str = "am"
+):
     with conn, conn.cursor() as crsr:
-        return fetch_items(crsr, name, id, "Annotations", "1", colonisation_type)
+        return fetch_items(crsr, name, id_, "Annotations", "1", colonisation_type)
 
 
 @app.post("/save-annotations")
@@ -153,27 +156,27 @@ def check_for_image(name: str = "", colonisation_type: str = "am"):
 
 
 @app.get("/check-entries-for-id")
-def check_for_id(id: str = "", colonisation_type: str = "am"):
+def check_for_id(id_: str = "", colonisation_type: str = "am"):
     with conn, conn.cursor() as crsr:
-        return check_entries_for_id(crsr, id, colonisation_type)
+        return check_entries_for_id(crsr, id_, colonisation_type)
 
 
 @app.get("/download-entries")
-def download(id, type, colonisation_type: str = "am"):
+def download(id_, type_, colonisation_type: str = "am"):
     with conn, conn.cursor() as crsr:
-        return download_entries_as_csv(crsr, id, type, colonisation_type)
+        return download_entries_as_csv(crsr, id_, type_, colonisation_type)
 
 
-@app.delete("/delete-image-reference/{id}")
-def delete_image_reference(id):
+@app.delete("/delete-image-reference/{id_}")
+def delete_image_reference(id_):
     with conn, conn.cursor() as crsr:
-        return delete_image(crsr, id)
+        return delete_image(crsr, id_)
 
 
 @app.patch("/set-to-enabled/{id}")
-def set_to_enabled(id):
+def set_to_enabled(id_):
     with conn, conn.cursor() as crsr:
-        return set_to_enabled_in_db(crsr, id)
+        return set_to_enabled_in_db(crsr, id_)
 
 
 @app.post("/calculate-predictions")
@@ -229,7 +232,7 @@ def convert_images(convert_config: ConvertConfig):
 
 
 @app.post("/tif-conversion")
-def convert_images(tif_conversion_config: TifConversionConfig):
+def tif_conversion(tif_conversion_config: TifConversionConfig):
     AmfConfig.set_tif_conversion_config(tif_conversion_config)
     input_files = AmfConfig.get_input_files()
     return AmfConvertImageType.run(input_files)
@@ -286,7 +289,7 @@ async def tile_image(file: UploadFile = File(...)):
             cropped_tile.save(img_byte_arr, format="JPEG")
             current_image[f"{i // edge}.{j // edge}"] = img_byte_arr.getvalue()
 
-        AmfConfig.set("tiles", current_image)
+        AmfConfig.set_("tiles", current_image)
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail="Something went wrong")
@@ -307,7 +310,7 @@ def get_tiles(startIndex: int, batchSize: int = 1000):
 
 @app.post("/set-tile-edge")
 def set_tile_edge(tileEdgeConfig: TileEdgeConfig):
-    AmfConfig.set("tile_edge", tileEdgeConfig.tileEdge)
+    AmfConfig.set_("tile_edge", tileEdgeConfig.tileEdge)
     print(f"[{AmfConfig.invite()}] Tile edge set to {tileEdgeConfig.tileEdge}")
     return 200
 
@@ -361,7 +364,7 @@ def check_if_settings_exists(crsr):
     table_exists = crsr.fetchone()[0]
 
     if not table_exists:
-        print(f"Table settings does not exist.")
+        print("Table settings does not exist.")
         return False
 
     crsr.execute("SELECT COUNT(*) FROM settings")
@@ -370,7 +373,7 @@ def check_if_settings_exists(crsr):
     row_count = crsr.fetchone()[0]
 
     if row_count == 0:
-        print(f"Settings exists but it is empty.")
+        print("Settings exists but it is empty.")
         return False
     else:
         print(f"Settings exists and it contains {row_count} rows.")
@@ -408,7 +411,7 @@ if __name__ == "__main__":
         # Check if settings exist, and if not populate table with default values
         settings_exist = check_if_settings_exists(crsr)
         if not settings_exist:
-            print(f"Populating settings.")
+            print("Populating settings.")
             crsr.execute(
                 open(os.path.join(wd, "scripts/fill_default_settings.sql"), "r").read()
             )

@@ -8,24 +8,43 @@ logger = logging.getLogger(__name__)
 
 
 class BasicBlock(nn.Module):
-    def __init__(self, in_planes, out_planes, stride, drop_rate=0.0, activate_before_residual=False):
+    def __init__(
+        self,
+        in_planes,
+        out_planes,
+        stride,
+        drop_rate=0.0,
+        activate_before_residual=False,
+    ):
         super(BasicBlock, self).__init__()
         self.bn1 = nn.BatchNorm2d(in_planes, momentum=0.001)
         self.relu1 = nn.LeakyReLU(negative_slope=0.1, inplace=True)
-        self.conv1 = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                               padding=1, bias=False)
+        self.conv1 = nn.Conv2d(
+            in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False
+        )
         self.bn2 = nn.BatchNorm2d(out_planes, momentum=0.001)
         self.relu2 = nn.LeakyReLU(negative_slope=0.1, inplace=True)
-        self.conv2 = nn.Conv2d(out_planes, out_planes, kernel_size=3, stride=1,
-                               padding=1, bias=False)
+        self.conv2 = nn.Conv2d(
+            out_planes, out_planes, kernel_size=3, stride=1, padding=1, bias=False
+        )
         self.drop_rate = drop_rate
-        self.equalInOut = (in_planes == out_planes)
-        self.convShortcut = (not self.equalInOut) and nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride,
-                                                                padding=0, bias=False) or None
+        self.equalInOut = in_planes == out_planes
+        self.convShortcut = (
+            (not self.equalInOut)
+            and nn.Conv2d(
+                in_planes,
+                out_planes,
+                kernel_size=1,
+                stride=stride,
+                padding=0,
+                bias=False,
+            )
+            or None
+        )
         self.activate_before_residual = activate_before_residual
 
     def forward(self, x):
-        if not self.equalInOut and self.activate_before_residual == True:
+        if not self.equalInOut and self.activate_before_residual:
             x = self.relu1(self.bn1(x))
         else:
             out = self.relu1(self.bn1(x))
@@ -37,16 +56,48 @@ class BasicBlock(nn.Module):
 
 
 class NetworkBlock(nn.Module):
-    def __init__(self, nb_layers, in_planes, out_planes, block, stride, drop_rate=0.0, activate_before_residual=False):
+    def __init__(
+        self,
+        nb_layers,
+        in_planes,
+        out_planes,
+        block,
+        stride,
+        drop_rate=0.0,
+        activate_before_residual=False,
+    ):
         super(NetworkBlock, self).__init__()
         self.layer = self._make_layer(
-            block, in_planes, out_planes, nb_layers, stride, drop_rate, activate_before_residual)
+            block,
+            in_planes,
+            out_planes,
+            nb_layers,
+            stride,
+            drop_rate,
+            activate_before_residual,
+        )
 
-    def _make_layer(self, block, in_planes, out_planes, nb_layers, stride, drop_rate, activate_before_residual):
+    def _make_layer(
+        self,
+        block,
+        in_planes,
+        out_planes,
+        nb_layers,
+        stride,
+        drop_rate,
+        activate_before_residual,
+    ):
         layers = []
         for i in range(int(nb_layers)):
-            layers.append(block(i == 0 and in_planes or out_planes, out_planes,
-                                i == 0 and stride or 1, drop_rate, activate_before_residual))
+            layers.append(
+                block(
+                    i == 0 and in_planes or out_planes,
+                    out_planes,
+                    i == 0 and stride or 1,
+                    drop_rate,
+                    activate_before_residual,
+                )
+            )
         return nn.Sequential(*layers)
 
     def forward(self, x):
@@ -56,22 +107,29 @@ class NetworkBlock(nn.Module):
 class WideResNet(nn.Module):
     def __init__(self, num_classes, depth=28, widen_factor=2, drop_rate=0.0):
         super(WideResNet, self).__init__()
-        channels = [16, 16*widen_factor, 32*widen_factor, 64*widen_factor]
-        assert((depth - 4) % 6 == 0)
+        channels = [16, 16 * widen_factor, 32 * widen_factor, 64 * widen_factor]
+        if (depth - 4) % 6 != 0:
+            raise ValueError("Depth should be a factor of 6, plus 4")
         n = (depth - 4) / 6
         block = BasicBlock
         # 1st conv before any network block
-        self.conv1 = nn.Conv2d(3, channels[0], kernel_size=3, stride=1,
-                               padding=1, bias=False)
+        self.conv1 = nn.Conv2d(
+            3, channels[0], kernel_size=3, stride=1, padding=1, bias=False
+        )
         # 1st block
         self.block1 = NetworkBlock(
-            n, channels[0], channels[1], block, 1, drop_rate, activate_before_residual=True)
+            n,
+            channels[0],
+            channels[1],
+            block,
+            1,
+            drop_rate,
+            activate_before_residual=True,
+        )
         # 2nd block
-        self.block2 = NetworkBlock(
-            n, channels[1], channels[2], block, 2, drop_rate)
+        self.block2 = NetworkBlock(n, channels[1], channels[2], block, 2, drop_rate)
         # 3rd block
-        self.block3 = NetworkBlock(
-            n, channels[2], channels[3], block, 2, drop_rate)
+        self.block3 = NetworkBlock(n, channels[2], channels[3], block, 2, drop_rate)
         # global average pooling and classifier
         self.bn1 = nn.BatchNorm2d(channels[3], momentum=0.001)
         self.relu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
@@ -80,9 +138,9 @@ class WideResNet(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight,
-                                        mode='fan_out',
-                                        nonlinearity='leaky_relu')
+                nn.init.kaiming_normal_(
+                    m.weight, mode="fan_out", nonlinearity="leaky_relu"
+                )
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1.0)
                 nn.init.constant_(m.bias, 0.0)
