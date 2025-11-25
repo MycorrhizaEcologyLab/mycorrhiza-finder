@@ -1,24 +1,31 @@
 import os
 import time
+from typing import Type
 
 # Import from https://github.com/markus93/NN_calibration/blob/master/scripts/calibration/cal_methods.py
 import numpy as np
 import pandas as pd
 import sklearn.metrics as metrics
 import torch
-from scipy.optimize import minimize
+from numpy.typing import NDArray
+from scipy.optimize import OptimizeResult, minimize
 from sklearn.metrics import f1_score, log_loss
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import amfinder_config as AmfConfig
-import amfinder_load as AmfLoad
-import amfinder_log as AmfLog
-import amfinder_model as AmfModel
+from . import amfinder_config as AmfConfig
+from . import amfinder_load as AmfLoad
+from . import amfinder_log as AmfLog
+from . import amfinder_model as AmfModel
 
 
 # Defining relevant functions
-def ECE(conf, pred, true, bin_size=0.1):
+def ECE(
+    conf: NDArray[np.float64],
+    pred: NDArray[np.int_],
+    true: NDArray[np.int_],
+    bin_size: float = 0.1,
+) -> float:
     """
     Expected Calibration Error
 
@@ -48,7 +55,12 @@ def ECE(conf, pred, true, bin_size=0.1):
     return ece
 
 
-def MCE(conf, pred, true, bin_size=0.1):
+def MCE(
+    conf: NDArray[np.float64],
+    pred: NDArray[np.int_],
+    true: NDArray[np.int_],
+    bin_size: float = 0.1,
+) -> float:
     """
     Maximal Calibration Error
 
@@ -64,7 +76,7 @@ def MCE(conf, pred, true, bin_size=0.1):
 
     upper_bounds = np.arange(bin_size, 1 + bin_size, bin_size)
 
-    cal_errors = []
+    cal_errors: list[float] = []
 
     for conf_thresh in upper_bounds:
         acc, avg_conf, _ = compute_acc_bin(
@@ -75,7 +87,7 @@ def MCE(conf, pred, true, bin_size=0.1):
     return max(cal_errors)
 
 
-def softmax(x):
+def softmax(x: NDArray[np.float64]) -> NDArray[np.float64]:
     """
     Compute softmax values for each sets of scores in x.
 
@@ -85,10 +97,16 @@ def softmax(x):
         x_softmax (numpy.ndarray) softmaxed values for initial (m,n) array
     """
     e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum(axis=1, keepdims=1)
+    return e_x / e_x.sum(axis=1, keepdims=1)  # type: ignore[no-any-return]
 
 
-def compute_acc_bin(conf_thresh_lower, conf_thresh_upper, conf, pred, true):
+def compute_acc_bin(
+    conf_thresh_lower: float,
+    conf_thresh_upper: float,
+    conf: NDArray[np.float64],
+    pred: NDArray[np.int_],
+    true: NDArray[np.int_],
+) -> tuple[float, float, int]:
     """
     # Computes accuracy and average confidence for bin
 
@@ -124,7 +142,7 @@ def compute_acc_bin(conf_thresh_lower, conf_thresh_upper, conf, pred, true):
 
 # Defining model for TemperatureScaling
 class TemperatureScaling:
-    def __init__(self, temp=1, maxiter=50, solver="BFGS"):
+    def __init__(self, temp: float = 1, maxiter: int = 50, solver: str = "BFGS"):
         """
         Initialize class
 
@@ -137,14 +155,18 @@ class TemperatureScaling:
         self.maxiter = maxiter
         self.solver = solver
 
-    def _loss_fun(self, x, probs, true):
+    def _loss_fun(
+        self, x: float, probs: NDArray[np.float64], true: NDArray[np.int_]
+    ) -> float:
         # Calculates the loss using log-loss (cross-entropy loss)
         scaled_probs = self.predict(probs, x)
-        loss = log_loss(y_true=true, y_pred=scaled_probs)
+        loss: float = log_loss(y_true=true, y_pred=scaled_probs)
         return loss
 
     # Find the temperature
-    def fit(self, logits, true):
+    def fit(
+        self, logits: NDArray[np.float64], true: NDArray[np.int_]
+    ) -> OptimizeResult:
         """
         Trains the model and finds optimal temperature
 
@@ -169,7 +191,9 @@ class TemperatureScaling:
 
         return opt
 
-    def predict(self, logits, temp=None):
+    def predict(
+        self, logits: NDArray[np.float64], temp: float | None = None
+    ) -> NDArray[np.float64]:
         """
         Scales logits based on the temperature and returns calibrated probabilities
 
@@ -188,7 +212,13 @@ class TemperatureScaling:
         return softmax(logits / temp)
 
 
-def evaluate(probs, y_true, verbose=False, normalize=False, bins=15):
+def evaluate(
+    probs: NDArray[np.float64],
+    y_true: NDArray[np.int_],
+    verbose: bool = False,
+    normalize: bool = False,
+    bins: int = 15,
+) -> tuple[float, float, float, float, float]:
     """
     Evaluate model using various scoring measures: Error Rate, ECE, MCE, NLL, MacroF1
     Score
@@ -240,7 +270,10 @@ def evaluate(probs, y_true, verbose=False, normalize=False, bins=15):
     return (error, ece, mce, loss, macrof1)
 
 
-def cal_results(fn, logits_data, m_kwargs={}):
+def cal_results(
+    fn: Type[TemperatureScaling],
+    logits_data: tuple[NDArray[np.float64], NDArray[np.int_]],
+) -> tuple[float, pd.DataFrame, NDArray[np.float64]]:
     """
     Calibrate models scores, using output from logits files and given function (fn).
     There are implemented to different approaches "all" and "1-vs-K" for calibration,
@@ -255,8 +288,6 @@ def cal_results(fn, logits_data, m_kwargs={}):
             where first fits the models and second outputs calibrated probabilities.
         logits_data (tuple): Tuple containing two arrays - (logits and one-hot-encoded
             labels)
-        m_kwargs (dictionary): keyword arguments for the calibration class
-            initialization
         approach (string): "all" for multiclass calibration and "1-vs-K" for 1-vs-K
             approach.
 
@@ -277,7 +308,7 @@ def cal_results(fn, logits_data, m_kwargs={}):
 
     # Defining labels and model
     # labels = labels.flatten()
-    model = fn(**m_kwargs)
+    model = fn()
 
     # Fitting the model to logits and labels
     model.fit(logits, labels)
@@ -305,7 +336,7 @@ def cal_results(fn, logits_data, m_kwargs={}):
 
 # TODO this can hit RAM limits with large datasets. Would be
 # good to look into a solution to limit memory use here
-def run(input_files):
+def run(input_files: list[str]) -> int:
     """
     Loads a specified, trained network, and estimates a temperature
     based on Platt scaling for calibration by logistic regression.

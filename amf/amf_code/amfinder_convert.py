@@ -27,28 +27,29 @@ import io
 import json
 import os
 import re
+from typing import cast
 
 import imagesize
 import numpy as np
 import pandas as pd
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-from api_objects import AnnotationValues
-from api_utils import (
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
+from .api_objects import AnnotationValues
+from .api_utils import (
     check_entries_for_id,
     download_entries_as_csv,
     get_enabled,
     get_tile_edge,
     save_annotations_to_db,
 )
-from db_config import connect
+from .db_config import connect
 
-NROWS = None
-NCOLS = None
+NROWS: int | None = None
+NCOLS: int | None = None
 
 
-def initialize_size(path):
+def initialize_size(path: str) -> int:
     """
     Retrieve the number of rows and columns based on image and tile sizes.
     """
@@ -75,20 +76,21 @@ def initialize_size(path):
     global NROWS, NCOLS
     if tile_size is None:
         raise ValueError("Tile size not configured")
-    NCOLS = width // tile_size
-    NROWS = height // tile_size
+    tile_size_int = cast(int, tile_size)
+    NCOLS = width // tile_size_int
+    NROWS = height // tile_size_int
 
-    return tile_size
+    return tile_size_int
 
 
-def preds_to_python_annot(path, preds):
+def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFrame:
     """
     Convert predictions to Python annotations.
     If useContextualConfidence is True, use the ContextualLabel column when available.
     """
     use_contextual_confidence = AmfConfig.get("use_contextual_confidence")
     # Only one file, nothing special to choose.
-    preds = pd.read_csv(preds)
+    preds = pd.read_csv(preds_path)
 
     # Get the coordinates
     coord = preds[["row", "col"]]
@@ -146,7 +148,7 @@ def preds_to_python_annot(path, preds):
     return pd.concat([coord, conv], axis=1)
 
 
-def update_archive(out, prev_path):
+def update_archive(out: pd.DataFrame, prev_path: str) -> None:
     """
     Save annotations in Python format to csv.
     """
@@ -154,7 +156,7 @@ def update_archive(out, prev_path):
     out.to_csv(new_path, index=False)
 
 
-def create_annotations(path, tile_size):
+def create_annotations(path: str, tile_size: int) -> None:
     preds = []
     image_name = os.path.splitext(os.path.basename(path))[0]
 
@@ -226,7 +228,7 @@ def create_annotations(path, tile_size):
             )
 
 
-def run(input_images):
+def run(input_images: list[str]) -> int:
     print("Running conversion of predictions to annotations")
     print("Image\t" + "\t".join(AmfConfig.human_readable_header()))
 

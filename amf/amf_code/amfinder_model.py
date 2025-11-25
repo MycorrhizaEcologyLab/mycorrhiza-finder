@@ -38,6 +38,7 @@ Functions
 """
 
 import os
+from typing import Type, cast
 
 # PyTorch imports
 import torch
@@ -45,12 +46,12 @@ import torch.nn as nn
 import torch.nn.init as init
 from torchvision import models
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
 
 
 class ConvolutionalBlocks(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super(
             ConvolutionalBlocks, self
         ).__init__()  # Perhaps use different type of super() function assignment
@@ -145,7 +146,7 @@ class ConvolutionalBlocks(nn.Module):
         # Initialise weights
         self._initialise_weights()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # Keep the input for return
         input_layer = x
         # x = x.permute(0, 3, 1, 2)
@@ -183,14 +184,14 @@ class ConvolutionalBlocks(nn.Module):
 
         return (input_layer, x)
 
-    def _initialise_weights(self):
+    def _initialise_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 init.kaiming_uniform_(m.weight, mode="fan_in", nonlinearity="relu")
                 if m.bias is not None:
                     init.zeros_(m.bias)
 
-    def get_conv_output_size(self, input_tensor):
+    def get_conv_output_size(self, input_tensor: torch.Tensor) -> int:
         # Pass the input through the convolutional layers to compute the output size
         xo = self.conv11(input_tensor)
         xo = nn.ReLU()(xo)
@@ -218,11 +219,13 @@ class ConvolutionalBlocks(nn.Module):
 
         # Flatten the xo
         xo = xo.view(xo.size(0), -1)  # Flattened view for fully connected layer
-        return xo.size(1)  # Return number of features
+        return cast(int, xo.size(1))  # Return number of features
 
 
 class FCLayers(nn.Module):
-    def __init__(self, fc_in_size, output_size=1):  # activation='sigmoid'):
+    def __init__(
+        self, fc_in_size: int, output_size: int = 1
+    ) -> None:  # activation='sigmoid'):
         super(FCLayers, self).__init__()
 
         # Layers
@@ -237,7 +240,7 @@ class FCLayers(nn.Module):
         # Initialise weights
         self._initialise_weights()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # First pass through fc1
         x = self.fc1(x)
         x = nn.ReLU()(x)
@@ -254,9 +257,9 @@ class FCLayers(nn.Module):
         # Activation function
         # output = self.activation(output)
 
-        return output
+        return cast(torch.Tensor, output)
 
-    def _initialise_weights(self):
+    def _initialise_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 init.kaiming_uniform_(m.weight, mode="fan_in", nonlinearity="relu")
@@ -265,7 +268,7 @@ class FCLayers(nn.Module):
 
 
 class CNN1(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super(CNN1, self).__init__()
         self.conv = ConvolutionalBlocks()
         self.fc = FCLayers(
@@ -273,12 +276,12 @@ class CNN1(nn.Module):
             output_size=len(AmfConfig.get("header")),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv(x)
-        return self.fc(x[1])
+        return cast(torch.Tensor, self.fc(x[1]))
 
 
-def create_cnn1():
+def create_cnn1() -> CNN1:
     """
     Builds a single-label, multi-class classifier to discriminate
     between different classes for AM or ErM roots.
@@ -289,7 +292,7 @@ def create_cnn1():
     return model
 
 
-def create_resnet50(num_classes=6, pre_trained=False):
+def create_resnet50(num_classes: int = 6, pre_trained: bool = False) -> torch.nn.Module:
     # Initialize ResNet50 without pre-trained weights
 
     if pre_trained:
@@ -302,10 +305,12 @@ def create_resnet50(num_classes=6, pre_trained=False):
     in_features = model.fc.in_features
     model.fc = nn.Linear(in_features, num_classes)
 
-    return model
+    return cast(torch.nn.Module, model)
 
 
-def create_resnext50(num_classes=6, pre_trained=False):
+def create_resnext50(
+    num_classes: int = 6, pre_trained: bool = False
+) -> torch.nn.Module:
     """
     Builds ResNeXt50 model with 32x4d configuration.
     This is comparable to ResNet50 in terms of parameters.
@@ -321,10 +326,12 @@ def create_resnext50(num_classes=6, pre_trained=False):
     in_features = model.fc.in_features
     model.fc = nn.Linear(in_features, num_classes)
 
-    return model
+    return cast(torch.nn.Module, model)
 
 
-def create_efficientnetb5(num_classes=6, pre_trained=False):
+def create_efficientnetb5(
+    num_classes: int = 6, pre_trained: bool = False
+) -> torch.nn.Module:
     # Initialise EfficientNet with pretrained weights
     if pre_trained:
         model = models.efficientnet_b5(weights="IMAGENET1K_V1")
@@ -335,10 +342,12 @@ def create_efficientnetb5(num_classes=6, pre_trained=False):
     num_features = model.classifier[1].in_features
     model.classifier[1] = nn.Linear(num_features, num_classes)
 
-    return model
+    return cast(torch.nn.Module, model)
 
 
-def create_efficientnet_v2_m(num_classes=6, pre_trained=False):
+def create_efficientnet_v2_m(
+    num_classes: int = 6, pre_trained: bool = False
+) -> torch.nn.Module:
     # Initialise EfficientNet with pretrained weights
     if pre_trained:
         model = models.efficientnet_v2_m(weights="IMAGENET1K_V1")
@@ -350,10 +359,10 @@ def create_efficientnet_v2_m(num_classes=6, pre_trained=False):
     num_features = model.classifier[-1].in_features
     model.classifier[-1] = nn.Linear(num_features, num_classes)
 
-    return model
+    return cast(torch.nn.Module, model)
 
 
-def load(name=None):
+def load(name: str | None = None) -> torch.nn.Module:
     """
     Loads or initialises a convolutional neural network.
     """
@@ -390,12 +399,20 @@ def load(name=None):
             if model_name in ["CNN1", "ResNet", "ResNeXt", "EfficientNet"]:
                 AmfLog.text(f"Model type: {model_name}")
                 return model
+            else:
+                raise ValueError(
+                    "Not a valid model. Valid models are CNN1, ResNet, ResNeXt, "
+                    "EfficientNet"
+                )
 
         else:
             AmfLog.error(
                 "The provided model is not a torch.nn.Module instance",
                 exit_code=AmfLog.ERR_NO_PRETRAINED_MODEL,
             )
+            raise RuntimeError(
+                "Unreachable code after AmfLog.error()"
+            )  # TODO replace with proper exceptions
 
     else:
         # Initialise a new network if no valid model was found
@@ -410,6 +427,9 @@ def load(name=None):
                         "Please proceed with pre_trained=False",
                         exit_code=AmfLog.ERR_NO_PRETRAINED_MODEL,
                     )
+                    raise RuntimeError(
+                        "Unreachable code after AmfLog.error()"
+                    )  # TODO replace with proper exceptions
                 else:
                     model = create_cnn1()
 
@@ -436,6 +456,9 @@ def load(name=None):
                     "'efficientnetv2'.",
                     exit_code=AmfLog.ERR_INVALID_MODEL,
                 )
+                raise RuntimeError(
+                    "Unreachable code after AmfLog.error()"
+                )  # TODO replace with proper exceptions
 
             model_name = AmfConfig.get("model_type")  # Get class name of loaded model
             AmfLog.text(
@@ -443,16 +466,21 @@ def load(name=None):
                 f"Pre-Trained Flag: {pt_flag}"
             )
 
-            return model
+            return cast(torch.nn.Module, model)
 
         else:  # missing pre-trained model in prediction mode.
             AmfLog.error(
                 "A pre-trained model is required in prediction/calibration/test mode",
                 exit_code=AmfLog.ERR_NO_PRETRAINED_MODEL,
             )
+            raise RuntimeError(
+                "Unreachable code after AmfLog.error()"
+            )  # TODO replace with proper exceptions
 
 
-def filter_layers(model, layer_type):
+def filter_layers(
+    model: torch.nn.Module, layer_type: Type[torch.nn.Module]
+) -> list[torch.nn.Module]:
     """
     Return all layers from a <model> that belong to a given <layer_type>.
     """
@@ -460,16 +488,16 @@ def filter_layers(model, layer_type):
 
 
 class FeatureExtractor(nn.Module):
-    def __init__(self, layers):
+    def __init__(self, layers: list[torch.nn.Module]) -> None:
         super(FeatureExtractor, self).__init__()
         # Combine the filtered layers into a new module
         self.layers = nn.Sequential(*layers)
 
-    def forward(self, x):
-        return self.layers(x)  # Forward through the selected layers
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return cast(torch.Tensor, self.layers(x))  # Forward through the selected layers
 
 
-def get_feature_extractors(model):
+def get_feature_extractors(model: torch.nn.Module) -> list[FeatureExtractor]:
     """
     Builds feature extractor models for all convolutional layers (Conv2d).
     """

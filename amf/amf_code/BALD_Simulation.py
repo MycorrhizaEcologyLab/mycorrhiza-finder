@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from numpy.typing import NDArray
 from sklearn.metrics import confusion_matrix, f1_score
 from torch.utils.data import DataLoader
 
@@ -15,11 +16,11 @@ from torch.utils.data import DataLoader
 from torchinfo import summary
 from tqdm import tqdm
 
-import amfinder_config as AmfConfig
-import amfinder_load as AmfLoad
-import amfinder_model as AmfModel
-from acquisition_functions import get_batchbald_batch
-from amfinder_train import class_weights
+from . import amfinder_config as AmfConfig
+from . import amfinder_load as AmfLoad
+from . import amfinder_model as AmfModel
+from .acquisition_functions import get_batchbald_batch
+from .amfinder_train import class_weights
 
 
 def add_dropout_layers(model: nn.Module, p: float = 0.25) -> nn.Module:
@@ -49,14 +50,14 @@ def add_dropout_layers(model: nn.Module, p: float = 0.25) -> nn.Module:
 
 
 def bald_acquisition(
-    model,
-    device,
-    x_unlabelled,
-    num_samples_for_labelling,
-    num_classes,
-    mc_samples=10,
-    batch_size=32,
-):
+    model: torch.nn.Module,
+    device: torch.device,
+    x_unlabelled: list[NDArray[np.uint8]],
+    num_samples_for_labelling: int,
+    num_classes: int,
+    mc_samples: int = 10,
+    batch_size: int = 32,
+) -> list[int]:
     """
     Implements BALD acquisition function using MC Dropout for uncertainty estimation.
 
@@ -114,18 +115,18 @@ def bald_acquisition(
 
     # Get indices of the num_samples_for_labelling most uncertain samples
     top_indices = np.argsort(-bald_scores)[:num_samples_for_labelling]
-    return top_indices.tolist()
+    return list(top_indices)
 
 
 def batch_bald_acquisition(
-    model,
-    device,
-    x_unlabelled,
-    num_samples_for_labelling,
-    num_classes,
-    mc_samples=10,
-    batch_size=32,
-):
+    model: torch.nn.Module,
+    device: torch.device,
+    x_unlabelled: list[NDArray[np.uint8]],
+    num_samples_for_labelling: int,
+    num_classes: int,
+    mc_samples: int = 10,
+    batch_size: int = 32,
+) -> list[int]:
     model.train()  # Set model to evaluation mode
     model.to(device)
 
@@ -160,12 +161,16 @@ def batch_bald_acquisition(
     return bald_batch_indices
 
 
-def balance_dataset(x, y, factor=1.0):  # factor is a hyperparameter
+def balance_dataset(
+    x: list[NDArray[np.uint8]], y: list[NDArray[np.uint8]], factor: float = 1.0
+) -> tuple[
+    list[NDArray[np.uint8]], list[NDArray[np.uint8]]
+]:  # factor is a hyperparameter
     # Count the number of samples in class 0 (assumes one-hot encoding)
     class_0_samples = sum(array[0] for array in y)
 
     # Initialize a list to keep track of indices to retain
-    indices_to_keep = []
+    indices_to_keep: list[int] = []
 
     # Convert the one-hot encoded labels to class indices
     y_indices = np.argmax(y, axis=1)
@@ -212,16 +217,16 @@ def balance_dataset(x, y, factor=1.0):  # factor is a hyperparameter
 
 
 def train_model(
-    model,
-    device,
-    x_train,
-    y_train,
-    x_val,
-    y_val,
-    num_epochs=5,
-    batch_size=32,
-    optimiser=None,
-):
+    model: torch.nn.Module,
+    device: torch.device,
+    x_train: list[NDArray[np.uint8]],
+    y_train: list[NDArray[np.uint8]],
+    x_val: list[NDArray[np.uint8]],
+    y_val: list[NDArray[np.uint8]],
+    num_epochs: int = 5,
+    batch_size: int = 32,
+    optimiser: torch.optim.Optimizer | None = None,
+) -> torch.nn.Module:
     model.train()
     # Set a default optimizer if none is provided
     if optimiser is None:
@@ -254,7 +259,7 @@ def train_model(
     )
 
     # Training loop
-    history = {"loss": [], "val_loss": []}
+    history: dict[str, list[float]] = {"loss": [], "val_loss": []}
 
     best_val_loss = float("inf")
 
@@ -322,7 +327,13 @@ def train_model(
     return model
 
 
-def evaluate_model(x_test, y_test, model, device, batch_size=32):
+def evaluate_model(
+    x_test: list[NDArray[np.uint8]],
+    y_test: list[NDArray[np.uint8]],
+    model: torch.nn.Module,
+    device: torch.device,
+    batch_size: int = 32,
+) -> tuple[float, NDArray[np.float64], NDArray[np.float64]]:
     model.eval()
     num_classes = y_test[0].shape[0]
     # Ensure the model is in evaluation mode
@@ -385,20 +396,26 @@ def evaluate_model(x_test, y_test, model, device, batch_size=32):
 
 
 def simulate_active_learning(
-    model,
-    device,
-    n_iterations,
-    num_samples_to_be_labelled_per_iteration,
-    x_train,
-    y_train,
-    x_val,
-    y_val,
-    x_unlabelled,
-    y_unlabelled,
-    x_test,
-    y_test,
-    method="bald",
-):
+    model: torch.nn.Module,
+    device: torch.device,
+    n_iterations: int,
+    num_samples_to_be_labelled_per_iteration: int,
+    x_train: list[NDArray[np.uint8]],
+    y_train: list[NDArray[np.uint8]],
+    x_val: list[NDArray[np.uint8]],
+    y_val: list[NDArray[np.uint8]],
+    x_unlabelled: list[NDArray[np.uint8]],
+    y_unlabelled: list[NDArray[np.uint8]],
+    x_test: list[NDArray[np.uint8]],
+    y_test: list[NDArray[np.uint8]],
+    method: str = "bald",  # TODO enum?
+) -> tuple[
+    list[float],
+    list[NDArray[np.float64]],
+    list[list[int]],
+    list[NDArray[np.float64]],
+    list[dict[str, int]],
+]:
     print(f"Method is {method}.")
     loss_array = []
     f1_scores_array = []
@@ -439,7 +456,7 @@ def simulate_active_learning(
         bald_indices_array.append(indices_to_label)
 
         class_names = ["AM+", "M−", "Background", "Unreadable", "DSE", "Hybrid"]
-        class_dict_in_selected_labels = {}
+        class_dict_in_selected_labels: dict[str, int] = {}
         for idx in indices_to_label:
             class_dict_in_selected_labels[class_names[np.argmax(y_unlabelled[idx])]] = (
                 class_dict_in_selected_labels.get(
@@ -485,7 +502,7 @@ def simulate_active_learning(
     )
 
 
-def main(data_directory_name):
+def main(data_directory_name: str) -> None:
     model = AmfModel.load()
     model = add_dropout_layers(model, p=0.25)
     summary(model)

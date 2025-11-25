@@ -51,11 +51,12 @@ import glob
 import mimetypes
 import os
 from argparse import ArgumentParser, RawTextHelpFormatter
+from typing import Any, cast
 
 import torch
 
-import amfinder_log as AmfLog
-from api_objects import (
+from . import amfinder_log as AmfLog
+from .api_objects import (
     BaseConfig,
     CalibrateConfig,
     ConvertConfig,
@@ -69,7 +70,7 @@ USER_HOME_LOC = "~"
 RESULTS_FOLDER_NAME = "amfinder"
 
 
-def get_default_output_dir():
+def get_default_output_dir() -> str | None:
     # Returns the path to the user home directory, Documents if it exists,
     # based on what exists and is writeable
     home = os.path.expanduser(USER_HOME_LOC)
@@ -83,7 +84,7 @@ def get_default_output_dir():
     return output_dir
 
 
-def create_results_dir(label: str = ""):
+def create_results_dir(label: str = "") -> str:
     # Create timestamped folder for results
     default_output_loc = get_default_output_dir()
     if default_output_loc is None:
@@ -245,28 +246,28 @@ PAR = {
 APP_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
-def get_appdir():
+def get_appdir() -> str:
     """Returns the application directory."""
 
     return APP_PATH
 
 
-def invite():
+def invite() -> str:
     """
     Command-line invite
     """
     return datetime.datetime.now().strftime("%H:%M:%S")
 
 
-def human_readable_header():
+def human_readable_header() -> list[str]:
     """
     Return the human-readable header of the current model.
     """
+    colonisation_type = cast(str, PAR["colonisation_type"])
+    return HUMAN_HEADERS[colonisation_type]
 
-    return HUMAN_HEADERS[PAR["colonisation_type"]]
 
-
-def get(id_):
+def get(id_: str) -> Any:
     """
     Retrieve application settings.
 
@@ -279,26 +280,28 @@ def get(id_):
         # Special case, look into a specific folder.
         if id_ in ["model", "model_erm"] and PAR[id_] is not None:
             # Check if model exists in trained networks, else use absolute path
-            model_name = os.path.basename(PAR[id_])
+            model_path = cast(str, PAR[id_])
+            model_name = os.path.basename(model_path)
             path = os.path.join(get_appdir(), "trained_networks", model_name)
 
             if not os.path.isfile(path):
-                path = PAR[id_]
+                path = cast(str, PAR[id_])
 
             return path
 
         else:
             return PAR[id_]
 
-    elif id_ in PAR["monitors"]:
-        return PAR["monitors"][id_]
+    elif id_ in PAR["monitors"]:  # type: ignore[operator] # TODO typed parameters
+        monitors: dict[str, Any] = PAR["monitors"]  # type: ignore[assignment]
+        return monitors[id_]
 
     else:
         AmfLog.warning(f"Unknown parameter {id_}")
         return None
 
 
-def find_files_in_directory(directory, convert_tiff=False):
+def find_files_in_directory(directory: str, convert_tiff: bool = False) -> list[str]:
     # Search for .jpg, .jpeg & .png files
     search_patterns = [
         os.path.join(directory, "**", "*.jpg"),
@@ -321,7 +324,7 @@ def find_files_in_directory(directory, convert_tiff=False):
     return img_files
 
 
-def set_(id_, value, create=False):
+def set_(id_: str, value: Any, create: bool = False) -> None:
     """
     Updates application settings.
 
@@ -382,8 +385,8 @@ def set_(id_, value, create=False):
                         ],
                     }
 
-        elif id_ in PAR["monitors"]:
-            PAR["monitors"][id_] = value
+        elif id_ in PAR["monitors"]:  # type: ignore[operator] # TODO typed parameters
+            PAR["monitors"][id_] = value  # type: ignore[index, call-overload]
 
         elif create:
             PAR[id_] = value
@@ -392,7 +395,7 @@ def set_(id_, value, create=False):
             AmfLog.warning(f"Unknown parameter {id_}")
 
 
-def add_training_subparser(subparsers):
+def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
     """
     Defines arguments used in training mode.
 
@@ -776,7 +779,7 @@ def add_training_subparser(subparsers):
     return
 
 
-def add_test_subparser(subparsers):
+def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
     """
     Defines arguments used in test  mode.
 
@@ -946,7 +949,7 @@ def add_test_subparser(subparsers):
     return
 
 
-def add_colonisation_subparser(subparsers):
+def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
     """
     Defines arguments used in colonisation mode.
 
@@ -1040,7 +1043,7 @@ def add_colonisation_subparser(subparsers):
     return
 
 
-def add_prediction_subparser(subparsers):
+def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
     """
     Defines arguments used in prediction mode.
 
@@ -1180,7 +1183,7 @@ def add_prediction_subparser(subparsers):
     return
 
 
-def add_conversion_subparser(subparsers):
+def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
     parser = subparsers.add_parser(
         "convert",
         help="Runs AMFinder in conversion mode.",
@@ -1272,7 +1275,7 @@ def add_conversion_subparser(subparsers):
     return
 
 
-def add_tif_conversion_subparser(subparsers):
+def add_tif_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
     parser = subparsers.add_parser(
         "tifconversion",
         help="Runs AMFinder in TIF conversion mode.",
@@ -1335,7 +1338,7 @@ def add_tif_conversion_subparser(subparsers):
     return
 
 
-def add_calibrate_subparser(subparsers):
+def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
     """
     Defines arguments used in calibration mode.
 
@@ -1430,7 +1433,7 @@ def add_calibrate_subparser(subparsers):
     return
 
 
-def build_arg_parser():
+def build_arg_parser() -> ArgumentParser:
     """
     Builds AMFinder command-line parser.
     """
@@ -1456,7 +1459,7 @@ def build_arg_parser():
     return main
 
 
-def abspath(files):
+def abspath(files: list[str]) -> list[str]:
     """
     Returns absolute paths to input files.
 
@@ -1466,7 +1469,7 @@ def abspath(files):
     return [os.path.abspath(x) for x in files]
 
 
-def get_input_files():
+def get_input_files() -> list[str]:
     """
     Filter input file list and keep valid JPEG or TIFF images.
     """
@@ -1496,7 +1499,7 @@ def clean_path(path: str) -> str:
         return os.path.dirname(path)
 
 
-def set_train_config(trainConfig: TrainConfig):
+def set_train_config(trainConfig: TrainConfig) -> None:
     """
     Set configuration for the training run.
 
@@ -1507,7 +1510,7 @@ def set_train_config(trainConfig: TrainConfig):
     number of epochs, and output directory for the training process.
     """
     set_("run_mode", "train")
-    set_device(trainConfig.device)
+    set_device(cast(str, trainConfig.device))
 
     set_("semi_supervised", trainConfig.semiSupervised)
     set_("train_active_learning", trainConfig.trainActiveLearning)
@@ -1558,7 +1561,7 @@ def set_train_config(trainConfig: TrainConfig):
         set_("outdir", trainConfig.outdir)
 
 
-def set_predict_config(predictionConfig: PredictionConfig):
+def set_predict_config(predictionConfig: PredictionConfig) -> None:
     """
     Set configuration for the prediction run.
 
@@ -1570,7 +1573,7 @@ def set_predict_config(predictionConfig: PredictionConfig):
     input files, model, and output directory.
     """
     set_("run_mode", "predict")
-    set_device(predictionConfig.device)
+    set_device(cast(str, predictionConfig.device))
     files = find_files_in_directory(predictionConfig.inputFiles)
     set_("input_files", files)
     set_("use_db", predictionConfig.useDb)
@@ -1593,7 +1596,7 @@ def set_predict_config(predictionConfig: PredictionConfig):
     )
 
 
-def set_test_config(testConfig: TestConfig):
+def set_test_config(testConfig: TestConfig) -> None:
     """
     Set configuration for the testing run.
 
@@ -1604,7 +1607,7 @@ def set_test_config(testConfig: TestConfig):
     including input files, model, and output directory for results.
     """
     set_("run_mode", "test")
-    set_device(testConfig.device)
+    set_device(cast(str, testConfig.device))
     set_("semi_supervised", testConfig.semiSupervised)
     if testConfig.semiSupervised:
         set_("root_path", testConfig.inputFiles)
@@ -1633,7 +1636,7 @@ def set_test_config(testConfig: TestConfig):
     set_("contextual_confidence_threshold", testConfig.contextualConfidenceThreshold)
 
 
-def set_colonisation_config(colonisationConfig: BaseConfig):
+def set_colonisation_config(colonisationConfig: BaseConfig) -> None:
     """
     Set configuration for the testing run.
 
@@ -1644,7 +1647,7 @@ def set_colonisation_config(colonisationConfig: BaseConfig):
     including input files, model, and output directory for results.
     """
     set_("run_mode", "colonisation")
-    set_device(colonisationConfig.device)
+    set_device(cast(str, colonisationConfig.device))
     files = find_files_in_directory(colonisationConfig.inputFiles)
     set_("input_files", files)
 
@@ -1659,7 +1662,7 @@ def set_colonisation_config(colonisationConfig: BaseConfig):
         set_("outdir", colonisationConfig.outdir)
 
 
-def set_convert_config(convertConfig: ConvertConfig):
+def set_convert_config(convertConfig: ConvertConfig) -> None:
     """
     Set configuration for the conversion run.
 
@@ -1671,7 +1674,7 @@ def set_convert_config(convertConfig: ConvertConfig):
     including input files, colonisation type, threshold, and output directory.
     """
     set_("run_mode", "convert")
-    set_device(convertConfig.device)
+    set_device(cast(str, convertConfig.device))
     files = find_files_in_directory(convertConfig.inputFiles)
     set_("input_files", files)
     set_("use_db", convertConfig.useDb)
@@ -1687,7 +1690,7 @@ def set_convert_config(convertConfig: ConvertConfig):
         set_("outdir", convertConfig.outdir)
 
 
-def set_tif_conversion_config(tifConversionConfig: TifConversionConfig):
+def set_tif_conversion_config(tifConversionConfig: TifConversionConfig) -> None:
     """
     Set configuration for the tif conversion.
 
@@ -1698,7 +1701,7 @@ def set_tif_conversion_config(tifConversionConfig: TifConversionConfig):
     This function defines the necessary settings for tif file conversion.
     """
     set_("run_mode", "tifconversion")
-    set_device(tifConversionConfig.device)
+    set_device(cast(str, tifConversionConfig.device))
     files = find_files_in_directory(tifConversionConfig.inputFiles, convert_tiff=True)
     set_("input_files", files)
     set_("use_db", tifConversionConfig.useDb)
@@ -1712,7 +1715,7 @@ def set_tif_conversion_config(tifConversionConfig: TifConversionConfig):
         set_("outdir", tifConversionConfig.outdir)
 
 
-def set_calibrate_config(calibrateConfig: CalibrateConfig):
+def set_calibrate_config(calibrateConfig: CalibrateConfig) -> None:
     """
     Set configuration for the calibration.
 
@@ -1724,7 +1727,7 @@ def set_calibrate_config(calibrateConfig: CalibrateConfig):
     input files, model, and output directory for results.
     """
     set_("run_mode", "calibration")
-    set_device(calibrateConfig.device)
+    set_device(cast(str, calibrateConfig.device))
     files = find_files_in_directory(calibrateConfig.inputFiles)
     set_("input_files", files)
     set_("use_db", calibrateConfig.useDb)
@@ -1740,7 +1743,7 @@ def set_calibrate_config(calibrateConfig: CalibrateConfig):
         set_("outdir", calibrateConfig.outdir)
 
 
-def set_device(device):
+def set_device(device: str) -> None:
     # Get the device setting
     if device == "automatic":
         if torch.cuda.is_available():
@@ -1768,7 +1771,7 @@ def set_device(device):
         raise ValueError('Invalid device. Set device to "cpu", "cuda:0", "automatic"')
 
 
-def initialize():
+def initialize() -> None:
     """
     Read command line and store user settings.
     """
@@ -1846,8 +1849,6 @@ def initialize():
         set_("use_contextual_confidence", par.use_contextual_confidence)
         set_("contextual_confidence_threshold", par.contextual_confidence_threshold)
         set_("outdir", par.outdir)
-
-        set_("collapse", par.collapse)
 
         if par.outdir is None:
             set_("outdir", clean_path(par.images))

@@ -5,14 +5,14 @@ import xml.etree.ElementTree as ET
 
 from PIL import Image
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
 
 # This allows any size image
 Image.MAX_IMAGE_PIXELS = None
 
 
-def convert_tiff(path, file_type="jpg"):
+def convert_tiff(path: str, file_type: str = "jpg") -> None:
     if (
         os.path.splitext(path)[1].lower() == ".tiff"
         or os.path.splitext(path)[1].lower() == ".tif"
@@ -133,7 +133,7 @@ def convert_tiff(path, file_type="jpg"):
             print(f"Failed to crop due to error: {e.__class__.__name__}: {e}")
 
 
-def run(input_images):
+def run(input_images: list[str]) -> int:
     file_type = AmfConfig.get("convert_image_file_type")
     AmfLog.info(f"Running conversion of tifs to {file_type}s")
 

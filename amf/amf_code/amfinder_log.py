@@ -1,3 +1,5 @@
+# TODO replace with loguru
+
 # AMFinder - amfinder_log.py
 #
 # MIT License
@@ -47,6 +49,7 @@ Functions
 
 import datetime
 import sys
+from typing import Any
 
 ERR_NO_DATA = 10
 ERR_INVALID_DATA = 11
@@ -59,14 +62,14 @@ ERR_INVALID_MODEL = 40
 ERR_NO_DATABASE_CONNECTION = 42
 
 
-def invite():
+def invite() -> str:
     """
     Command-line invite.
     """
     return f"[{datetime.datetime.now().strftime('%H:%M:%S')}]"
 
 
-def text(message, **kwargs):
+def text(message: str, **kwargs: Any) -> None:
     """
     Prints an message on standard output.
 
@@ -78,7 +81,7 @@ def text(message, **kwargs):
     print(f"{invite()} {message}.", **kwargs)
 
 
-def info(message, **kwargs):
+def info(message: str, **kwargs: Any) -> None:
     """
     Prints an message on standard output.
 
@@ -90,7 +93,7 @@ def info(message, **kwargs):
     print(f"{invite()} INFO: {message}.", **kwargs)
 
 
-def warning(message, **kwargs):
+def warning(message: str, **kwargs: Any) -> None:
     """
     Prints a warning message on standard error.
 
@@ -102,7 +105,7 @@ def warning(message, **kwargs):
     print(f"{invite()} WARNING: {message}.", file=sys.stderr, **kwargs)
 
 
-def error(message, exit_code, **kwargs):
+def error(message: str, exit_code: int, **kwargs: Any) -> None:
     """
     Prints an error message on standard error and quits.
 
@@ -118,7 +121,7 @@ def error(message, exit_code, **kwargs):
         sys.exit(exit_code)
 
 
-def progress_bar(iteration, total, indent=0):
+def progress_bar(iteration: int, total: int, indent: int = 0) -> None:
     """
     Displays a progress bar.
 

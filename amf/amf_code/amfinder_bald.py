@@ -4,24 +4,25 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
+from numpy.typing import NDArray
 from torch.utils.data import DataLoader
 
-import amfinder_config as AmfConfig
-import amfinder_load as AmfLoad
-import amfinder_log as AmfLog
-import amfinder_model as AmfModel
-from acquisition_functions import get_batchbald_batch
+from . import amfinder_config as AmfConfig
+from . import amfinder_load as AmfLoad
+from . import amfinder_log as AmfLog
+from . import amfinder_model as AmfModel
+from .acquisition_functions import get_batchbald_batch
 
 
 def bald_acquisition(
-    model,
-    device,
-    x_unlabelled,
-    num_samples_for_labelling,
-    num_classes,
-    mc_samples=50,
-    batch_size=32,
-):
+    model: torch.nn.Module,
+    device: torch.device,
+    x_unlabelled: list[NDArray[np.uint8]],
+    num_samples_for_labelling: int,
+    num_classes: int,
+    mc_samples: int = 50,
+    batch_size: int = 32,
+) -> list[int]:
     """
     Implements BALD acquisition function using MC Dropout for uncertainty estimation.
 
@@ -34,7 +35,7 @@ def bald_acquisition(
         batch_size (int): Batch size for efficient memory management.
 
     Returns:
-        np.array: Indices of the num_samples_for_labelling most uncertain samples.
+        List of indices of the num_samples_for_labelling most uncertain samples.
     """
 
     model.train()  # Set model to evaluation mode
@@ -84,18 +85,18 @@ def bald_acquisition(
 
     # Get indices of the num_samples_for_labelling most uncertain samples
     top_indices = np.argsort(-bald_scores)[:num_samples_for_labelling]
-    return top_indices.tolist()
+    return list(top_indices)
 
 
 def batch_bald_acquisition(
-    model,
-    device,
-    x_unlabelled,
-    num_samples_for_labelling,
-    num_classes,
-    mc_samples=10,
-    batch_size=32,
-):
+    model: torch.nn.Module,
+    device: torch.device,
+    x_unlabelled: list[NDArray[np.uint8]],
+    num_samples_for_labelling: int,
+    num_classes: int,
+    mc_samples: int = 10,
+    batch_size: int = 32,
+) -> list[int]:
     model.train()  # Set model to evaluation mode
     model.to(device)
     num_samples_for_labelling = min(num_samples_for_labelling, len(x_unlabelled))
@@ -135,7 +136,7 @@ def batch_bald_acquisition(
     return bald_batch_indices
 
 
-def run(input_files):
+def run(input_files: list[str]) -> int:
     model = AmfModel.load()
 
     device = AmfConfig.get("device")
@@ -158,16 +159,20 @@ def run(input_files):
     x_unlabelled, file_names, rows, cols = dataset_loader_bald.get_all_unlabelled_data()
 
     # Initialize dictionary to store grouped data
-    grouped_data = defaultdict(lambda: ([], [], []))
+    grouped_data: dict[str, tuple[list[NDArray[np.uint8]], list[int], list[int]]] = (
+        defaultdict(lambda: ([], [], []))
+    )
 
     # Iterate over the dataset and group by file_name
-    for file_name, x, r, c in zip(file_names, x_unlabelled, rows, cols):
+    for file_name, file_x, file_rows, file_cols in zip(
+        file_names, x_unlabelled, rows, cols
+    ):
         # Append the values to their respective lists in the tuple
-        grouped_data[file_name][0].append(x)  # x_unlabelled
-        grouped_data[file_name][1].append(r)  # rows
-        grouped_data[file_name][2].append(c)  # cols
+        grouped_data[file_name][0].append(file_x)  # x_unlabelled
+        grouped_data[file_name][1].append(file_rows)  # rows
+        grouped_data[file_name][2].append(file_cols)  # cols
 
-    output_dict = defaultdict(lambda: [[], []])
+    output_dict: dict[str, list[list[int]]] = defaultdict(lambda: [[], []])
 
     for file_name in grouped_data:
         AmfLog.info(f"Acquiring samples for {file_name}")

@@ -7,26 +7,27 @@
 import random
 
 import numpy as np
+from numpy.typing import NDArray
 
-import amfinder_config as AmfConfig
-import amfinder_load as AmfLoad
-import amfinder_log as AmfLog
-import amfinder_save as AmfSave
-from metrics_collector import MetricsCollector
-from test_metrics import TestMetrics
+from . import amfinder_config as AmfConfig
+from . import amfinder_load as AmfLoad
+from . import amfinder_log as AmfLog
+from . import amfinder_save as AmfSave
+from .metrics_collector import MetricsCollector
+from .test_metrics import TestMetrics
 
 random.seed(42)
 
 
 def get_colonisation_results(
-    x_test,  # Test images
-    y_test,  # Labels for images
-    filenames,  # filenames as required in load_data_and_files()
-    results_dir,  # Directory to save results
-    metrics_collector,  # Object to collect metrics
-    rows,  # Rows for visualisation (if needed)
-    cols,  # Cols for visualisation (if needed)
-):
+    x_test: list[NDArray[np.uint8]],  # Test images
+    y_test: list[NDArray[np.uint8]],  # Labels for images
+    filenames: list[str],  # filenames as required in load_data_and_files()
+    results_dir: str,  # Directory to save results
+    metrics_collector: MetricsCollector,  # Object to collect metrics
+    rows: list[int],  # Rows for visualisation (if needed)
+    cols: list[int],  # Cols for visualisation (if needed)
+) -> None:
     """
     Method to calculate colonisation metrics only for a particular test set.
     """
@@ -51,7 +52,7 @@ def get_colonisation_results(
     AmfSave.save_metrics(metrics.metrics_collector, results_dir)
 
 
-def run(input_images):
+def run(input_images: list[str]) -> int:
     """
     Runs prediction on a bunch of images.
 

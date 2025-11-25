@@ -45,6 +45,7 @@ Functions
 # New total imports log for train_flx
 # Original AMFinder imports.
 import random
+from typing import Any
 
 # from torch.utils.data.distributed import DistributedSampler
 # from torch.utils.tensorboard import SummaryWriter
@@ -59,18 +60,23 @@ import torch.optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import amfinder_config as AmfConfig
-import amfinder_load as AmfLoad
-import amfinder_log as AmfLog
-import amfinder_model as AmfModel
-import amfinder_save as AmfSave
+from . import amfinder_config as AmfConfig
+from . import amfinder_load as AmfLoad
+from . import amfinder_log as AmfLog
+from . import amfinder_model as AmfModel
+from . import amfinder_save as AmfSave
 
 # logger = tf.get_logger()
 # logger.setLevel(logging.ERROR)
 random.seed(42)
 
 
-def class_weights(y, weight_type="inverse_freq", beta=0.9999, epsilon=1e-6):
+def class_weights(
+    y: torch.Tensor,
+    weight_type: str = "inverse_freq",  # TODO enum?
+    beta: float = 0.9999,
+    epsilon: float = 1e-6,
+) -> tuple[dict[int, torch.Tensor], torch.Tensor]:
     """
     Computes weights to counteract class imbalance and
     display statistics.
@@ -91,9 +97,8 @@ def class_weights(y, weight_type="inverse_freq", beta=0.9999, epsilon=1e-6):
     print(f"[{AmfConfig.invite()}] Class weights")
 
     # Sum along axis 0 to count class occurrences (shape: (C,))
-    class_counts = torch.sum(y, axis=0)
+    class_counts = torch.sum(y, dim=0)
     total_samples = y.shape[0]
-    final_class_weights = []
     if weight_type == "inverse_freq":
         # Inverse frequency weighting (handle zero counts)
         class_weights = total_samples / (class_counts.float() + epsilon)
@@ -115,26 +120,26 @@ def class_weights(y, weight_type="inverse_freq", beta=0.9999, epsilon=1e-6):
             "Invalid weight_type. Choose from ['inverse_freq', 'effective_num']."
         )
 
-    return [
+    return (
         dict(enumerate(final_class_weights)),
         final_class_weights,
-    ]  # class wegiths as a dict and array respectively.
+    )  # class wegiths as a dict and array respectively. # TODO why??
 
 
 # PyTorch implementation of earlier Keras functionality for early stopping.
 
 
 class EarlyStopping:
-    def __init__(self, patience=5, verbose=False, delta=0):
+    def __init__(self, patience: int = 5, verbose: bool = False, delta: float = 0):
         self.patience = patience
         self.verbose = verbose
         self.delta = delta  # Tolerance margin
-        self.best_score = None
+        self.best_score: float | None = None
         self.early_stop = False
         self.counter = 0
-        self.best_weights = None  # To store best weights so far.
+        self.best_weights: dict[str, Any] = {}  # To store best weights so far.
 
-    def check_early_stop(self, model, val_loss):
+    def check_early_stop(self, model: torch.nn.Module, val_loss: float) -> None:
         score = -val_loss
         if self.best_score is None:
             self.best_score = score
@@ -158,16 +163,23 @@ class EarlyStopping:
 
 
 class ReduceLROnPlateau:
-    def __init__(self, optimiser, factor=0.2, patience=2, min_lr=1e-6, verbose=False):
+    def __init__(
+        self,
+        optimiser: torch.optim.Optimizer,
+        factor: float = 0.2,
+        patience: int = 2,
+        min_lr: float = 1e-6,
+        verbose: bool = False,
+    ):
         self.optimiser = optimiser
         self.factor = factor
         self.patience = patience
         self.min_lr = min_lr
         self.verbose = verbose
         self.counter = 0
-        self.best_loss = None
+        self.best_loss: float | None = None
 
-    def step(self, val_loss):
+    def step(self, val_loss: float) -> None:
         if self.best_loss is None:
             self.best_loss = val_loss
 
@@ -187,7 +199,7 @@ class ReduceLROnPlateau:
             self.counter = 0
 
 
-def run(input_files, flag, train_active_learning=False):
+def run(input_files: list[str], flag: bool, train_active_learning: bool = False) -> int:
     """
     Creates or loads a convolutional neural network, and trains it
     with the annotated tiles extracted from input images.
@@ -300,17 +312,17 @@ def run(input_files, flag, train_active_learning=False):
     # Defining training loop
     # The training loop saves model history and the model itself.
     def train(
-        model,
-        train_loader,
-        val_loader,
-        criterion,
-        optimiser,
-        num_epochs,
-        save_path,
-        early_stopping=None,
-        reduce_lr=None,
-    ):
-        history = {"loss": [], "val_loss": []}
+        model: torch.nn.Module,
+        train_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+        val_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+        criterion: torch.nn.Module,
+        optimiser: torch.optim.Optimizer,
+        num_epochs: int,
+        save_path: str,
+        early_stopping: EarlyStopping | None = None,
+        reduce_lr: ReduceLROnPlateau | None = None,
+    ) -> int:
+        history: dict[str, list[float]] = {"loss": [], "val_loss": []}
 
         best_val_loss = float("inf")
 

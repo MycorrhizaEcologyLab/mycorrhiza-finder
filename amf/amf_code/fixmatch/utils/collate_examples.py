@@ -1,3 +1,6 @@
+# TODO haven't typed this as it's not part of core MF
+# mypy: ignore-errors
+
 # The point of this script is to collate the training dataset, so that a
 # 10% labelled set will always be a strict subset of the 20% labelled set
 # and so that as we increase the quantity of unlabelled data, we're just adding

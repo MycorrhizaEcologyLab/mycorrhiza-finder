@@ -9,27 +9,30 @@ import pandas as pd
 
 
 class MetricsCollector:
-    def __init__(self):
-        self.per_class_metrics = {}
-        self.generic_metrics = {}
-        self.metrics_dataframes = {}
-        self.images = {}
+    def __init__(self) -> None:
+        self.per_class_metrics: dict[str, dict[str, float]] = {}
+        self.generic_metrics: dict[str, float] = {}
+        self.metrics_dataframes: dict[str, pd.DataFrame] = {}
+        self.images: dict[str, str] = {}
 
-    def add_class_metric(self, class_name, metric_name, value):
+    def add_class_metric(self, class_name: str, metric_name: str, value: float) -> None:
         if class_name not in self.per_class_metrics:
             self.per_class_metrics[class_name] = {}
         self.per_class_metrics[class_name][metric_name] = value
 
-    def add_generic_metric(self, metric_name, value):
+    def add_generic_metric(self, metric_name: str, value: float) -> None:
         self.generic_metrics[metric_name] = value
 
-    def add_metrics_dataframe(self, df_name, dataframe):
+    def add_metrics_dataframe(self, df_name: str, dataframe: pd.DataFrame) -> None:
         self.metrics_dataframes[df_name] = dataframe
 
-    def add_image(self, image_name, image_data):
+    def add_image(self, image_name: str, image_data: str) -> None:
         self.images[image_name] = image_data
 
-    def convert_to_dataframe(self, metrics_type="class"):
+    def convert_to_dataframe(
+        self,
+        metrics_type: str = "class",  # TODO use enum?
+    ) -> pd.DataFrame:
         """Converts stored metrics to a pandas DataFrame."""
         if metrics_type in ["class", "generic"]:
             data_dict = (

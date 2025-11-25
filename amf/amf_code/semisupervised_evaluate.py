@@ -1,3 +1,6 @@
+# TODO semi-supervised (fixmatch) is deprecated
+# mypy: ignore-errors
+
 import os
 from types import SimpleNamespace
 
@@ -9,7 +12,7 @@ import yaml
 from torch.utils.data import DataLoader, SequentialSampler
 from tqdm import tqdm
 
-from fixmatch.utils import (
+from .fixmatch.utils import (
     AverageMeter,
     accuracy,
     get_confusion_matrix,
@@ -21,19 +24,20 @@ import math
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from numpy.typing import NDArray
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-import amfinder_model as AmfModel
-from fixmatch.dataset.amf_fixmatch import get_amf
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
+from . import amfinder_model as AmfModel
+from .fixmatch.dataset.amf_fixmatch import get_amf
 
 # TODO note that these should be updated to mean and std of channels in dataset you are
 # using
-amf_mean = (0.6936627221601291, 0.7870194843667774, 0.8169391664031584)
-amf_std = (0.24046182473804545, 0.11873623743912588, 0.07242399828535838)
+amf_mean = [0.6936627221601291, 0.7870194843667774, 0.8169391664031584]
+amf_std = [0.24046182473804545, 0.11873623743912588, 0.07242399828535838]
 
 
-def run():
+def run() -> None:
     fixmatch_results_directory = AmfConfig.get("fixmatch_results_directory")
     with open(f"{fixmatch_results_directory}/config.yaml", "r") as config_file:
         config = yaml.load(config_file, Loader=yaml.FullLoader)
@@ -51,7 +55,7 @@ def run():
         args.world_size = 1
         args.n_gpu = torch.cuda.device_count()
     else:
-        device = "cpu"
+        device = torch.device("cpu")
 
     args.device = device
 
@@ -62,13 +66,15 @@ def run():
         args.model_width = 4
         args.num_classes = 6
 
-    def create_model(args):
+    def create_model(args: SimpleNamespace) -> torch.nn.Module:
         model = AmfModel.load()
         return model.to(args.device)
 
     model = create_model(args)
 
-    test_loader = DataLoader(
+    test_loader: DataLoader[
+        tuple[NDArray[np.float32], np.uint8] | tuple[NDArray[np.float32], np.uint8, str]
+    ] = DataLoader(
         test_dataset,
         sampler=SequentialSampler(test_dataset),
         batch_size=8,

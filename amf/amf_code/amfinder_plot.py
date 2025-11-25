@@ -36,19 +36,28 @@ Functions
 import io
 
 import matplotlib
+import numpy as np
+from numpy.typing import NDArray
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as pyplot
 from matplotlib.ticker import MaxNLocator
 
 
-def initialize():
+def initialize() -> None:
     """Defines graph style."""
 
     pyplot.style.use("classic")
 
 
-def draw(history, epochs, title, x_range, t_name, v_name):
+def draw(
+    history: dict[str, list[float]],
+    epochs: int,
+    title: str,
+    x_range: NDArray[np.int_],
+    t_name: str,
+    v_name: str,
+) -> io.BytesIO:
     """ """
 
     pyplot.clf()
