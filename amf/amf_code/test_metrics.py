@@ -8,18 +8,21 @@
 import math
 import os
 import random
+from typing import Any, cast
 
+import matplotlib.axes
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 # For intermediate images
 import seaborn as sns
+from numpy.typing import NDArray
 from sklearn.metrics import confusion_matrix
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-from metrics_collector import MetricsCollector
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
+from .metrics_collector import MetricsCollector
 
 random.seed(42)
 
@@ -27,18 +30,18 @@ random.seed(42)
 class TestMetrics:
     def __init__(
         self,
-        x_test,
-        y_test,
-        y_test_labels,
+        x_test: list[NDArray[np.uint8]],
+        y_test: list[NDArray[np.uint8]],
+        y_test_labels: NDArray[np.int_],
         metrics_collector: MetricsCollector,
-        filenames,
-        results_dir,
-        predicted_labels=None,
-        predictions=None,
-        predicted_probs=None,
-        rows=None,
-        cols=None,
-    ):
+        filenames: list[str],
+        results_dir: str,
+        predicted_labels: NDArray[np.uint8] | None = None,
+        predictions: NDArray[np.int64] | None = None,
+        predicted_probs: NDArray[np.float32] | None = None,
+        rows: list[int] | None = None,
+        cols: list[int] | None = None,
+    ) -> None:
         self.x_test = x_test
         self.y_test = y_test
         self.y_test_labels = y_test_labels
@@ -54,7 +57,9 @@ class TestMetrics:
         self.colonisation_type = AmfConfig.get("colonisation_type")
         self.class_names = AmfConfig.get("class_names")[self.colonisation_type]
 
-    def safe_divide(self, numerator, denominator):
+    def safe_divide(
+        self, numerator: NDArray[np.float64], denominator: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         # Where denominator is zero, return 0, otherwise perform division
         return np.divide(
             numerator,
@@ -63,7 +68,9 @@ class TestMetrics:
             where=(denominator != 0),
         )
 
-    def get_conf_matrix(self):
+    def get_conf_matrix(self) -> None:
+        if self.predicted_labels is None:
+            raise ValueError("Predicted labels must not be None")
         mapped_predictions = [
             self.class_names[label] for label in self.predicted_labels
         ]
@@ -106,10 +113,10 @@ class TestMetrics:
         f1_score = np.nan_to_num(f1_score, nan=0.0)
 
         # Print Macro F1 Score
-        macro_acc = np.average(accuracy)
-        macro_precision = np.average(precision)
-        macro_recall = np.average(recall)
-        macro_f1 = np.average(f1_score)
+        macro_acc = cast(float, np.average(accuracy))
+        macro_precision = cast(float, np.average(precision))
+        macro_recall = cast(float, np.average(recall))
+        macro_f1 = cast(float, np.average(f1_score))
         self.metrics_collector.add_generic_metric("Macro accuracy", macro_acc)
         self.metrics_collector.add_generic_metric("Macro precision", macro_precision)
         self.metrics_collector.add_generic_metric("Macro recall", macro_recall)
@@ -133,13 +140,15 @@ class TestMetrics:
             self.metrics_collector.add_class_metric(f"{class_name}", "Recall", rec)
             self.metrics_collector.add_class_metric(f"{class_name}", "F1 Score", f1)
 
-    def get_perfile_metrics(self, colonised_only=False):
+    def get_perfile_metrics(self, colonised_only: bool = False) -> None:
         """
         Gets the metrics separately for each file
 
         """
 
-        def calculate_am_colonised_percentage(series):
+        def calculate_am_colonised_percentage(
+            series: pd.Series,
+        ) -> tuple[float | None, float | None, float | None, float | None]:
             """Calculate % colonised for a series of labels for AM colonisation."""
             class_counts = series.value_counts()
             am_colonised = class_counts.get(0, 0) + class_counts.get(
@@ -170,7 +179,16 @@ class TestMetrics:
             )
             return perc_am_col, perc_dse_col, perc_total_col, perc_root
 
-        def calculate_erm_colonised_percentage(series):
+        def calculate_erm_colonised_percentage(
+            series: pd.Series,
+        ) -> tuple[
+            float | None,
+            float | None,
+            float | None,
+            float | None,
+            float | None,
+            float | None,
+        ]:
             """Calculate % ErM colonised for a series of labels."""
             class_counts = series.value_counts()
             blue_coil = class_counts.get(0, 0)
@@ -216,7 +234,9 @@ class TestMetrics:
                 perc_root,
             )
 
-        def calculate_accuracy_for_class(group, class_label):
+        def calculate_accuracy_for_class(
+            group: pd.Series, class_label: int
+        ) -> float | None:
             """Calculate accuracy for a specific class within a grouped object."""
             correct_predictions = (
                 group["Actual Label"] == group["Predicted Label"]
@@ -224,9 +244,11 @@ class TestMetrics:
             total_instances = group["Actual Label"] == class_label
             if total_instances.sum() == 0:  # Avoid division by zero
                 return None
-            return (correct_predictions.sum() / total_instances.sum()) * 100
+            return cast(
+                float, (correct_predictions.sum() / total_instances.sum()) * 100
+            )
 
-        def calculate_precision_for_class(group, class_label):
+        def calculate_precision_for_class(group: pd.Series, class_label: int) -> float:
             """Calculate precision for a specific class within a grouped object."""
             tp_predictions = (group["Actual Label"] == group["Predicted Label"]) & (
                 group["Actual Label"] == class_label
@@ -238,7 +260,7 @@ class TestMetrics:
             fp = fp_predictions.sum()
             return tp / (tp + fp) if (tp + fp) > 0 else 0.0
 
-        def calculate_recall_for_class(group, class_label):
+        def calculate_recall_for_class(group: pd.Series, class_label: int) -> float:
             """Calculate recall for a specific class within a grouped object."""
             tp_predictions = (group["Actual Label"] == group["Predicted Label"]) & (
                 group["Actual Label"] == class_label
@@ -250,7 +272,7 @@ class TestMetrics:
             fn = fn_predictions.sum()
             return tp / (tp + fn) if (tp + fn) > 0 else 0.0
 
-        def calculate_f1_for_class(group, class_label):
+        def calculate_f1_for_class(group: pd.Series, class_label: int) -> float:
             precision = calculate_precision_for_class(group, class_label)
             recall = calculate_recall_for_class(group, class_label)
             return (
@@ -259,7 +281,9 @@ class TestMetrics:
                 else 0.0
             )
 
-        def calculate_class_count(group, class_label):
+        def calculate_class_count(
+            group: pd.Series, class_label: int
+        ) -> tuple[int, int]:
             num_actual = (group["Actual Label"] == class_label).sum()
             num_pred = (group["Predicted Label"] == class_label).sum()
 
@@ -512,10 +536,19 @@ class TestMetrics:
 
         return
 
-    def plot_class_examples(self, axes, example_indices, example_fileparts):
+    def plot_class_examples(
+        self,
+        axes: NDArray[matplotlib.axes.Axes],
+        example_indices: list[np.uint8],
+        example_fileparts: list[str],
+    ) -> None:
         """
         Plots example images where a specific class was incorrectly predicted.
         """
+        if self.predicted_labels is None:
+            raise ValueError("Predicted labels cannot be None")
+        if self.rows is None or self.cols is None:
+            raise ValueError("rows and cols cannot be None")
         for i, (example_idx, example_filepart) in enumerate(
             zip(example_indices, example_fileparts)
         ):
@@ -532,11 +565,11 @@ class TestMetrics:
             )
             axes.flat[i].axis("off")
 
-    def get_pred_by_file(self):
+    def get_pred_by_file(self) -> None:
         incorrect_indices = np.where(self.predicted_labels != self.y_test_labels)[0]
 
         # Group incorrect predictions by filename
-        incorrect_by_filename = {}
+        incorrect_by_filename: dict[str, list[dict[str, Any]]] = {}
         for idx in incorrect_indices:
             split = os.path.splitext(os.path.basename(self.filenames[idx]))
             filename = split[0]
@@ -599,7 +632,7 @@ class TestMetrics:
                 )
                 plt.close(fig)  # Close the figure to free memory
 
-    def find_optimal_layout(self, num_items):
+    def find_optimal_layout(self, num_items: int) -> tuple[int, int]:
         """
         Find the number of rows and columns for a grid layout with num_items,
         aiming for a layout that is as square as possible.
@@ -625,11 +658,14 @@ class TestMetrics:
             return row, col - 1
         return row, col
 
-    def get_pred_by_class(self):
+    def get_pred_by_class(self) -> None:
         """
         Gets the predictions in each class that were incorrect and plots them in
         separate files for each class.
         """
+
+        if self.predicted_labels is None:
+            raise ValueError("Predicted labels must not be None")
 
         # Determine unique classes in the dataset
         unique_classes = np.unique(self.y_test_labels)
@@ -694,7 +730,10 @@ class TestMetrics:
                 )
                 plt.savefig(save_path)
 
-    def get_num_tiles_per_confidence(self):
+    def get_num_tiles_per_confidence(self) -> None:
+        if self.predicted_probs is None:
+            raise ValueError("Predicted probabilities must not be None")
+
         total_tiles = self.predicted_probs.shape[0]
         max_probs = self.predicted_probs.max(axis=1)
 
@@ -716,7 +755,14 @@ class TestMetrics:
             float_format="%g",
         )
 
-    def get_metrics_with_threshold_comparison(self):
+    def get_metrics_with_threshold_comparison(self) -> None:
+        if self.predicted_probs is None:
+            raise ValueError("Predicted probabilities must not be None")
+        if self.predicted_labels is None:
+            raise ValueError("Predicted labels must not be None")
+        if self.predictions is None:
+            raise ValueError("Predictions must not be None")
+
         thresholds = np.linspace(0.1, 1.0, 10)
         thresholds = np.round(thresholds, 1)
 

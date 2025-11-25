@@ -8,6 +8,7 @@ __all__ = [
     "DynamicJointEntropy",
 ]
 
+from typing import cast
 
 import torch
 from toma import toma
@@ -27,11 +28,13 @@ class JointEntropy:
         """Computes the entropy of this joint entropy."""
         raise NotImplementedError()
 
+    # TODO solve the mypy override errors properly
+    # - overrides should not have a different signature
     def add_variables(self, log_probs_N_K_C: torch.Tensor) -> "JointEntropy":
         """Expands the joint entropy to include more terms."""
         raise NotImplementedError()
 
-    def compute_batch(
+    def compute_batch(  # type: ignore[no-untyped-def]
         self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None
     ) -> torch.Tensor:
         """Computes the joint entropy of the added variables together with the batch
@@ -46,7 +49,9 @@ class ExactJointEntropy(JointEntropy):
         self.joint_probs_M_K = joint_probs_M_K
 
     @staticmethod
-    def empty(K: int, device=None, dtype=None) -> "ExactJointEntropy":
+    def empty(
+        K: int, device: torch.device | None = None, dtype: torch.dtype | None = None
+    ) -> "ExactJointEntropy":
         return ExactJointEntropy(torch.ones((1, K), device=device, dtype=dtype))
 
     def compute(self) -> torch.Tensor:
@@ -78,7 +83,11 @@ class ExactJointEntropy(JointEntropy):
         self.joint_probs_M_K = joint_probs_K_M_1.squeeze(2).t()
         return self
 
-    def compute_batch(self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None):
+    def compute_batch(
+        self,
+        log_probs_B_K_C: torch.Tensor,
+        output_entropies_B: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         if self.joint_probs_M_K.shape[1] != log_probs_B_K_C.shape[1]:
             raise ValueError(
                 f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for "
@@ -95,10 +104,10 @@ class ExactJointEntropy(JointEntropy):
 
         pbar = tqdm(total=B, desc="ExactJointEntropy.compute_batch", leave=False)
 
-        @toma.execute.chunked(log_probs_B_K_C, initial_step=1024, dimension=0)
+        @toma.execute.chunked(log_probs_B_K_C, initial_step=1024, dimension=0)  # type: ignore[misc]
         def chunked_joint_entropy(
             chunked_log_probs_b_K_C: torch.Tensor, start: int, end: int
-        ):
+        ) -> None:
             chunked_probs_b_K_C = chunked_log_probs_b_K_C.exp()
             b = chunked_probs_b_K_C.shape[0]
 
@@ -127,7 +136,7 @@ class ExactJointEntropy(JointEntropy):
         return output_entropies_B
 
 
-def batch_multi_choices(probs_b_C, M: int):
+def batch_multi_choices(probs_b_C: torch.Tensor, M: int) -> torch.Tensor:
     """
     probs_b_C: Ni... x C
 
@@ -139,11 +148,10 @@ def batch_multi_choices(probs_b_C, M: int):
     # samples: Ni... x draw_per_xx
     choices = torch.multinomial(probs_B_C, num_samples=M, replacement=True)
 
-    choices_b_M = choices.reshape(list(probs_b_C.shape[:-1]) + [M])
-    return choices_b_M
+    return cast(torch.Tensor, choices.reshape(list(probs_b_C.shape[:-1]) + [M]))
 
 
-def gather_expand(data, dim, index):
+def gather_expand(data: torch.Tensor, dim: int, index: torch.Tensor) -> torch.Tensor:
     max_shape = [max(dr, ir) for dr, ir in zip(data.shape, index.shape)]
     new_data_shape = list(max_shape)
     new_data_shape[dim] = data.shape[dim]
@@ -172,7 +180,9 @@ class SampledJointEntropy(JointEntropy):
         self.sampled_joint_probs_M_K = sampled_joint_probs_M_K
 
     @staticmethod
-    def empty(K: int, device=None, dtype=None) -> "SampledJointEntropy":
+    def empty(
+        K: int, device: torch.device | None = None, dtype: torch.dtype | None = None
+    ) -> "SampledJointEntropy":
         return SampledJointEntropy(torch.ones((1, K), device=device, dtype=dtype))
 
     @staticmethod
@@ -207,7 +217,7 @@ class SampledJointEntropy(JointEntropy):
         entropy = torch.mean(nats_M)
         return entropy
 
-    def add_variables(
+    def add_variables(  # type: ignore[override]
         self, log_probs_N_K_C: torch.Tensor, M2: int
     ) -> "SampledJointEntropy":
         K = self.sampled_joint_probs_M_K.shape[1]
@@ -229,7 +239,11 @@ class SampledJointEntropy(JointEntropy):
 
         return self
 
-    def compute_batch(self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None):
+    def compute_batch(
+        self,
+        log_probs_B_K_C: torch.Tensor,
+        output_entropies_B: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         if self.sampled_joint_probs_M_K.shape[1] != log_probs_B_K_C.shape[1]:
             raise ValueError(
                 f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for "
@@ -246,10 +260,10 @@ class SampledJointEntropy(JointEntropy):
 
         pbar = tqdm(total=B, desc="SampledJointEntropy.compute_batch", leave=False)
 
-        @toma.execute.chunked(log_probs_B_K_C, initial_step=1024, dimension=0)
+        @toma.execute.chunked(log_probs_B_K_C, initial_step=1024, dimension=0)  # type: ignore[misc]
         def chunked_joint_entropy(
             chunked_log_probs_b_K_C: torch.Tensor, start: int, end: int
-        ):
+        ) -> None:
             b = chunked_log_probs_b_K_C.shape[0]
 
             probs_b_M_C = torch.empty(
@@ -288,7 +302,15 @@ class DynamicJointEntropy(JointEntropy):
     N: int
     M: int
 
-    def __init__(self, M: int, max_N: int, K: int, C: int, dtype=None, device=None):
+    def __init__(
+        self,
+        M: int,
+        max_N: int,
+        K: int,
+        C: int,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ) -> None:
         self.M = M
         self.N = 0
         self.max_N = max_N
@@ -330,7 +352,9 @@ class DynamicJointEntropy(JointEntropy):
         return self.inner.compute()
 
     def compute_batch(
-        self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None
+        self,
+        log_probs_B_K_C: torch.Tensor,
+        output_entropies_B: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Computes the joint entropy of the added variables together with the batch
         (one by one)."""

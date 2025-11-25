@@ -2,26 +2,29 @@ import io
 import json
 import os
 import re
+from typing import cast
 
 import imagesize
 import pandas as pd
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-from api_objects import AnnotationValues
-from api_utils import (
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
+from .api_objects import AnnotationValues
+from .api_utils import (
     check_entries_for_id,
     download_entries_as_csv,
     get_enabled,
     get_tile_edge,
     save_annotations_to_db,
 )
-from db_config import connect
+from .db_config import connect
 
 SCALING_FACTOR = 2
+NROWS: int
+NCOLS: int
 
 
-def initialize_size(path):
+def initialize_size(path: str) -> int:
     """
     Retrieve the number of rows and columns based on image and tile sizes.
     """
@@ -48,18 +51,19 @@ def initialize_size(path):
     global NROWS, NCOLS
     if tile_size is None:
         raise ValueError("Tile size not configured")
-    NCOLS = width // tile_size
-    NROWS = height // tile_size
+    tile_size_int = cast(int, tile_size)
+    NCOLS = width // tile_size_int
+    NROWS = height // tile_size_int
 
-    return tile_size
+    return tile_size_int
 
 
-def rescale_annot(annotation_data):
+def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
     """
     Scale Python annotations, 1x to 4x.
     """
     annotation_data = pd.read_csv(
-        annotation_data
+        annotation_path
     )  # Creates a pandas Dataframe from the annotations read from zip file.
 
     if "Question" in annotation_data.columns:
@@ -385,7 +389,7 @@ def rescale_annot(annotation_data):
     return pd.DataFrame.from_dict(rescaled_tile_annotations)
 
 
-def convert_tile_size(path, tile_size):
+def convert_tile_size(path: str, tile_size: int) -> None:
     # Make tile size 4x bigger, by merging 4 tiles into 1
     # Write back to the annotations file
 
@@ -461,7 +465,7 @@ def convert_tile_size(path, tile_size):
             )
 
 
-def run(input_images):
+def run(input_images: list[str]) -> int:
     print("Running aggregation of tiles")
     print("Image\t" + "\t".join(AmfConfig.human_readable_header()))
     try:

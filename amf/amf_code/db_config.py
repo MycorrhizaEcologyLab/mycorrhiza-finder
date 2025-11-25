@@ -5,17 +5,19 @@ from configparser import ConfigParser
 import psycopg2
 from psycopg2 import sql
 
-import amfinder_log as AmfLog
+from . import amfinder_log as AmfLog
 
-try:
-    wd = sys._MEIPASS
-except AttributeError:
-    wd = os.getcwd()
+if getattr(sys, "frozen", False):
+    wd = sys._MEIPASS  # type: ignore[attr-defined]
+else:
+    wd = os.path.dirname(__file__)
 
 
 # This uses the local database.ini file, which has dummy credentials in.
 # Please update to your local postgres credentials
-def config(filename=os.path.join(wd, "database.ini"), section="database"):
+def config(
+    filename: str = os.path.join(wd, "database.ini"), section: str = "database"
+) -> dict[str, str]:
     parser = ConfigParser()
     parser.read(filename)
     db = {}
@@ -30,7 +32,9 @@ def config(filename=os.path.join(wd, "database.ini"), section="database"):
     return db
 
 
-def connect(db_name, password=None):
+def connect(
+    db_name: str, password: str | None = None
+) -> psycopg2.extensions.connection:
     connection = None
     try:
         params = config()
@@ -48,7 +52,7 @@ def connect(db_name, password=None):
         )
 
 
-def create_database_if_not_exists(db_name, user, password):
+def create_database_if_not_exists(db_name: str, user: str, password: str) -> None:
     connection = connect(
         "postgres", password
     )  # Get a new connection for this operation

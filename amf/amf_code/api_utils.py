@@ -1,13 +1,23 @@
 import csv
 import io
 import zipfile
+from datetime import datetime
+from typing import Any, cast
 
+import psycopg2
 from fastapi import HTTPException, Response
 
-from api_objects import AnnotationValues, PredictionValues
+from .api_objects import AnnotationValues, PredictionValues
 
 
-def fetch_items(crsr, name, id_, type_, cnn, colonisation_type):
+def fetch_items(
+    crsr: psycopg2.extensions.cursor,
+    name: str,
+    id_: str,
+    type_: str,
+    cnn: str,
+    colonisation_type: str,
+) -> dict[str, list[Any]]:
     """
     Fetches items from the database based on provided parameters.
 
@@ -63,7 +73,7 @@ def fetch_items(crsr, name, id_, type_, cnn, colonisation_type):
     return values
 
 
-def set_to_enabled_in_db(crsr, id_):
+def set_to_enabled_in_db(crsr: psycopg2.extensions.cursor, id_: int) -> None:
     """
     Sets the 'Enabled' status of an image reference to true in the database for a given
     ID.
@@ -106,7 +116,9 @@ def set_to_enabled_in_db(crsr, id_):
     )
 
 
-def save_annotations_to_db(crsr, values: AnnotationValues):
+def save_annotations_to_db(
+    crsr: psycopg2.extensions.cursor, values: AnnotationValues
+) -> int:
     """
     Saves annotation data to the database associated with a specific image reference.
 
@@ -141,7 +153,7 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
 
     image_id = 0
     if exists:
-        image_id = values.imageReferenceId
+        image_id = cast(int, values.imageReferenceId)  # guaranteed to be not None here
         update_time_query = (
             "UPDATE ImageReference SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id=%s"
         )
@@ -256,7 +268,9 @@ def save_annotations_to_db(crsr, values: AnnotationValues):
     return image_id
 
 
-def save_predictions_to_db(crsr, values: PredictionValues):
+def save_predictions_to_db(
+    crsr: psycopg2.extensions.cursor, values: PredictionValues
+) -> None:
     """
     Saves prediction data to the database associated with a specific image reference.
 
@@ -292,7 +306,7 @@ def save_predictions_to_db(crsr, values: PredictionValues):
 
     image_id = 0
     if exists:
-        image_id = values.imageReferenceId
+        image_id = cast(int, values.imageReferenceId)  # guaranteed to be not None here
         update_time_query = (
             "UPDATE ImageReference SET UpdatedAt = CURRENT_TIMESTAMP WHERE Id=%s"
         )
@@ -382,15 +396,17 @@ def save_predictions_to_db(crsr, values: PredictionValues):
                 )
 
 
-def get_images(crsr):
+def get_images(crsr: psycopg2.extensions.cursor) -> list[tuple[str]]:
     get_all_images = "SELECT DISTINCT FileNameReference FROM imagereference"
     crsr.execute(get_all_images)
-    images = crsr.fetchall()
+    images = cast(list[tuple[str]], crsr.fetchall())  # since FileNameReference is text
 
     return images
 
 
-def get_most_recent_timestamp(crsr, image_name):
+def get_most_recent_timestamp(
+    crsr: psycopg2.extensions.cursor, image_name: str
+) -> int | None:
     """
     Retrieves the ID of the most recently uploaded image based on the specified image
     name.
@@ -417,12 +433,12 @@ def get_most_recent_timestamp(crsr, image_name):
     images = crsr.fetchall()
     sorted_values = sorted(images, key=lambda x: x[1])
     if len(sorted_values) > 0:
-        return sorted_values[-1][0]
+        return cast(int, sorted_values[-1][0])  # since ID is integer
     else:
         return None
 
 
-def get_enabled(crsr, image_name):
+def get_enabled(crsr: psycopg2.extensions.cursor, image_name: str) -> int | None:
     """
     Retrieves the ID of an enabled image from the database based on the specified image
     name.
@@ -452,7 +468,7 @@ def get_enabled(crsr, image_name):
     images = crsr.fetchall()
     if len(images) > 0:
         print(f"Image ID {images[0][0]} is enabled for image name {image_name}")
-        return images[0][0]
+        return cast(int, images[0][0])  # since ID is int in database
     else:
         # If no annotations enabled, get most recent timestamp and set this to enabled
         print(
@@ -465,13 +481,15 @@ def get_enabled(crsr, image_name):
         return id_
 
 
-def get_tile_edge(crsr, id_):
+def get_tile_edge(crsr: psycopg2.extensions.cursor, id_: int) -> tuple[int]:
     fetch_images = "SELECT TileEdge FROM ImageReference WHERE Id=%s"
     crsr.execute(fetch_images, (id_,))
-    return crsr.fetchone()
+    return cast(tuple[int], crsr.fetchone())  # since TileEdge is integer
 
 
-def check_entries_for_image(crsr, image_name, colonisation_type):
+def check_entries_for_image(
+    crsr: psycopg2.extensions.cursor, image_name: str, colonisation_type: str
+) -> dict[int, dict[str, Any]]:
     fetch_images = (
         "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt "
         "FROM ImageReference "
@@ -483,7 +501,9 @@ def check_entries_for_image(crsr, image_name, colonisation_type):
     return _get_existing_entries_for_image(crsr, colonisation_type, images)
 
 
-def check_entries_for_id(crsr, id_, colonisation_type):
+def check_entries_for_id(
+    crsr: psycopg2.extensions.cursor, id_: int, colonisation_type: str
+) -> dict[int, dict[str, Any]]:
     fetch_images = (
         "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt "
         "FROM ImageReference "
@@ -495,8 +515,12 @@ def check_entries_for_id(crsr, id_, colonisation_type):
     return _get_existing_entries_for_image(crsr, colonisation_type, images)
 
 
-def _get_existing_entries_for_image(crsr, colonisation_type, images):
-    output = {}
+def _get_existing_entries_for_image(
+    crsr: psycopg2.extensions.cursor,
+    colonisation_type: str,
+    images: list[tuple[int, datetime, bool, int, datetime]],
+) -> dict[int, dict[str, Any]]:
+    output: dict[int, dict[str, Any]] = {}
 
     for value in images:
         id_ = value[0]
@@ -538,7 +562,9 @@ def _get_existing_entries_for_image(crsr, colonisation_type, images):
     return output
 
 
-def download_entries_as_csv(crsr, id_, type_, colonisation_type):
+def download_entries_as_csv(
+    crsr: psycopg2.extensions.cursor, id_: int, type_: str, colonisation_type: str
+) -> str:
     output = io.StringIO()
 
     fetch_values_query = (
@@ -632,12 +658,12 @@ def download_entries_as_csv(crsr, id_, type_, colonisation_type):
     return csv_string
 
 
-def delete_image(crsr, id_):
+def delete_image(crsr: psycopg2, id_: int) -> None:
     delete_query = "DELETE FROM ImageReference WHERE Id=%s"
     crsr.execute(delete_query, (id_,))
 
 
-def zip_files_for_transit(images):
+def zip_files_for_transit(images: dict[str, bytes]) -> Response:
     zip_filename = "image-tiles.zip"
 
     s = io.BytesIO()
@@ -661,19 +687,17 @@ def zip_files_for_transit(images):
     return resp
 
 
-def _parse_setting(value, value_type):
-    parsed_value = value
+def _parse_setting(value: str, value_type: str) -> Any:
     if value_type == "integer":
-        parsed_value = int(parsed_value)
+        return int(value)
     elif value_type == "boolean":
-        parsed_value = parsed_value.lower() == "true"
+        return value.lower() == "true"
     elif value_type == "float":
-        parsed_value = float(parsed_value)
+        return float(value)
+    return value
 
-    return parsed_value
 
-
-def get_all_settings_from_db(crsr):
+def get_all_settings_from_db(crsr: psycopg2.extensions.cursor) -> dict[str, Any]:
     query = "SELECT key, value, value_type FROM settings"
     crsr.execute(query)
     out = crsr.fetchall()
@@ -686,7 +710,9 @@ def get_all_settings_from_db(crsr):
     return settings
 
 
-def change_setting_to_default_in_db(crsr, key):
+def change_setting_to_default_in_db(
+    crsr: psycopg2.extensions.cursor, key: str
+) -> dict[str, Any] | int:
     query = "SELECT default_value, value_type FROM settings WHERE key=%s"
     crsr.execute(query, (key,))
     out = crsr.fetchall()
@@ -704,7 +730,9 @@ def change_setting_to_default_in_db(crsr, key):
         return 500
 
 
-def update_setting_in_db(crsr, key, value):
+def update_setting_in_db(
+    crsr: psycopg2.extensions.cursor, key: str, value: str
+) -> None:
     set_query = "UPDATE settings SET value=%s WHERE key=%s"
 
     crsr.execute(set_query, (value, key))

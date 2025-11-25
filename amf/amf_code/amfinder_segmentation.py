@@ -38,16 +38,17 @@ Functions
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from PIL import Image
 
-import amfinder_config as AmfConfig
+from . import amfinder_config as AmfConfig
 
 # This allows any size image
 Image.MAX_IMAGE_PIXELS = None
 np.random.seed(42)
 
 
-def load(image_path):
+def load(image_path: str) -> Image.Image:
     """
     Loads an image using the Pillow library.
     """
@@ -55,8 +56,13 @@ def load(image_path):
 
 
 def get_contextual_tiles(
-    image, r, c, edge=None, overlap=0.75, overlap_method="diagonal"
-):
+    image: Image.Image,
+    r: int,
+    c: int,
+    edge: int | None = None,
+    overlap: float = 0.75,
+    overlap_method: str = "diagonal",  # TODO replace with enum
+) -> list[NDArray[np.uint8] | None]:
     """
     Extracts context tiles around a central tile from a large image.
     Returns None for any surrounding tile that extends beyond the image boundaries.
@@ -86,7 +92,7 @@ def get_contextual_tiles(
     # Calculate offset based on overlap
     offset = int(edge * (1 - overlap))
 
-    def extract_tile(x, y):
+    def extract_tile(x: int, y: int) -> NDArray[np.uint8] | None:
         # Check if the tile is within image boundaries
         if x < 0 or y < 0 or x + edge > img_width or y + edge > img_height:
             return None
@@ -140,8 +146,12 @@ def get_contextual_tiles(
 
         return [top_left_tile, top_right_tile, bottom_left_tile, bottom_right_tile]
 
+    raise ValueError(f"Invalid overlap method {overlap_method}")
 
-def tile(image, r, c, edge=None):
+
+def tile(
+    image: Image.Image, r: int, c: int, edge: int | None = None
+) -> NDArray[np.uint8]:
     """
     Extracts a tile from a large image, resizes it to
     the required CNN input image size, and applies
@@ -172,7 +182,7 @@ def tile(image, r, c, edge=None):
     return np.transpose(tile.astype(np.uint8), (2, 0, 1))
 
 
-def preprocess(tile_list):
+def preprocess(tile_list: list[NDArray[np.uint8]]) -> NDArray[np.float32]:
     """
     Preprocess a list of tiles.
 

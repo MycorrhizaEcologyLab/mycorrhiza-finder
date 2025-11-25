@@ -3,21 +3,21 @@ import re
 
 import pandas as pd
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-from api_utils import (
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
+from .api_utils import (
     check_entries_for_id,
     get_enabled,
 )
-from db_config import connect
+from .db_config import connect
 
 
-def collapse_annots(annotation_data):
+def collapse_annots(annotation_path: str) -> pd.DataFrame:
     """
     Collapse annotations by removing various classes dependent on colonisation type.
     """
     annotation_data = pd.read_csv(
-        annotation_data
+        annotation_path
     )  # Creates a pandas Dataframe from the annotations read from zip file.
 
     if "Question" in annotation_data.columns:
@@ -132,7 +132,7 @@ def collapse_annots(annotation_data):
     return pd.DataFrame.from_dict(collapsed_annots)
 
 
-def collapse_classes(path):
+def collapse_classes(path: str) -> None:
     # Write back to the annotations file
 
     image_name = os.path.splitext(os.path.basename(path))[0]
@@ -208,7 +208,7 @@ def collapse_classes(path):
             )
 
 
-def run(input_images):
+def run(input_images: list[str]) -> int:
     print("Running collapse of tiles")
     print("Image\t" + "\t".join(AmfConfig.human_readable_header()))
 

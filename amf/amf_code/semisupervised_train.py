@@ -1,3 +1,6 @@
+# TODO semi-supervised (fixmatch) is deprecated
+# mypy: ignore-errors
+
 import datetime
 import logging
 import math
@@ -19,11 +22,11 @@ from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-import amfinder_model as AmfModel
-from fixmatch.dataset.amf_fixmatch import get_amf
-from fixmatch.utils import AverageMeter, accuracy, get_confusion_matrix
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
+from . import amfinder_model as AmfModel
+from .fixmatch.dataset.amf_fixmatch import get_amf
+from .fixmatch.utils import AverageMeter, accuracy, get_confusion_matrix
 
 # TODO constants that use AmfConfig need to be moved to local variables to work with
 # FastAPI
@@ -32,10 +35,10 @@ CLASS_NAMES = AmfConfig.get("class_names")[COLONISATION_TYPE]
 
 best_acc = 0
 
-try:
-    wd = sys._MEIPASS
-except AttributeError:
-    wd = os.getcwd()
+if getattr(sys, "frozen", False):
+    wd = sys._MEIPASS  # type: ignore[attr-defined]
+else:
+    wd = os.path.dirname(__file__)
 
 
 def save_checkpoint(state, is_best, checkpoint, filename="checkpoint.pth.tar"):
@@ -81,7 +84,7 @@ def de_interleave(x, size):
     return x.reshape([size, -1] + s[1:]).transpose(0, 1).reshape([-1] + s[1:])
 
 
-def run(image_path):
+def run(image_path: str) -> None:
     with open(os.path.join(wd, "config/base_config.yml"), "r") as config_file:
         config = yaml.load(config_file, Loader=yaml.FullLoader)
 

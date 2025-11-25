@@ -1,3 +1,6 @@
+# mypy: ignore-errors
+# TODO replace with standard zipfile? or otherwise tidy
+
 """
 Read and write ZIP files.
 
@@ -1233,8 +1236,8 @@ class ZipFile:
 
     def __init__(
         self,
-        file,
-        mode="r",
+        file: str,
+        mode: str = "r",
         compression=ZIP_STORED,
         allowZip64=True,
         compresslevel=None,

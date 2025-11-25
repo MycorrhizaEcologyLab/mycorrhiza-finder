@@ -26,23 +26,23 @@
 
 import torch
 
-import amfinder_bald as AmfBald
-import amfinder_calibrate as AmfCalibrate
-import amfinder_collapse_classes as AmfCollapse
-import amfinder_colonisation as AmfColonisation
-import amfinder_config as AmfConfig
-import amfinder_convert as AmfConvert
-import amfinder_convert_image_type as AmfConvertImageType
-import amfinder_convert_tile_size as AmfConvertTileSize
-import amfinder_log as AmfLog
-import amfinder_predict as AmfPredict
-import amfinder_test as AmfTest
-import amfinder_train as AmfTrain
-import semisupervised_evaluate as AmfSemiSupervisedEvaluate
-import semisupervised_train as AmfSemiSupervisedTrain
+from . import amfinder_bald as AmfBald
+from . import amfinder_calibrate as AmfCalibrate
+from . import amfinder_collapse_classes as AmfCollapse
+from . import amfinder_colonisation as AmfColonisation
+from . import amfinder_config as AmfConfig
+from . import amfinder_convert as AmfConvert
+from . import amfinder_convert_image_type as AmfConvertImageType
+from . import amfinder_convert_tile_size as AmfConvertTileSize
+from . import amfinder_log as AmfLog
+from . import amfinder_predict as AmfPredict
+from . import amfinder_test as AmfTest
+from . import amfinder_train as AmfTrain
+from . import semisupervised_evaluate as AmfSemiSupervisedEvaluate
+from . import semisupervised_train as AmfSemiSupervisedTrain
 
 
-def main():
+def main() -> None:
     AmfConfig.initialize()
     run_mode = AmfConfig.get("run_mode")
     semi_supervised = AmfConfig.get("semi_supervised")

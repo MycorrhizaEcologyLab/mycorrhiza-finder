@@ -144,7 +144,6 @@ class Settings(BaseModel):
     temperatureFactorPathErm: Optional[str] = (
         "250411_126_ErM_EfficientNet_82_temperature_value.txt"
     )
-    semiSupervised: Optional[bool] = False
     fixmatchResultsDirectory: Optional[str] = ""
     threshold: Optional[float] = 0.5
     aggregateTiles: Optional[bool] = False

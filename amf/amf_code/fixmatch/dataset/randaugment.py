@@ -1,3 +1,6 @@
+# TODO haven't typed this as it's not part of core MF
+# mypy: ignore-errors
+
 # code in this file is adpated from
 # https://github.com/ildoonet/pytorch-randaugment/blob/master/RandAugment/augmentations.py
 # https://github.com/google-research/fixmatch/blob/master/third_party/auto_augment/augmentations.py
@@ -140,8 +143,8 @@ def fixmatch_augment_pool():
     return augs
 
 
-class RandAugmentMC(object):
-    def __init__(self, n, m):
+class RandAugmentMC:
+    def __init__(self, n: int, m: int) -> None:
         if n < 1:
             raise ValueError(f"n should be >= 1, but got {n}")
         if not (1 <= m <= 10):

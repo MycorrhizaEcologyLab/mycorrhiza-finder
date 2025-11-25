@@ -5,30 +5,34 @@ import os
 import random
 import re
 from collections import defaultdict
+from types import SimpleNamespace
+from typing import NamedTuple, cast
 
 import numpy as np
 import pandas as pd
 
 # Torch functionalities
 import torch
+from numpy.typing import ArrayLike, NDArray
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-import amfinder_segmentation as AmfSegm
-from api_utils import (
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
+from . import amfinder_segmentation as AmfSegm
+from .api_utils import (
     check_entries_for_id,
     download_entries_as_csv,
     get_enabled,
     get_tile_edge,
 )
-from db_config import connect
+from .db_config import connect
 
 
 # Defining class for Datasetloader
-class CustomNormalisedDataset(Dataset):
+class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     """
     Manages dataset loading and normalizes image data to the range [0, 1].
     This is intended to be used by DataLoaders primarily for efficient memory handling.
@@ -53,24 +57,24 @@ class CustomNormalisedDataset(Dataset):
         __getitem__() is invoked.
     """
 
-    def __init__(self, x, y):
+    def __init__(self, x: ArrayLike, y: ArrayLike):
         # Store data as NumPy arrays or lists
         self.x = np.array(x) if not isinstance(x, np.ndarray) else x
         self.y = np.array(y) if not isinstance(y, np.ndarray) else y
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.x)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         # Convert to torch tensors only when accessed
-        x_tensor = (
-            torch.tensor(self.x[index], dtype=torch.float32) / 255.0
+        x_tensor = cast(
+            torch.Tensor, torch.tensor(self.x[index], dtype=torch.float32) / 255.0
         )  # Normalisation to [0, 1]
         y_tensor = torch.tensor(self.y[index], dtype=torch.float32)
         return x_tensor, y_tensor
 
 
-class TileDatasetLoader(Dataset):
+class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
     """
     Handles loading of training tile sets and annotations, with optional data
     augmentation and dataset balancing.
@@ -143,10 +147,10 @@ class TileDatasetLoader(Dataset):
 
     def __init__(
         self,
-        input_files,
-        use_augmentation=False,
-        balance_factor=1.0,
-        calculate_distribution=False,
+        input_files: list[str],
+        use_augmentation: bool = False,
+        balance_factor: float = 1.0,
+        calculate_distribution: bool = False,
     ):
         self.use_augmentation = use_augmentation
         self.balance_factor = balance_factor
@@ -159,7 +163,9 @@ class TileDatasetLoader(Dataset):
             AmfLog.info(f"Total images for train/val split: {len(input_files)}")
             self._prepare_stats()
 
-    def _prepare_dataset(self, input_files, use_augmentation):
+    def _prepare_dataset(
+        self, input_files: list[str], use_augmentation: bool
+    ) -> list[tuple[NDArray[np.uint8], NDArray[np.uint8]]]:
         all_tiles = []
         all_labels = []
         # Integration of augmentation
@@ -224,8 +230,9 @@ class TileDatasetLoader(Dataset):
                     # Apply augmentation during dataset preparation if specified
                     if use_augmentation:
                         # Convert tile and label
-                        tile = (
-                            torch.tensor(tile, dtype=torch.float32) / 255.0
+                        tile = cast(
+                            torch.Tensor,
+                            torch.tensor(tile, dtype=torch.float32) / 255.0,
                         )  # Normalize images
                         label = torch.tensor(list(annot[3:]), dtype=torch.float32)
 
@@ -280,12 +287,19 @@ class TileDatasetLoader(Dataset):
 
         return dataset
 
-    def _balance_dataset(self, x, y, factor=1.0):  # factor is a hyperparameter
+    def _balance_dataset(
+        self,
+        x: list[NDArray[np.uint8]],
+        y: list[NDArray[np.uint8]],
+        factor: float = 1.0,
+    ) -> tuple[
+        list[NDArray[np.uint8]], list[NDArray[np.uint8]]
+    ]:  # factor is a hyperparameter
         # Count the number of samples in class 0 (assumes one-hot encoding)
         class_0_samples = sum(array[0] for array in y)
 
         # Initialize a list to keep track of indices to retain
-        indices_to_keep = []
+        indices_to_keep: list[int] = []
 
         # Convert the one-hot encoded labels to class indices
         y_indices = np.argmax(y, axis=1)
@@ -335,7 +349,7 @@ class TileDatasetLoader(Dataset):
 
         return x, y
 
-    def _prepare_stats(self):
+    def _prepare_stats(self) -> None:
         # Collect labels for statistics
         samples = np.stack([self.dataset[i][1] for i in range(len(self.dataset))])
         y = torch.from_numpy(samples)
@@ -360,10 +374,10 @@ class TileDatasetLoader(Dataset):
                 AmfLog.ERR_NO_DATA,
             )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.dataset)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[NDArray[np.uint8], NDArray[np.uint8]]:
         tile, label = self.dataset[idx]
         return tile, label
 
@@ -418,14 +432,20 @@ class StratifiedDatasetSplitter:
         stratified to mirror overall class distribution.
     """
 
-    def __init__(self, x, y, val_size=0.2, random_state=42):
+    def __init__(
+        self,
+        x: list[NDArray[np.uint8]],
+        y: list[NDArray[np.uint8]],
+        val_size: float = 0.2,
+        random_state: int = 42,
+    ):
         self.x = x  # Ensure x is a numpy array
         self.y = y  # Ensure y is a numpy array
 
         # Perform stratified split while keeping the split index structures internal
         self._split_data(val_size, random_state)
 
-    def _split_data(self, val_size, random_state):
+    def _split_data(self, val_size: float, random_state: int) -> None:
         # Set random seed for reproducibility
         random.seed(random_state)
 
@@ -464,7 +484,11 @@ class StratifiedDatasetSplitter:
         self.train_indices = train_indices
         self.val_indices = val_indices
 
-    def _get_dataset(self, dataset_type="train"):
+    def _get_dataset(
+        self, dataset_type: str = "train"
+    ) -> tuple[
+        list[NDArray[np.uint8]], list[NDArray[np.uint8]]
+    ]:  # TODO should use an enum
         if dataset_type == "train":
             x_train = [self.x[i] for i in self.train_indices]
             y_train = [self.y[i] for i in self.train_indices]
@@ -477,7 +501,17 @@ class StratifiedDatasetSplitter:
             raise ValueError("Invalid dataset type. Choose 'train' or 'val'.")
 
 
-class TileFilesandData(Dataset):
+class TileFilesandData(
+    Dataset[
+        tuple[
+            NDArray[np.uint8],
+            NDArray[np.uint8],
+            str,
+            int,
+            int,
+        ]
+    ]
+):
     """
     Responsible for loading image tiles and their associated annotations from a dataset.
     This class effectively handles the extraction and preparation of data needed for
@@ -515,10 +549,10 @@ class TileFilesandData(Dataset):
     cols (list): Column indices for each extracted tile.
     """
 
-    def __init__(self, input_files, is_bald_folder=False):
+    def __init__(self, input_files: list[str], is_bald_folder: bool = False):
         self.input_files = input_files
         self.x, self.y, self.file_names, self.rows, self.cols = (
-            self._load_and_process_data(is_bald_folder)
+            self._load_and_process_data(is_bald_folder)  # type: ignore[misc] # TODO fix better
         )
         if is_bald_folder:
             (
@@ -526,7 +560,7 @@ class TileFilesandData(Dataset):
                 self.file_names_unlabelled,
                 self.rows_unlabelled,
                 self.cols_unlabelled,
-            ) = self._load_and_process_data(is_bald_folder, is_unlabelled=True)
+            ) = self._load_and_process_data(is_bald_folder, is_unlabelled=True)  # type: ignore[misc] # TODO fix better
 
         else:
             self.x_unlabelled = None
@@ -534,7 +568,23 @@ class TileFilesandData(Dataset):
             self.rows_unlabelled = None
             self.cols_unlabelled = None
 
-    def _load_and_process_data(self, is_bald_folder=False, is_unlabelled=False):
+    def _load_and_process_data(
+        self, is_bald_folder: bool = False, is_unlabelled: bool = False
+    ) -> (
+        tuple[
+            list[NDArray[np.uint8]],
+            list[NDArray[np.uint8]],
+            list[str],
+            list[int],
+            list[int],
+        ]
+        | tuple[
+            list[NDArray[np.uint8]],
+            list[str],
+            list[int],
+            list[int],
+        ]
+    ):
         print(f"[{AmfConfig.invite()}] Tile extraction.")
 
         # Load image settings and annotations.
@@ -546,11 +596,11 @@ class TileFilesandData(Dataset):
         dataset = zip(self.input_files, settings, annotations)
 
         if is_unlabelled:
-            dataset = list(dataset)
-            print(f"[{AmfConfig.invite()}] {len(dataset)} images in BALD dataset.")
+            dataset_list = list(dataset)
+            print(f"[{AmfConfig.invite()}] {len(dataset_list)} images in BALD dataset.")
 
             # Process and normalize dataset
-            x, file_names, rows, cols = self._process_dataset_unlabelled(dataset)
+            x, file_names, rows, cols = self._process_dataset_unlabelled(dataset_list)
 
             return x, file_names, rows, cols
 
@@ -573,7 +623,15 @@ class TileFilesandData(Dataset):
 
             return x, y, file_names, rows, cols
 
-    def _process_dataset(self, dataset):
+    def _process_dataset(
+        self, dataset: list[tuple[str, dict[str, int], pd.DataFrame]]
+    ) -> tuple[
+        list[NDArray[np.uint8]],
+        list[NDArray[np.uint8]],
+        list[str],
+        list[int],
+        list[int],
+    ]:
         tiles = []
         hot_labels = []
         file_names = []
@@ -605,7 +663,14 @@ class TileFilesandData(Dataset):
             cols,
         )
 
-    def _process_dataset_unlabelled(self, dataset):
+    def _process_dataset_unlabelled(
+        self, dataset: list[tuple[str, dict[str, int], pd.DataFrame]]
+    ) -> tuple[
+        list[NDArray[np.uint8]],
+        list[str],
+        list[int],
+        list[int],
+    ]:
         tiles = []
         file_names = []
         rows = []
@@ -649,11 +714,21 @@ class TileFilesandData(Dataset):
             cols,
         )
 
-    def get_all_data(self):
+    def get_all_data(
+        self,
+    ) -> tuple[
+        list[NDArray[np.uint8]],
+        list[NDArray[np.uint8]],
+        list[str],
+        list[int],
+        list[int],
+    ]:
         """Returns all processed data from the dataset."""
         return self.x, self.y, self.file_names, self.rows, self.cols
 
-    def get_all_unlabelled_data(self):
+    def get_all_unlabelled_data(
+        self,
+    ) -> tuple[list[NDArray[np.uint8]], list[str], list[int], list[int]]:
         """Returns all unlabelled data from the dataset."""
         return (
             self.x_unlabelled,
@@ -662,10 +737,18 @@ class TileFilesandData(Dataset):
             self.cols_unlabelled,
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.x)
 
-    def __getitem__(self, idx):
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[
+        NDArray[np.uint8],
+        NDArray[np.uint8],
+        str,
+        int,
+        int,
+    ]:
         # Validate index
         if idx >= len(self.x) or idx < 0:
             raise IndexError("Index out of bounds")
@@ -683,7 +766,7 @@ class TileFilesandData(Dataset):
 
 # TODO fix match needs to be updated to work with ErM model
 class FixMatchLoader:
-    def get_input_files(self, root):
+    def get_input_files(self, root: str) -> list[str]:
         """
         Filter input file list and keep valid JPEG or PNG images.
         Return the paths relative to the root directory.
@@ -702,7 +785,9 @@ class FixMatchLoader:
 
         return images
 
-    def _load_data(self, input_files, root):
+    def _load_data(
+        self, input_files: list[str], root: str
+    ) -> list[tuple[str, pd.DataFrame]]:
         abs_paths = [os.path.join(root, path) for path in input_files]
 
         annotations = [import_annotations(path) for path in abs_paths]
@@ -712,7 +797,9 @@ class FixMatchLoader:
         filtered_dataset = [x for x in dataset if x[1] is not None]
         return filtered_dataset
 
-    def load_val_dataset(self, input_files: list, root: str):
+    def load_val_dataset(
+        self, input_files: list[str], root: str
+    ) -> tuple[NDArray[np.float32], NDArray[np.uint8]]:
         """
         Loads validation tile set and their corresponding annotations.
 
@@ -724,12 +811,14 @@ class FixMatchLoader:
         filtered_dataset = self._load_data(input_files, root)
 
         # Determine the required amount (in %) of background subsampling (if active).
-        def process_dataset(dataset: list = None):
+        def process_dataset(
+            dataset: list[tuple[str, pd.DataFrame]],
+        ) -> tuple[NDArray[np.float32], NDArray[np.uint8]]:
             tiles = []
             hot_labels = []
 
-            def get_tile(image, annot):
-                tile = AmfSegm.tile(image, annot.row, annot.col)
+            def get_tile(image: Image.Image, annot: NamedTuple) -> None:
+                tile = AmfSegm.tile(image, annot.row, annot.col)  # type: ignore[attr-defined] # TODO explicitly make a class for annot
                 tiles.append(tile)
                 hot_labels.append(list(annot[3:-1]))
 
@@ -783,7 +872,9 @@ class FixMatchLoader:
 
         return x_shuffled, y_shuffled
 
-    def load_test_dataset(self, input_files, root):
+    def load_test_dataset(
+        self, input_files: list[str], root: str
+    ) -> tuple[NDArray[np.float32], NDArray[np.uint8], list[str]]:
         """
         Loads training tile set and their corresponding annotations.
 
@@ -795,7 +886,9 @@ class FixMatchLoader:
         filtered_dataset = self._load_data(input_files, root)
 
         # Determine the required amount (in %) of background subsampling (if active).
-        def process_dataset(dataset: list = None):
+        def process_dataset(
+            dataset: list[tuple[str, pd.DataFrame]],
+        ) -> tuple[NDArray[np.float32], NDArray[np.uint8], list[str]]:
             tiles = []
             hot_labels = []
             file_names = []
@@ -824,7 +917,12 @@ class FixMatchLoader:
 
         return x, np.argmax(y, axis=1), file_names
 
-    def load_unlabelled_dataset(self, labelled_indices, prop_unlabelled, x):
+    def load_unlabelled_dataset(
+        self,
+        labelled_indices: list[int],
+        prop_unlabelled: float,
+        x: list[NDArray[np.float32]] | NDArray[np.float32],
+    ) -> tuple[list[NDArray[np.float32]], int]:
         """
         Loads training tile set and their corresponding annotations.
 
@@ -842,7 +940,11 @@ class FixMatchLoader:
         unlabelled_images = [x[i] for i in sampled_unlabelled_indices]
         return unlabelled_images, num_examples
 
-    def load_train_dataset(self, input_files, num_labelled, args):
+    def load_train_dataset(
+        self, input_files: list[str], num_labelled: int, args: SimpleNamespace
+    ) -> tuple[
+        list[NDArray[np.float32]], list[np.uint8], list[int], NDArray[np.float32]
+    ]:
         """
         Loads training tile set and their corresponding annotations, and stores the file
         name for each tile.
@@ -859,13 +961,20 @@ class FixMatchLoader:
         if len(filtered_dataset) == 0:
             raise ValueError("No files to process")
 
-        def sample_data(images, y, num_labelled, filenames, cols, rows):
+        def sample_data(
+            images: NDArray[np.float32],
+            y: NDArray[np.uint8],
+            num_labelled: int,
+            filenames: list[str],
+            cols: list[int],
+            rows: list[int],
+        ) -> tuple[list[NDArray[np.float32]], list[np.uint8], list[int]]:
             # Convert one-hot encodings to class labels
             labels = np.argmax(y, axis=1)
             unique_labels = np.unique(labels)
             print("number of classes: ", len(unique_labels))
 
-            labelled_indices = []
+            labelled_indices: list[int] = []
 
             num_labelled_per_class = num_labelled // len(unique_labels)
 
@@ -905,7 +1014,15 @@ class FixMatchLoader:
             return labelled_images, labels, labelled_indices
 
         # Determine the required amount (in %) of background subsampling (if active).
-        def process_dataset(dataset: list = None):
+        def process_dataset(
+            dataset: list[tuple[str, pd.DataFrame]],
+        ) -> tuple[
+            NDArray[np.float32],
+            NDArray[np.uint8],
+            list[str],
+            list[int],
+            list[int],
+        ]:
             tiles = []
             hot_labels = []
             file_names = []  # List to store the file name for each tile
@@ -934,10 +1051,14 @@ class FixMatchLoader:
                 rows,
             )
 
-        def shuffle_dataset(images, targets, labelled_indices):
+        def shuffle_dataset(
+            images: list[NDArray[np.float32]],
+            targets: list[np.uint8],
+            labelled_indices: list[int],
+        ) -> tuple[list[NDArray[np.float32]], list[np.uint8], list[int]]:
             combined = list(zip(images, targets, labelled_indices))
             random.shuffle(combined)
-            images, targets, labelled_indices = zip(*combined)
+            images, targets, labelled_indices = map(list, zip(*combined))
             return list(images), list(targets), list(labelled_indices)
 
         x, y, file_names, cols, rows = process_dataset(filtered_dataset)
@@ -955,7 +1076,7 @@ class FixMatchLoader:
         return x_labelled, labels, labelled_indices, x
 
 
-def import_settings(path):
+def import_settings(path: str) -> dict[str, int]:
     """
     Imports image settings stored in the auxiliary ZIP archive
     associated with the given image.
@@ -983,7 +1104,7 @@ def import_settings(path):
 
             if settings_path in os.listdir(dirname):
                 with open(os.path.join(dirname, settings_path)) as json_file:
-                    return json.load(json_file)
+                    return cast(dict[str, int], json.load(json_file))
 
         # Default to value in settings
         return {"tile_edge": AmfConfig.get("tile_edge")}
@@ -993,7 +1114,7 @@ def import_settings(path):
         return {"tile_edge": AmfConfig.get("tile_edge")}
 
 
-def import_annotations(path, is_bald_folder=False):
+def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame | None:
     """
     Imports tile annotations from the auxiliary ZIP archive
     associated with the given input image.
@@ -1103,9 +1224,9 @@ def import_annotations(path, is_bald_folder=False):
         return None
 
 
-def categorise_path(paths):
+def categorise_path(paths: list[str]) -> dict[str, list[str]]:
     categories = ["train", "test", "BALD"]
-    categorised_paths = {"train": [], "test": [], "BALD": []}
+    categorised_paths: dict[str, list[str]] = {"train": [], "test": [], "BALD": []}
     for path in paths:
         # Split the path based on '/'
         parts = path.split(os.path.sep)

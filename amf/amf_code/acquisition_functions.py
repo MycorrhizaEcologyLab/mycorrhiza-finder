@@ -15,7 +15,7 @@ import torch
 from toma import toma
 from tqdm.auto import tqdm
 
-import joint_entropy
+from . import joint_entropy
 
 
 def compute_conditional_entropy(log_probs_N_K_C: torch.Tensor) -> torch.Tensor:
@@ -25,8 +25,8 @@ def compute_conditional_entropy(log_probs_N_K_C: torch.Tensor) -> torch.Tensor:
 
     pbar = tqdm(total=N, desc="Conditional Entropy", leave=False)
 
-    @toma.execute.chunked(log_probs_N_K_C, 1024)
-    def compute(log_probs_n_K_C, start: int, end: int):
+    @toma.execute.chunked(log_probs_N_K_C, 1024)  # type: ignore[misc]
+    def compute(log_probs_n_K_C: torch.Tensor, start: int, end: int) -> None:
         nats_n_K_C = log_probs_n_K_C * torch.exp(log_probs_n_K_C)
 
         entropies_N[start:end].copy_(-torch.sum(nats_n_K_C, dim=(1, 2)) / K)
@@ -44,9 +44,12 @@ def compute_entropy(log_probs_N_K_C: torch.Tensor) -> torch.Tensor:
 
     pbar = tqdm(total=N, desc="Entropy", leave=False)
 
-    @toma.execute.chunked(log_probs_N_K_C, 1024)
-    def compute(log_probs_n_K_C, start: int, end: int):
+    @toma.execute.chunked(log_probs_N_K_C, 1024)  # type: ignore[misc]
+    def compute(log_probs_n_K_C: torch.Tensor, start: int, end: int) -> None:
         mean_log_probs_n_C = torch.logsumexp(log_probs_n_K_C, dim=1) - math.log(K)
+        mean_log_probs_n_C = torch.logsumexp(log_probs_n_K_C, dim=1) - torch.log(
+            torch.tensor(K)
+        )
         nats_n_C = mean_log_probs_n_C * torch.exp(mean_log_probs_n_C)
 
         entropies_N[start:end].copy_(-torch.sum(nats_n_C, dim=1))
@@ -67,15 +70,15 @@ def get_batchbald_batch(
     log_probs_N_K_C: torch.Tensor,
     batch_size: int,
     num_samples: int,
-    dtype=None,
-    device=None,
+    dtype: torch.dtype | None = None,
+    device: torch.device | None = None,
 ) -> CandidateBatch:
     N, K, C = log_probs_N_K_C.shape
 
     batch_size = min(batch_size, N)
 
-    candidate_indices = []
-    candidate_scores = []
+    candidate_indices: list[int] = []
+    candidate_scores: list[float] = []
 
     if batch_size == 0:
         return CandidateBatch(candidate_scores, candidate_indices)

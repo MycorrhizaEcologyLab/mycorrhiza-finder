@@ -1,3 +1,6 @@
+# TODO haven't typed this as it's not part of core MF
+# mypy: ignore-errors
+
 """Some helper functions for PyTorch."""
 
 import logging

@@ -36,26 +36,36 @@ import os
 import random
 from collections import Counter
 from datetime import datetime
+from typing import Any, Callable, cast
 
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
+from numpy.typing import NDArray
+from PIL import Image
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-import amfinder_model as AmfModel
-import amfinder_save as AmfSave
-import amfinder_segmentation as AmfSegm
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
+from . import amfinder_model as AmfModel
+from . import amfinder_save as AmfSave
+from . import amfinder_segmentation as AmfSegm
 
 random.seed(42)
 
 
-def table_header():
-    return ["row", "col"] + AmfConfig.get("header")
+def table_header() -> list[str]:
+    return ["row", "col"] + cast(list[str], AmfConfig.get("header"))
 
 
-def process_row_1(model, image, nrows, ncols, r, temperature_factor):
+def process_row_1(
+    model: torch.nn.Module,
+    image: Image.Image,
+    nrows: int,
+    ncols: int,
+    r: int,
+    temperature_factor: float,
+) -> pd.DataFrame:
     """
     Predict colonisation (level 1 model) on a single tile row with PyTorch.
     :param model: level 1 model PyTorch model for predictions.
@@ -70,8 +80,8 @@ def process_row_1(model, image, nrows, ncols, r, temperature_factor):
     device = AmfConfig.get("device")
 
     # First, extract all tiles within a row.
-    row = [AmfSegm.tile(image, r, c) for c in range(ncols)]
-    row = AmfSegm.preprocess(row)  # Normalize the tiles.
+    row_unnormalised = [AmfSegm.tile(image, r, c) for c in range(ncols)]
+    row = AmfSegm.preprocess(row_unnormalised)  # Normalize the tiles.
 
     # Convert to PyTorch tensor
     row_tensor = torch.tensor(row, dtype=torch.float32)
@@ -96,7 +106,9 @@ def process_row_1(model, image, nrows, ncols, r, temperature_factor):
     return pd.DataFrame(output.cpu().numpy())
 
 
-def apply_contextual_confidence(table, image, model, base):
+def apply_contextual_confidence(
+    table: pd.DataFrame, image: Image.Image, model: torch.nn.Module, base: str
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Apply contextual confidence to improve predictions for low confidence tiles.
 
@@ -141,7 +153,7 @@ def apply_contextual_confidence(table, image, model, base):
     class_names_to_idx = {name: i for i, name in enumerate(header)}
 
     # Dictionary to track class changes
-    class_changes = {}
+    class_changes: dict[str, int] = {}
     # List to track individual tile changes
     individual_tile_changes = []
 
@@ -155,13 +167,13 @@ def apply_contextual_confidence(table, image, model, base):
         tiles = AmfSegm.get_contextual_tiles(image, row, col, edge)
 
         # Filter out None values (beyond image boundaries)
-        valid_tiles = [t for t in tiles if t is not None]
+        valid_tiles_unnormalised = [t for t in tiles if t is not None]
 
-        if not valid_tiles:
+        if not valid_tiles_unnormalised:
             continue
 
         # Preprocess tiles
-        valid_tiles = AmfSegm.preprocess(valid_tiles)
+        valid_tiles = AmfSegm.preprocess(valid_tiles_unnormalised)
 
         # Convert to PyTorch tensor
         tiles_tensor = torch.tensor(valid_tiles, dtype=torch.float32).to(device)
@@ -229,7 +241,14 @@ def apply_contextual_confidence(table, image, model, base):
     return table, changes_df
 
 
-def predict_level1(image, nrows, ncols, model, temperature_factor, base):
+def predict_level1(
+    image: Image.Image,
+    nrows: int,
+    ncols: int,
+    model: torch.nn.Module,
+    temperature_factor: float,
+    base: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Identifies colonised root segments using PyTorch model.
     :param image: input image (to extract tiles).
@@ -273,7 +292,7 @@ def predict_level1(image, nrows, ncols, model, temperature_factor, base):
 
 def prepare_metrics(
     path: str, tile_results_table: pd.DataFrame, include_hybrid: bool = True
-) -> dict:
+) -> dict[str, Any]:
     tile_results_table.drop("ContextualLabel", axis=1, inplace=True)
     """
     Generate a dictionary of summary metrics for an image,
@@ -287,7 +306,7 @@ def prepare_metrics(
         dict: summary metrics for this image
     """
     directory, filename = os.path.split(path)
-    results_dict = {
+    results_dict: dict[str, Any] = {
         "source": directory,
         "file": filename,
     }
@@ -393,7 +412,9 @@ def prepare_metrics(
     return results_dict
 
 
-def write_metrics(collated_metrics: list, timestamp_string: str, folder: str):
+def write_metrics(
+    collated_metrics: list[dict[str, Any]], timestamp_string: str, folder: str
+) -> None:
     """
     Write metrics for all processed images to a metrics file
 
@@ -550,7 +571,10 @@ def write_metrics(collated_metrics: list, timestamp_string: str, folder: str):
         print(f"Errors occured writing the metrics file: {e}")
 
 
-def run(input_images, postprocess=None):
+def run(
+    input_images: list[str],
+    postprocess: Callable[[Image.Image, pd.DataFrame, str], None] | None = None,
+) -> int:
     """
     Runs prediction on a bunch of images.
 
@@ -578,7 +602,7 @@ def run(input_images, postprocess=None):
     )
 
     # Check in trained_networks
-    temperature_factor = 1
+    temperature_factor = 1.0
     if temperature_factor_file is not None:
         path = os.path.join(
             AmfConfig.get_appdir(), "trained_networks", temperature_factor_file
@@ -657,16 +681,20 @@ def run(input_images, postprocess=None):
     return 200
 
 
-def sample_class(row):
+def sample_class(row: pd.Series) -> int:
     # First two entries are row and col
     probs = row.values[2:]
     # Make sure probabilities add to 1
     # NOTE: Currently a safety measure, shouldn't be needed in future versions
     probs = probs / sum(probs)
-    return np.random.choice(range(len(probs)), p=probs)
+    return cast(
+        int, np.random.choice(range(len(probs)), p=probs)
+    )  # returns scalar when size=None
 
 
-def bootstrap_distribution(df_cal_probs, n_samples=1000):
+def bootstrap_distribution(
+    df_cal_probs: pd.DataFrame, n_samples: int = 1000
+) -> NDArray[np.float64]:
     # Retrieve number of classes
     n_classes = len(AmfConfig.get("header"))
     AmfLog.progress_bar(0, n_samples, indent=1)
@@ -685,7 +713,9 @@ def bootstrap_distribution(df_cal_probs, n_samples=1000):
     return bootstrap_dist
 
 
-def get_relative_conf_intervals(bootstrap_distribution, include_hybrid, metric):
+def get_relative_conf_intervals(
+    bootstrap_distribution: NDArray[np.float64], include_hybrid: bool, metric: str
+) -> dict[str, float]:
     col_type = AmfConfig.get("colonisation_type")
 
     if col_type == "am":
@@ -710,7 +740,7 @@ def get_relative_conf_intervals(bootstrap_distribution, include_hybrid, metric):
             )
 
     else:
-        numerator = 0
+        numerator = np.zeros(bootstrap_distribution.shape[0])
         denominator = (
             bootstrap_distribution[:, 0]
             + bootstrap_distribution[:, 1]
@@ -756,7 +786,11 @@ def get_relative_conf_intervals(bootstrap_distribution, include_hybrid, metric):
     return res_dict
 
 
-def add_conf_intervals(bootstrap_distribution, metrics_dict, include_hybrid):
+def add_conf_intervals(
+    bootstrap_distribution: NDArray[np.float64],
+    metrics_dict: dict[str, Any],
+    include_hybrid: bool,
+) -> dict[str, Any]:
     # Calculate relevant metrics for creating confidence intervals
     mean = np.mean(bootstrap_distribution, axis=0)
     std_dev = np.std(bootstrap_distribution, axis=0)
@@ -787,7 +821,7 @@ def add_conf_intervals(bootstrap_distribution, metrics_dict, include_hybrid):
     return metrics_dict
 
 
-def get_num_tiles_per_confidence(df_cal_probs):
+def get_num_tiles_per_confidence(df_cal_probs: pd.DataFrame) -> dict[str, int]:
     max_probs = df_cal_probs.iloc[:, 2:].max(axis=1)
     thresholds = np.linspace(0.1, 1.0, 10)
     counts, _ = np.histogram(max_probs, bins=np.concatenate(([0], thresholds)))

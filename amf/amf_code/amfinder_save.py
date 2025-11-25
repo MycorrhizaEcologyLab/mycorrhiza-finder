@@ -42,20 +42,22 @@ from contextlib import redirect_stdout
 
 import h5py
 import numpy as np
+import pandas as pd
 import torch
 from torchinfo import summary
 from torchview import draw_graph
 
-import amfinder_config as AmfConfig
-import amfinder_log as AmfLog
-import amfinder_plot as AmfPlot
-import amfinder_zipfile as zf
-from api_objects import PredictionValues
-from api_utils import save_predictions_to_db
-from db_config import connect
+from . import amfinder_config as AmfConfig
+from . import amfinder_log as AmfLog
+from . import amfinder_plot as AmfPlot
+from . import amfinder_zipfile as zf
+from .api_objects import PredictionValues
+from .api_utils import save_predictions_to_db
+from .db_config import connect
+from .metrics_collector import MetricsCollector
 
 
-def now():
+def now() -> str:
     """
     Returns the current date/time in a format suitable
     for use as file name.
@@ -64,7 +66,9 @@ def now():
     return datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-def save_training_data(history, model, save_path):
+def save_training_data(
+    history: dict[str, list[float]], model: torch.nn.Module, save_path: str
+) -> None:
     """
     Saves training history, model weights, and other relevant information.
 
@@ -124,14 +128,16 @@ def save_training_data(history, model, save_path):
             x_range = np.arange(0, epochs)
 
         AmfPlot.initialize()
-        data = AmfPlot.draw(history, epochs, "Loss", x_range, "loss", "val_loss")
-        z.writestr("loss.png", data.getvalue())
+        plot_data = AmfPlot.draw(history, epochs, "Loss", x_range, "loss", "val_loss")
+        z.writestr("loss.png", plot_data.getvalue())
 
     print(f"Saved model output to {save_path}")
 
 
 # Function to get a summary of the model architecture as txt file and graph.
-def save_model_architecture(model, device, tile_size):
+def save_model_architecture(
+    model: torch.nn.Module, device: torch.device, tile_size: int
+) -> None:
     """
     Saves neural network architecture, parameters count, etc.
 
@@ -152,7 +158,7 @@ def save_model_architecture(model, device, tile_size):
     # "CNN1_graph". The third file is not required in theory.
 
 
-def save_settings(path):
+def save_settings(path: str) -> None:
     """
     Saves image settings (currently, only tile size).
 
@@ -170,7 +176,7 @@ def save_settings(path):
         json.dump(settings, file)
 
 
-def save_metrics(metrics_collector, path):
+def save_metrics(metrics_collector: MetricsCollector, path: str) -> None:
     """
     Saves predictions, class metrics, file metrics, and generic metrics to an archive.
     :param path: path to the ZIP archive.
@@ -209,14 +215,11 @@ def save_metrics(metrics_collector, path):
             z.writestr(generic_metrics_file_name, generic_metrics_csv)
 
         for image_name, image in metrics_collector.images.items():
-            if isinstance(image, str):
-                with open(image, "rb") as img_file:
-                    z.writestr(image_name, img_file.read())
-            else:
-                z.writestr(image_name, image)
+            with open(image, "rb") as img_file:
+                z.writestr(image_name, img_file.read())
 
 
-def prediction_table(results, path):
+def prediction_table(results: pd.DataFrame, path: str) -> None:
     """
     Saves or append predictions to an archive.
 

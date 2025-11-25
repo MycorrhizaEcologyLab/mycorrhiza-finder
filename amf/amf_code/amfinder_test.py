@@ -13,32 +13,35 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
+from numpy.typing import NDArray
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import amfinder_config as AmfConfig
-import amfinder_load as AmfLoad
-import amfinder_log as AmfLog
-import amfinder_model as AmfModel
-import amfinder_save as AmfSave
-import amfinder_segmentation as AmfSegm
-from metrics_collector import MetricsCollector
-from test_metrics import TestMetrics
+from . import amfinder_config as AmfConfig
+from . import amfinder_load as AmfLoad
+from . import amfinder_log as AmfLog
+from . import amfinder_model as AmfModel
+from . import amfinder_save as AmfSave
+from . import amfinder_segmentation as AmfSegm
+from .metrics_collector import MetricsCollector
+from .test_metrics import TestMetrics
 
 random.seed(42)
 
 
 def get_test_results(
-    x_test,  # Test images
-    y_test,  # Labels for images
-    filenames,  # filenames as required in load_data_and_files()
-    results_dir,  # Directory to save results
-    model,  # Selected model as pre config file
-    test_loader,  # Pre-defined test-set DataLoader
-    metrics_collector,  # Object to collect metrics
-    rows,  # Rows for visualisation (if needed)
-    cols,  # Cols for visualisation (if needed)
-):
+    x_test: list[NDArray[np.uint8]],  # Test images
+    y_test: list[NDArray[np.uint8]],  # Labels for images
+    filenames: list[str],  # filenames as required in load_data_and_files()
+    results_dir: str,  # Directory to save results
+    model: torch.nn.Module,  # Selected model as pre config file
+    test_loader: DataLoader[
+        tuple[torch.Tensor, torch.Tensor]
+    ],  # Pre-defined test-set DataLoader
+    metrics_collector: MetricsCollector,  # Object to collect metrics
+    rows: list[int],  # Rows for visualisation (if needed)
+    cols: list[int],  # Cols for visualisation (if needed)
+) -> None:
     """
     Evaluate a trained model on a test dataset, calculate metrics, and save the results.
 
@@ -109,8 +112,7 @@ def get_test_results(
     )
 
     # Check in trained_networks
-    # Check in trained_networks
-    temperature_factor = 1
+    temperature_factor = 1.0
     if temperature_factor_file is not None:
         path = os.path.join(
             AmfConfig.get_appdir(), "trained_networks", temperature_factor_file
@@ -135,9 +137,9 @@ def get_test_results(
     criterion = torch.nn.CrossEntropyLoss()
 
     # Lists to store predictions, probabilities, and labels
-    predicted_labels = []
-    true_labels = []
-    all_probs = []
+    predicted_labels_list = []
+    true_labels_list = []
+    all_probs_list = []
 
     batch_count = len(test_loader)
 
@@ -170,11 +172,11 @@ def get_test_results(
             correct += (class_indices == batch_y).sum().item()
 
             # Collect predictions and true labels
-            predicted_labels.extend(class_indices.cpu().numpy())
-            true_labels.extend(
+            predicted_labels_list.extend(class_indices.cpu().numpy())
+            true_labels_list.extend(
                 F.one_hot(batch_y, num_classes=num_classes).cpu().numpy()
             )
-            all_probs.extend(probabilities.cpu().numpy())
+            all_probs_list.extend(probabilities.cpu().numpy())
 
     # Calculate average loss and accuracy
     avg_loss = test_loss / batch_count
@@ -188,9 +190,9 @@ def get_test_results(
 
     # Convert to numpy arrays
     print("Converting to numpy arrays")
-    predicted_labels = np.array(predicted_labels)
-    true_labels = np.array(true_labels)
-    all_probs = np.array(all_probs)
+    predicted_labels = np.array(predicted_labels_list)
+    true_labels = np.array(true_labels_list)
+    all_probs = np.array(all_probs_list)
     y_test_labels = np.argmax(y_test, axis=1)
 
     use_contextual_confidence = AmfConfig.get("use_contextual_confidence")
@@ -216,7 +218,7 @@ def get_test_results(
             )
 
             # Group by image to minimize image loading
-            file_to_indices = {}
+            file_to_indices: dict[str, list[tuple[int, int, int]]] = {}
             for idx in low_confidence_indices:
                 file_path = filenames[idx]
                 if file_path not in file_to_indices:
@@ -413,7 +415,7 @@ def get_test_results(
     AmfLog.text(f"Execution Time: {execution_time:.2f} seconds")
 
 
-def run(input_images):
+def run(input_images: list[str]) -> int:
     """
     Runs prediction on a bunch of images.
 
