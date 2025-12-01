@@ -1,50 +1,128 @@
-<p align="center">
-  <img width="226" height="74" src="doc/mf-logo.png">
-</p>
+# MycorrhizaFinder development repository
 
-The MycorrhizaFinder tool allows for high-throughput computervision-based identification and quantification of AM (Arbuscular Mycorrhiza) and ErM (Ericoid Mycorrhiza) fungal colonisationand intraradical hyphal structures using convolutional neural networks.
+## Note to users
 
-**The current version of MycorrhizaFinder is v5.0.0.**
+This repository, and this README, are aimed at development of the source code, and not users of the MycorrhizaFinder tool. To download the tool and to see full user documentation, see https://doi.org/10.5281/zenodo.17485909.
 
-If you use MycorrhizaFinder in your manuscript, please cite:
-[Evangelisti _et al._, 2021, Deep learning-based quantification of arbuscular mycorrhizal fungi in plant roots, _New Phytologist_ **232**(5): 2207-2219](https://doi.org/10.1111/nph.17697).
+---
 
-## Summary
+## Contents
 
-1. [Installation](#install)
-1. [Overview of functionality](#overview)
-1. [For Developers](#develop)
-1. [How to batch stain plant roots?](#staining)
+1. [Setting up your local development environment](#setting-up-your-local-development-environment)
+2. [Running the tool locally](#running-the-tool-locally)
+3. [Contributing to the repo](#contributing-to-the-repo)
+4. [Building new versions of the tool](#building-new-versions-of-the-tool)
 
-## Installation<a name="install"></a>
+## Setting up your local development environment
 
-Detailed installation instructions for Linux, Mac and Windows can be found [here](INSTALL.md).
+1. If you have not done so already, [download the pre-built executables](https://doi.org/10.5281/zenodo.17485909) and follow the instructions in the quick-start user guide to set up Postgres and to check that the tool runs.
 
-## Overview of functionality<a name="overview"></a>
+1. Install **node** from the [official website](https://nodejs.org/en/download). Version 22.13.1 is tested with the current version of the tool. For Windows, we would recommend downloading the .msi installer instead of using `fnm`. You can validate this worked by checking that the following command in terminal returns the corresponding version you have downloaded `node --version`.
 
-The purpose of MycorrhizaFinder is to enable the identification and quantification of Arbuscular and Ericoid colonisation in root specimens. As such, the tool can be split into two main areas of functionality:
+2. Install **Python 3.11** from the [official website](https://www.python.org/downloads/) or from your package manager. We would recommend ticking the box asking whether you would like to add this to path. After the install, when you open a terminal and run `python --version`, the output should be `3.11.*`.
 
-1. MycorrhizaFinder Tool - this allows users to calculate predictions using an AI network which tile an image, and for each tile, output probabilities for each tile that it belongs to one of n classes. Moreover, users can use this functionality to train new networks, and also automatically convert predictions into annotations, which are tiled images that have been assigned a label per tile, and other functionalities that are specified below.
-2. Browser - this section of the tool allows users to view predictions made by MycorrhizaFinder, convert these into annotations and manually add/edit annotations to a tiled image.
+3. Check out this repo.
 
-The usual functionality of the tool is via the UI - this has exhaustive user documentation which can be found at doc/mycorrhiza-finder-user-documentation.pdf. However, you can run the MF tool functionalities directly from the console, which is useful for development purposes. This functionality is outlined in [develop](DEVELOP.md).
+4. You can use any code editor you like, but the repo is optimised for [Visual Studio Code](https://code.visualstudio.com/). If you open the repo in VS Code it should automatically prompt you to install the [ruff](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and [mypy (Matan Gover)](https://marketplace.visualstudio.com/items?itemName=matangover.mypy) extensions, which should auto-run on each save. This is not essential, but if you don't use it then please do run ruff and mypy manually before committing code to the repo so we can keep it consistently formatted and typed.
 
-<p>
-  <img width='1000' src="doc/mf.gif">
-</p>
+5. Copy the contents of `_internal/trained_networks` from the executables into `amf-backend/trained_networks` in the repo.
 
-## For Developers<a name="develop"></a>
+6. Set the `IS_DEV` flag in `amf-backend/run_amf_api.py` to `True`. This must be set back to `False` before making production builds.
 
-If you are planning on developing new code in the tool and want to run the amf functionalities without using the UI, details on this can be found [here](DEVELOP.md).
+7. `cd` to `amf-backend` and run the following set of commands. (Note that line 2 is how to activate a virtualenv on Windows; if you are on MacOS or Linux, this will differ. See [here](https://docs.python.org/3/library/venv.html#how-venvs-work) for details.)
 
-## How to batch stain plant roots?<a name="staining"></a>
+    ```
+    python -m venv amfenv
+    .\amfenv\Scripts\activate
+    python -m pip install --upgrade pip
+    python -m pip install -r ./requirements.txt
+    python -m pip install -e .
+    ```
 
-An optimised ink-staining protocol with additional clearing is available in [Evangelisti _et al._ (2021)](https://doi.org/10.1111/nph.17697).
+8. `cd` to `amfbrowser` react and run
+    ```
+    npm install
+    ```
 
-**Batch staining plant roots is essential for high-throughput analyses.** It can be achieved using a hand-crafted device composed of 10 cell strainers (100 µm nylon mesh) tied together with adhesive sealing film for PCR plates. A single sieve can accommodate a 4-week-old _N. benthamiana_ root system. The sieves containing roots are immersed in 10% KOH, water, or ink/vinegar staining solution poured in a plastic lid. Plastic lids are floated in a hot (95°C) water bath to achieve the desired staining conditions. Sieves are pulled out of the lid containing the KOH solution and transferred to the washing solution, then to the ink staining solution without the need to manipulate roots, thereby reducing the risk of damage.
+### Linux installation tips
 
-| View from above                | View from below                | With plastic lid               |
-| ------------------------------ | ------------------------------ | ------------------------------ |
-| ![](doc/Staining_sieves_1.jpg) | ![](doc/Staining_sieves_2.jpg) | ![](doc/Staining_sieves_3.jpg) |
+In order to install on Linux, you will likely need to install the python dev package, libpq-dev, gcc for psycopg2 to work - you can do this with the following (note that we are using python3.11 in the below).
 
-Credit: devices from Dr [Albin Teulet](https://twitter.com/albinteulet) and [Alex Guyon](https://twitter.com/alexwguyon) (Schornack lab), derived from an original idea by Dr Clément Quan.
+```
+sudo apt install python3.11-dev
+sudo apt install libpq-dev
+sudo apt install build-essential
+```
+
+You may also need to switch your python version to 3.11 - you can use deadsnakes for this as below.
+
+```
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install python3.11
+```
+
+Python will then be accessible using `python3.11`.
+
+
+## Running the tool locally
+
+### Running the GUI
+
+1. In one terminal, `cd` to `amf-backend` and run
+    ```
+    .\amfenv\Scripts\activate
+    python ./run_amf_api.py
+    ```
+
+2. In a second terminal, `cd` to `amfbrowser-react` and run
+    ```
+    npm start
+    ```
+
+    It will normally take a couple of minutes to start up, but eventually it should inform you that it's running successfully.
+
+3. You can then open http://localhost:3000 and use the tool!
+
+### Command line interface
+
+There is also a powerful command line interface to bypass the GUI, accessible at `amf-backend/run_amf_cli.py`.
+
+This is documented using argparse help, such that you can run
+```
+python run_amf_cli.py --help
+```
+to be informed of the available tool modes, and then, e.g. for `predict` mode,
+```
+python run_amf_cli.py predict --help
+```
+to view all the possible options.
+
+## Contributing to the repo
+
+The `main` branch should only be used when we want to make a public release. The `dev` branch contains the latest **reviewed and tested** changes. All work should be done in a new branch, with a pull request then submitted to merge into `dev`. Please try to use [semantic commit messages](https://gist.github.com/joshbuchea/6f47e86d2510bce28f8e7f42ae84c716).
+
+
+## Building new versions of the tool
+
+In order to release new versions of the tool, you will need to rebuild the executable. Note that for each platform you want to release the tool on, you need to build the tool on that corresponding platform. The default build is for Windows, but this can easily be adapted for MacOS and Linux.
+
+### Generating a new executable
+
+The main steps for generating a new executable are creating a production build of the React UI, and generating a new pyinstaller executable.
+
+1. Ensure that you have set up your development environment following the steps above, and that the `amfenv` venv is activated.
+2. Install pyinstaller if it is not already installed:
+    ```
+    python -m pip install pyinstaller
+    ```
+3. Ensure that the `IS_DEV` flag in `amf-backend/run_amf_api.py` is set to `False`.
+4. Follow the steps in `build.bat` to build the executable. It is safer to copy each individual line at a time rather than running the entire shell script in one go.
+
+    This will build an executable under the `dist` folder that you can use to run the tool. Note that this comes with an `\_internal` folder that you must provide with the exe for it to work – they must also stay in the same directory.
+
+### Differences for MacOS and Linux
+
+For MacOS and Linux, you must build the exe on these respective platforms. Besides this, there are two small differences:
+1. You must replace the `-Recurse` flag with `-rf`;
+2. In the `pyinstaller` command, replace all `;` with `:`.
