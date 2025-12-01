@@ -1,0 +1,33 @@
+[project]
+name = "amf"
+version = "5.0.0"
+requires-python = ">=3.11"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+src = ["src", "run_amf_api.py", "run_amf_cli.py"]
+exclude = ["notebooks"]
+
+[tool.ruff.lint]
+extend-select = [
+    "A",    # overwriting builtins
+    "ARG",  # unused arguments
+    "E501", # line too long
+    "I",    # import sorting
+    "S101"  # no assert statements
+]
+unfixable = [
+    "F401" # don't remove unused imports, but still flag them
+]
+
+[tool.mypy]
+files = ["src", "run_amf_api.py", "run_amf_cli.py"]
+exclude = ["notebooks"]
+strict = true
+disable_error_code = ["import-untyped"]
+warn_unreachable = true

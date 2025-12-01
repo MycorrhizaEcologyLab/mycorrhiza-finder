@@ -1,16 +1,16 @@
-import React, { useState, useContext, useEffect } from "react";
-import { toast } from "react-toastify";
+import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import Divider from "@mui/material/Divider";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import Divider from "@mui/material/Divider";
-import PrimaryButton from "../Utils/PrimaryButton";
-import ValidationIcon from "../Utils/ValidationIcon";
-import AmfToolActionButtons from "./AmfToolActionButtons";
+import { useContext, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import PredictionsApi from "../../api/amfinderApi";
 import { GlobalContextProvider } from "../../contexts/Contexts";
+import PrimaryButton from "../Utils/PrimaryButton";
 import { isValidFilePath } from "../Utils/utils";
+import ValidationIcon from "../Utils/ValidationIcon";
+import AmfToolActionButtons from "./AmfToolActionButtons";
 
 import "./styles/amftool.css";
 
@@ -73,7 +73,6 @@ export default function AmfToolContainer() {
       outdir: settings.outdir,
       colonisationType: colonisationType,
       useDb: settings.useDb,
-      semiSupervised: settings.semiSupervised,
       learningRate: settings.learningRate,
       adamBeta1: settings.adamBeta1,
       adamBeta2: settings.adamBeta2,
@@ -253,9 +252,7 @@ export default function AmfToolContainer() {
       useDb: settings.useDb,
       device: settings.device,
       outdir: settings.outdir,
-      semiSupervised: settings.semiSupervised,
       tileEdge: tileEdge,
-      fixmatchResultsDirectory: settings.fixmatchResultsDirectory,
       temperatureFactorPath: settings.temperatureFactorPath,
       temperatureFactorPathErm: settings.temperatureFactorPathErm,
       useContextualConfidence: settings.useContextualConfidence,

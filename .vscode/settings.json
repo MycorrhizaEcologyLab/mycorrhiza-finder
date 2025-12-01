@@ -10,10 +10,10 @@
     },
 
     // Mypy
-    "python.linting.enabled": true,
-    "python.linting.mypyEnabled": true,
-    "python.linting.mypyArgs": [
-        "--config-file",
-        "${workspaceFolder}/pyproject.toml"
+    "mypy.configFile": "amf-backend/pyproject.toml",
+    "mypy.targets": [
+        "amf-backend/src",
+        "amf-backend/run_amf_api.py",
+        "amf-backend/run_amf_cli.py"
     ],
 }

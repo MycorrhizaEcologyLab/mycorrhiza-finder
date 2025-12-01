@@ -1,17 +1,17 @@
-import React, { useContext, useEffect } from "react";
+import { useContext, useEffect } from "react";
 
-import { toast } from "react-toastify";
 import CircularProgress from "@mui/material/CircularProgress";
+import { toast } from "react-toastify";
 
-import "./styles/settings.css";
+import PredictionsApi from "../../api/amfinderApi";
 import { GlobalContextProvider } from "../../contexts/Contexts";
 import PrimaryButton from "../Utils/PrimaryButton";
-import SettingsItemText from "./SettingsItemText";
-import SettingsItemSelect from "./SettingsItemSelect";
 import SettingsItemCheckbox from "./SettingsItemCheckbox";
 import SettingsItemFloat from "./SettingsItemFloat";
 import SettingsItemInteger from "./SettingsItemInteger";
-import PredictionsApi from "../../api/amfinderApi";
+import SettingsItemSelect from "./SettingsItemSelect";
+import SettingsItemText from "./SettingsItemText";
+import "./styles/settings.css";
 
 const AmfSettings = () => {
   const { colonisationType, tileEdge, setTileEdge, settings, setSettings } =
@@ -339,14 +339,6 @@ const AmfSettings = () => {
               handleInputChange={handleInputChange}
               resetToDefault={resetToDefault}
             />
-            <SettingsItemCheckbox
-              name="semiSupervised"
-              displayName="Semi-supervised"
-              defaultValue={false}
-              checked={settings.semiSupervised}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
             <SettingsItemFloat
               name="learningRate"
               displayName="Learning Rate"
@@ -479,27 +471,6 @@ const AmfSettings = () => {
               ]}
               handleInputChange={handleInputChange}
               resetToDefault={resetToDefault}
-            />
-            {/* TEST */}
-            <div className="settings-heading" id="test">
-              Test
-            </div>
-            <SettingsItemCheckbox
-              name="semiSupervised"
-              displayName="Semi-supervised"
-              defaultValue={false}
-              checked={settings.semiSupervised}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemText
-              name="fixmatchResultsDirectory"
-              displayName="Semi-supervised results directory"
-              defaultValue="images folder"
-              value={settings.fixmatchResultsDirectory}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-              disabled={!settings.semiSupervised}
             />
           </div>
         )}

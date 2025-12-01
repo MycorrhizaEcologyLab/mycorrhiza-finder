@@ -1,2 +1,22 @@
+# Python venv
 amfenv
+
+# Auto-generated files
+*.egg-info
 *.pyc
+*.spec
+
+# Trained networks
+**/trained_networks/**
+!**/trained_networks/README.txt
+
+# Frontend dependencies
+**/node_modules/**
+
+# Built artefacts
+amf-backend/build/**
+!amf-backend/build/
+!amf-backend/build/build.bat
+!amf-backend/build/amfbrowser.ico
+amf-backend/_internal
+amfbrowser-react/build
