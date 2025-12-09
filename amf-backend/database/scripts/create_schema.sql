@@ -109,3 +109,26 @@ ALTER TABLE IF EXISTS public.ImageReference
 
 ALTER TABLE IF EXISTS public.Settings
     OWNER to postgres;
+
+-- Column renames
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'public.Cnn1PredictionsAm'
+        AND column_name = 'Hybrid'
+    ) THEN
+        ALTER TABLE public.Cnn1PredictionsAm
+            RENAME COLUMN Hybrid TO AM_DSE;
+        ALTER TABLE public.Cnn1PredictionsErM
+            RENAME COLUMN HybridErM TO ErM;
+        ALTER TABLE public.Cnn1PredictionsErM
+            RENAME COLUMN HybridDSE TO ErM_DSE;
+        ALTER TABLE public.Cnn1AnnotationsAm
+            RENAME COLUMN Hybrid TO AM_DSE;
+        ALTER TABLE public.Cnn1AnnotationsErm
+            RENAME COLUMN HybridErM TO ErM;
+        ALTER TABLE public.Cnn1AnnotationsErm
+            RENAME COLUMN HybridDSE TO ErM_DSE;
+    END IF;
+END$$;

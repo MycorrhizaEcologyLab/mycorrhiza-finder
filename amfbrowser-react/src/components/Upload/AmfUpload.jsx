@@ -107,7 +107,7 @@ const AmfUpload = () => {
               "Background",
               "Unreadable",
               "DSE",
-              "Hybrid",
+              "AM_DSE",
             ];
           } else {
             mandatoryColumns = [
@@ -121,8 +121,8 @@ const AmfUpload = () => {
               "MainRoot",
               "Unreadable",
               "DSE",
-              "HybridErm",
-              "HybridDse",
+              "ErM",
+              "ErM_DSE",
             ];
           }
 
@@ -168,7 +168,7 @@ const AmfUpload = () => {
                   out[4] = parseInt(value["Background"]);
                   out[5] = parseInt(value["Unreadable"]);
                   out[6] = parseInt(value["DSE"]);
-                  out[7] = parseInt(value["Hybrid"]);
+                  out[7] = parseInt(value["AM_DSE"]);
                   if ("Question" in value) {
                     out[8] = parseInt(value["Question"]);
                   }
@@ -188,8 +188,8 @@ const AmfUpload = () => {
                   out[7] = parseInt(value["MainRoot"]);
                   out[8] = parseInt(value["Unreadable"]);
                   out[9] = parseInt(value["DSE"]);
-                  out[10] = parseInt(value["HybridErm"]);
-                  out[11] = parseInt(value["HybridDse"]);
+                  out[10] = parseInt(value["ErM"]);
+                  out[11] = parseInt(value["ErM_DSE"]);
                   if ("Question" in value) {
                     out[12] = parseInt(value["Question"]);
                   }
@@ -242,7 +242,7 @@ const AmfUpload = () => {
                   out[4] = parseFloat(value["Background"]);
                   out[5] = parseFloat(value["Unreadable"]);
                   out[6] = parseFloat(value["DSE"]);
-                  out[7] = parseFloat(value["Hybrid"]);
+                  out[7] = parseFloat(value["AM_DSE"]);
                   if ("ContextualLabel" in value) {
                     out[8] = value["ContextualLabel"];
                   }
@@ -259,8 +259,8 @@ const AmfUpload = () => {
                   out[7] = parseFloat(value["MainRoot"]);
                   out[8] = parseFloat(value["Unreadable"]);
                   out[9] = parseFloat(value["DSE"]);
-                  out[10] = parseFloat(value["HybridErm"]);
-                  out[11] = parseFloat(value["HybridDse"]);
+                  out[10] = parseFloat(value["ErM"]);
+                  out[11] = parseFloat(value["ErM_DSE"]);
                   if ("ContextualLabel" in value) {
                     out[12] = value["ContextualLabel"];
                   }

@@ -430,7 +430,7 @@ def run(input_files: list[str]) -> int:
                 "Background": calibrated_probs[:, 2],
                 "Unreadable": calibrated_probs[:, 3],
                 "DSE": calibrated_probs[:, 4],
-                "Hybrid": calibrated_probs[:, 5],
+                "AM_DSE": calibrated_probs[:, 5],
             }
         )
     else:
@@ -447,8 +447,8 @@ def run(input_files: list[str]) -> int:
                 "MainRoot": calibrated_probs[:, 5],
                 "Unreadable": calibrated_probs[:, 6],
                 "DSE": calibrated_probs[:, 7],
-                "HybridErm": calibrated_probs[:, 8],
-                "HybridDse": calibrated_probs[:, 9],
+                "ErM": calibrated_probs[:, 8],
+                "ErM_DSE": calibrated_probs[:, 9],
             }
         )
 

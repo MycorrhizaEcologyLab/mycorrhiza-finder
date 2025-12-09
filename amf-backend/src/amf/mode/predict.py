@@ -301,6 +301,8 @@ def prepare_metrics(
     Args:
         path (str): full image path
         tile_results_table (pd.DataFrame): DataFrame of individual tile results
+        include_hybrid: whether to include hybrid classes (AM+DSE for the AM model,
+            ErM and ErM+DSE for the ErM model)
 
     Returns:
         dict: summary metrics for this image
@@ -336,25 +338,25 @@ def prepare_metrics(
             - results_dict[col_headers[3]]  # Remove class Unreadable
         )
 
-        # Ensures that the Hybrid class is included in or excluded from the percentage
+        # Ensures that the AM+DSE class is included in the percentage
         # calculation depending on the include_hybrid parameter
-        hybrid_addition = results_dict[col_headers[5]] if include_hybrid else 0
+        am_dse_addition = results_dict[col_headers[5]] if include_hybrid else 0
 
         # Calculate % AM colonised as a ratio to all root tiles
         results_dict["am_colonised_percentage"] = (
-            100 * (results_dict[col_headers[0]] + hybrid_addition) / total_root_tiles
+            100 * (results_dict[col_headers[0]] + am_dse_addition) / total_root_tiles
         )
 
         # Calculate % DSE colonised as a ratio to all root tiles
         results_dict["dse_colonised_percentage"] = (
-            100 * (results_dict[col_headers[4]] + hybrid_addition) / total_root_tiles
+            100 * (results_dict[col_headers[4]] + am_dse_addition) / total_root_tiles
         )
 
         # Calculate % total colonised as a ratio to all root tiles
         results_dict["total_colonised_percentage"] = (
             results_dict["am_colonised_percentage"]
             + results_dict["dse_colonised_percentage"]
-            - 100 * (hybrid_addition / total_root_tiles)
+            - 100 * (am_dse_addition / total_root_tiles)
         )
 
     else:
@@ -365,10 +367,10 @@ def prepare_metrics(
             - results_dict[col_headers[6]]  # Remove class Unreadable
         )
 
-        # Ensures that the Hybrid class is included in or excluded from the percentage
-        # calculation depending on the include_hybrid parameter
-        hybriderm_addition = results_dict[col_headers[8]]
-        hybriddse_addition = results_dict[col_headers[9]]
+        # Ensures that the hybrid classes are included in or excluded from the
+        # percentage calculation depending on the include_hybrid parameter
+        erm_addition = results_dict[col_headers[8]]
+        erm_dse_addition = results_dict[col_headers[9]]
 
         # Calculate % blue coils colonised as a ratio to all root tiles
         results_dict["BlueCoils_colonised_percentage"] = (
@@ -387,7 +389,7 @@ def prepare_metrics(
 
         # Calculate % DSE colonised as a ratio to all root tiles
         results_dict["dse_colonised_percentage"] = (
-            100 * (results_dict[col_headers[7]] + hybriddse_addition) / total_root_tiles
+            100 * (results_dict[col_headers[7]] + erm_dse_addition) / total_root_tiles
         )
 
         # Calculate % total colonised as a ratio to all root tiles
@@ -395,7 +397,7 @@ def prepare_metrics(
             results_dict["BlueCoils_colonised_percentage"]
             + results_dict["BrownCoils_colonised_percentage"]
             + results_dict["TypeTwo_colonised_percentage"]
-            + 100 * (hybriderm_addition / total_root_tiles)
+            + 100 * (erm_addition / total_root_tiles)
         )
 
     # Calculate bootstrap distribution and confidence intervals
@@ -467,10 +469,10 @@ def write_metrics(
                 "DSE_Mean",
                 "DSE_LowerConfidence",
                 "DSE_UpperConfidence",
-                "Hybrid",
-                "Hybrid_Mean",
-                "Hybrid_LowerConfidence",
-                "Hybrid_UpperConfidence",
+                "AM_DSE",
+                "AM_DSE_Mean",
+                "AM_DSE_LowerConfidence",
+                "AM_DSE_UpperConfidence",
                 "Tiles with confidence <= 0.1",
                 "Tiles with confidence <= 0.2",
                 "Tiles with confidence <= 0.3",
@@ -539,14 +541,14 @@ def write_metrics(
                 "DSE_Mean",
                 "DSE_LowerConfidence",
                 "DSE_UpperConfidence",
-                "HybridErm",
-                "HybridErm_Mean",
-                "HybridErm_LowerConfidence",
-                "HybridErm_UpperConfidence",
-                "HybridDse",
-                "HybridDse_Mean",
-                "HybridDse_LowerConfidence",
-                "HybridDse_UpperConfidence",
+                "ErM",
+                "ErM_Mean",
+                "ErM_LowerConfidence",
+                "ErM_UpperConfidence",
+                "ErM_DSE",
+                "ErM_DSE_Mean",
+                "ErM_DSE_LowerConfidence",
+                "ErM_DSE_UpperConfidence",
                 "Tiles with confidence <= 0.1",
                 "Tiles with confidence <= 0.2",
                 "Tiles with confidence <= 0.3",

@@ -153,13 +153,13 @@ class TestMetrics:
             class_counts = series.value_counts()
             am_colonised = class_counts.get(0, 0) + class_counts.get(
                 5, 0
-            )  # Gets the number of AMColonised and Hybrid tiles
+            )  # Gets the number of AMColonised and AM+DSE tiles
             dse_colonised = class_counts.get(4, 0) + class_counts.get(
                 5, 0
-            )  # Gets the number of DSE and Hybrid tiles
+            )  # Gets the number of DSE and AM+DSE tiles
             total_colonised = (
                 am_colonised + dse_colonised - class_counts.get(5, 0)
-            )  # Number of Hybrid tiles are substracted to avaoid summing it two times
+            )  # Number of AM+DSE tiles are substracted to avoid double counting
             # Remove background and unreadable
             total_root = (
                 class_counts.sum() - class_counts.get(2, 0) - class_counts.get(3, 0)
@@ -195,8 +195,8 @@ class TestMetrics:
             brown_coil = class_counts.get(1, 0)
             type_two = class_counts.get(2, 0)
             dse = class_counts.get(7, 0)
-            hybrid_erm = class_counts.get(8, 0)
-            hybrid_dse = class_counts.get(9, 0)
+            erm = class_counts.get(8, 0)
+            erm_dse = class_counts.get(9, 0)
             # Remove background, main root and unreadable
             total_root = (
                 class_counts.sum()
@@ -214,9 +214,9 @@ class TestMetrics:
                 perc_blue_coil = (blue_coil / total_root) * 100
                 perc_brown_coil = (brown_coil / total_root) * 100
                 perc_type_two = (type_two / total_root) * 100
-                perc_dse = ((dse + hybrid_dse) / total_root) * 100
+                perc_dse = ((dse + erm_dse) / total_root) * 100
                 perc_total_col = (
-                    (blue_coil + brown_coil + type_two + hybrid_erm) / total_root
+                    (blue_coil + brown_coil + type_two + erm) / total_root
                 ) * 100
 
             perc_root = (
@@ -302,13 +302,13 @@ class TestMetrics:
                 colonisation_metrics = df.groupby("Filename").apply(
                     lambda x: pd.Series(
                         {
-                            "Actual % AM + Hybrid Colonised": (
+                            "Actual % AM Colonised": (
                                 calculate_am_colonised_percentage(x["Actual Label"])[0]
                             ),
-                            "Actual % DSE + Hybrid Colonised": (
+                            "Actual % DSE Colonised": (
                                 calculate_am_colonised_percentage(x["Actual Label"])[1]
                             ),
-                            "Actual % Total Colonised including Hybrid": (
+                            "Actual % Total Colonised": (
                                 calculate_am_colonised_percentage(x["Actual Label"])[2]
                             ),
                             "Actual % Root": (
@@ -330,10 +330,10 @@ class TestMetrics:
                             "Actual % Type Two Colonised": (
                                 calculate_erm_colonised_percentage(x["Actual Label"])[2]
                             ),
-                            "Actual % DSE + Hybrid DSE Colonised": (
+                            "Actual % DSE Colonised": (
                                 calculate_erm_colonised_percentage(x["Actual Label"])[3]
                             ),
-                            "Actual % Total ErM Colonisation (inc. Hybrid ErM)": (
+                            "Actual % Total ErM Colonisation": (
                                 calculate_erm_colonised_percentage(x["Actual Label"])[4]
                             ),
                             "Actual % Root": calculate_erm_colonised_percentage(
@@ -367,29 +367,29 @@ class TestMetrics:
                 colonisation_metrics = df.groupby("Filename").apply(
                     lambda x: pd.Series(
                         {
-                            "Actual % AM + Hybrid Colonised": (
+                            "Actual % AM Colonised": (
                                 calculate_am_colonised_percentage(x["Actual Label"])[0]
                             ),
-                            "Actual % DSE + Hybrid Colonised": (
+                            "Actual % DSE Colonised": (
                                 calculate_am_colonised_percentage(x["Actual Label"])[1]
                             ),
-                            "Actual % Total Colonised including Hybrid": (
+                            "Actual % Total Colonised": (
                                 calculate_am_colonised_percentage(x["Actual Label"])[2]
                             ),
                             "Actual % Root": calculate_am_colonised_percentage(
                                 x["Actual Label"]
                             )[3],
-                            "Predicted % AM + Hybrid Colonised": (
+                            "Predicted % AM Colonised": (
                                 calculate_am_colonised_percentage(x["Predicted Label"])[
                                     0
                                 ]
                             ),
-                            "Predicted % DSE + Hybrid Colonised": (
+                            "Predicted % DSE Colonised": (
                                 calculate_am_colonised_percentage(x["Predicted Label"])[
                                     1
                                 ]
                             ),
-                            "Predicted % Total Colonised including Hybrid": (
+                            "Predicted % Total Colonised": (
                                 calculate_am_colonised_percentage(x["Predicted Label"])[
                                     2
                                 ]
@@ -413,10 +413,10 @@ class TestMetrics:
                             "Actual % Type Two Colonised": (
                                 calculate_erm_colonised_percentage(x["Actual Label"])[2]
                             ),
-                            "Actual % DSE + Hybrid DSE Colonised": (
+                            "Actual % DSE Colonised": (
                                 calculate_erm_colonised_percentage(x["Actual Label"])[3]
                             ),
-                            "Actual % Total ErM Colonisation (inc. Hybrid ErM)": (
+                            "Actual % Total ErM Colonisation": (
                                 calculate_erm_colonised_percentage(x["Actual Label"])[4]
                             ),
                             "Actual % Root": calculate_erm_colonised_percentage(
@@ -437,12 +437,12 @@ class TestMetrics:
                                     x["Predicted Label"]
                                 )[2]
                             ),
-                            "Predicted % DSE + Hybrid DSE Colonised": (
+                            "Predicted % DSE Colonised": (
                                 calculate_erm_colonised_percentage(
                                     x["Predicted Label"]
                                 )[3]
                             ),
-                            "Predicted % Total ErM Colonisation (inc. Hybrid ErM)": (
+                            "Predicted % Total ErM Colonisation": (
                                 calculate_erm_colonised_percentage(
                                     x["Predicted Label"]
                                 )[4]

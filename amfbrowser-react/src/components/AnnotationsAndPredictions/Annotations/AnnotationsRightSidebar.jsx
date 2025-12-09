@@ -48,18 +48,18 @@ const AnnotationsRightSidebar = ({
         headerToCountsMapCnn1.get("AM+") +
         headerToCountsMapCnn1.get("N-") +
         headerToCountsMapCnn1.get("D") +
-        headerToCountsMapCnn1.get("H");
+        headerToCountsMapCnn1.get("AD+");
       if (rootTotal !== 0) {
         const pcAmColonised =
-          (headerToCountsMapCnn1.get("AM+") + headerToCountsMapCnn1.get("H")) /
+          (headerToCountsMapCnn1.get("AM+") + headerToCountsMapCnn1.get("AD+")) /
           rootTotal;
         const pcDseColonised =
-          (headerToCountsMapCnn1.get("D") + headerToCountsMapCnn1.get("H")) /
+          (headerToCountsMapCnn1.get("D") + headerToCountsMapCnn1.get("AD+")) /
           rootTotal;
         const pcTotalColonised =
           pcAmColonised +
           pcDseColonised -
-          headerToCountsMapCnn1.get("H") / rootTotal;
+          headerToCountsMapCnn1.get("AD+") / rootTotal;
 
         setAmColPc(pcAmColonised);
         setDseColPc(pcDseColonised);
@@ -77,8 +77,8 @@ const AnnotationsRightSidebar = ({
         headerToCountsMapCnn1.get("T+") +
         headerToCountsMapCnn1.get("N-") +
         headerToCountsMapCnn1.get("D") +
-        headerToCountsMapCnn1.get("HE+") +
-        headerToCountsMapCnn1.get("HD+");
+        headerToCountsMapCnn1.get("E+") +
+        headerToCountsMapCnn1.get("ED+");
 
       if (rootTotal !== 0) {
         const pcBlueCoilsColonised =
@@ -87,13 +87,13 @@ const AnnotationsRightSidebar = ({
           headerToCountsMapCnn1.get("Br+") / rootTotal;
         const pcTypeTwoColonised = headerToCountsMapCnn1.get("T+") / rootTotal;
         const pcDseColonised =
-          (headerToCountsMapCnn1.get("D") + headerToCountsMapCnn1.get("HD+")) /
+          (headerToCountsMapCnn1.get("D") + headerToCountsMapCnn1.get("ED+")) /
           rootTotal;
         const pcTotalColonised =
           pcBlueCoilsColonised +
           pcBrownCoilsColonised +
           pcTypeTwoColonised +
-          headerToCountsMapCnn1.get("HE+") / rootTotal;
+          headerToCountsMapCnn1.get("E+") / rootTotal;
 
         setBlueCoilsColPc(pcBlueCoilsColonised);
         setBrownCoilsColPc(pcBrownCoilsColonised);

@@ -139,7 +139,7 @@ const AnnotationsAndPredictionsContainer = () => {
             ["X", 0],
             ["U", 0],
             ["D", 0],
-            ["H", 0],
+            ["AD+", 0],
             ["?", 0],
           ]
         : [
@@ -151,8 +151,8 @@ const AnnotationsAndPredictionsContainer = () => {
             ["M", 0],
             ["U", 0],
             ["D", 0],
-            ["HE+", 0],
-            ["HD+", 0],
+            ["E+", 0],
+            ["ED+", 0],
             ["?", 0],
           ],
     ),
@@ -473,7 +473,7 @@ const AnnotationsAndPredictionsContainer = () => {
             ["X", 0],
             ["U", 0],
             ["D", 0],
-            ["H", 0],
+            ["AD+", 0],
             ["?", 0],
           ]
         : [
@@ -485,8 +485,8 @@ const AnnotationsAndPredictionsContainer = () => {
             ["M", 0],
             ["U", 0],
             ["D", 0],
-            ["HE+", 0],
-            ["HD+", 0],
+            ["E+", 0],
+            ["ED+", 0],
             ["?", 0],
           ],
     );
@@ -553,6 +553,11 @@ const AnnotationsAndPredictionsContainer = () => {
                 : toggleValueCnn1("N-", currentKey);
               break;
             case "H":
+              e.preventDefault();
+              dragActivated
+                ? cnn1AnnotationActions.set(currentKey, "AD+")
+                : toggleValueCnn1("AD+", currentKey);
+              break;
             case "X":
             case "D":
             case "U":
@@ -583,11 +588,11 @@ const AnnotationsAndPredictionsContainer = () => {
           }
         } else {
           switch (e.key.toUpperCase()) {
-            case "H":
+            case "E":
               e.preventDefault();
               dragActivated
-                ? cnn1AnnotationActions.set(currentKey, "HE+")
-                : toggleValueCnn1("HE+", currentKey);
+                ? cnn1AnnotationActions.set(currentKey, "E+")
+                : toggleValueCnn1("E+", currentKey);
               break;
             case "B":
               e.preventDefault();
@@ -601,11 +606,11 @@ const AnnotationsAndPredictionsContainer = () => {
                 ? cnn1AnnotationActions.set(currentKey, "Br+")
                 : toggleValueCnn1("Br+", currentKey);
               break;
-            case "Y":
+            case "H":
               e.preventDefault();
               dragActivated
-                ? cnn1AnnotationActions.set(currentKey, "HD+")
-                : toggleValueCnn1("HD+", currentKey);
+                ? cnn1AnnotationActions.set(currentKey, "ED+")
+                : toggleValueCnn1("ED+", currentKey);
               break;
             case "T":
               e.preventDefault();

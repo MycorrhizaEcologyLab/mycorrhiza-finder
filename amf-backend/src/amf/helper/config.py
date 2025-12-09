@@ -105,7 +105,7 @@ def create_results_dir(label: str = "") -> str:
 
 
 HEADERS = {
-    "am": ["AMColonised", "Uncolonised", "Background", "Unreadable", "DSE", "Hybrid"],
+    "am": ["AMColonised", "Uncolonised", "Background", "Unreadable", "DSE", "AM_DSE"],
     "erm": [
         "BlueCoils",
         "BrownCoils",
@@ -115,13 +115,13 @@ HEADERS = {
         "MainRoot",
         "Unreadable",
         "DSE",
-        "HybridErm",
-        "HybridDse",
+        "ErM",
+        "ErM_DSE",
     ],
 }
 
 HUMAN_HEADERS = {
-    "am": ["AM+", "N-", "Background", "Unreadable", "DSE", "Hybrid"],
+    "am": ["AM+", "N-", "Background", "Unreadable", "DSE", "AM + DSE"],
     "erm": [
         "BlueCoils",
         "BrownCoils",
@@ -131,23 +131,8 @@ HUMAN_HEADERS = {
         "MainRoot",
         "Unreadable",
         "DSE",
-        "HybridErm",
-        "HybridDse",
-    ],
-}
-DESCRIPTIONS = {
-    "am": ["amcolonised", "non-colonised", "background", "unreadable", "dse", "hybrid"],
-    "erm": [
-        "BlueCoils",
-        "BrownCoils",
-        "TypeTwo",
-        "Uncolonised",
-        "Background",
-        "MainRoot",
-        "Unreadable",
-        "DSE",
-        "HybridErm",
-        "HybridDse",
+        "ErM",
+        "ErM + DSE",
     ],
 }
 

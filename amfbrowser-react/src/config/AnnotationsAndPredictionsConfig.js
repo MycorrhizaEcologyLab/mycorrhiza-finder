@@ -11,7 +11,7 @@ const headerToValueMapCnn1Am = new Map([
   ["Background", "X"],
   ["Unreadable", "U"],
   ["DSE", "D"],
-  ["Hybrid", "H"],
+  ["AM_DSE", "AD+"],
   ["Question", "?"],
 ]);
 
@@ -24,8 +24,8 @@ const headerToValueMapCnn1Erm = new Map([
   ["MainRoot", "M"],
   ["Unreadable", "U"],
   ["DSE", "D"],
-  ["HybridErm", "HE+"],
-  ["HybridDse", "HD+"],
+  ["ErM", "E+"],
+  ["ErM_DSE", "ED+"],
   ["Question", "?"],
 ]);
 
@@ -40,7 +40,7 @@ const colorMappingCnn1Am = new Map([
   ["X", "black"],
   ["U", "#03F0FC"],
   ["D", "#F84646"],
-  ["H", "#7030A0"],
+  ["AD+", "#7030A0"],
   ["?", "#FFA500"],
 ]);
 
@@ -53,8 +53,8 @@ const colorMappingCnn1Erm = new Map([
   ["M", "#c40041"],
   ["U", "#03F0FC"],
   ["D", "#F84646"],
-  ["HE+", "#c1d602"],
-  ["HD+", "#7030A0"],
+  ["E+", "#c1d602"],
+  ["ED+", "#7030A0"],
   ["?", "#FFA500"],
 ]);
 
@@ -70,7 +70,7 @@ const colorMappingCnn1TransparentAm = new Map([
   ["X", "rgb(0, 0, 0, 0.6)"],
   ["U", "rgb(3, 240, 252, 0.6)"],
   ["D", "rgb(248, 70, 70, 0.6)"],
-  ["H", "rgb(112, 48, 160, 0.6)"],
+  ["AD+", "rgb(112, 48, 160, 0.6)"],
   ["?", "rgb(255,165,0, 0.6)"],
 ]);
 
@@ -83,8 +83,8 @@ const colorMappingCnn1TransparentErm = new Map([
   ["M", "rgb(196, 0, 65, 0.6)"],
   ["U", "rgb(3, 240, 252, 0.6)"],
   ["D", "rgb(248, 70, 70, 0.6)"],
-  ["HE+", "rgb(193, 214, 2, 0.6)"],
-  ["HD+", "rgb(112, 48, 160, 0.6)"],
+  ["E+", "rgb(193, 214, 2, 0.6)"],
+  ["ED+", "rgb(112, 48, 160, 0.6)"],
   ["?", "rgb(255,165,0, 0.6)"],
 ]);
 
@@ -98,7 +98,7 @@ const headerMapCnn1Am = [
   "Background",
   "Unreadable",
   "DSE",
-  "Hybrid",
+  "AM_DSE",
   "Question",
 ];
 
@@ -111,8 +111,8 @@ const headerMapCnn1Erm = [
   "MainRoot",
   "Unreadable",
   "DSE",
-  "HybridErm",
-  "HybridDse",
+  "ErM",
+  "ErM_DSE",
   "Question",
 ];
 
@@ -120,7 +120,7 @@ const headerMapCnn1Erm = [
 export const getValueMapCnn1 = (colonisationType) => {
   return colonisationType === "am" ? valueMapCnn1Am : valueMapCnn1Erm;
 };
-const valueMapCnn1Am = ["AM+", "N-", "X", "U", "D", "H", "?"];
+const valueMapCnn1Am = ["AM+", "N-", "X", "U", "D", "AD+", "?"];
 const valueMapCnn1Erm = [
   "Bl+",
   "Br+",
@@ -130,8 +130,8 @@ const valueMapCnn1Erm = [
   "M",
   "U",
   "D",
-  "HE+",
-  "HD+",
+  "E+",
+  "ED+",
   "?",
 ];
 
@@ -147,7 +147,7 @@ const headerToKeyBindingsMapCnn1Am = new Map([
   ["X", "X"],
   ["U", "U"],
   ["D", "D"],
-  ["H", "H"],
+  ["AD+", "H"],
   ["?", "? or /"],
 ]);
 
@@ -160,7 +160,7 @@ const headerToKeyBindingsMapCnn1Erm = new Map([
   ["M", "M"],
   ["U", "U"],
   ["D", "D"],
-  ["HE+", "H"],
-  ["HD+", "Y"],
+  ["E+", "E"],
+  ["ED+", "H"],
   ["?", "? or /"],
 ]);

@@ -457,7 +457,7 @@ def simulate_active_learning(
         print(f"Iteration {i + 1} - Selected indices for labeling: {indices_to_label}")
         bald_indices_array.append(indices_to_label)
 
-        class_names = ["AM+", "M−", "Background", "Unreadable", "DSE", "Hybrid"]
+        class_names = ["AM+", "M−", "Background", "Unreadable", "DSE", "AM_DSE"]
         class_dict_in_selected_labels: dict[str, int] = {}
         for idx in indices_to_label:
             class_dict_in_selected_labels[class_names[np.argmax(y_unlabelled[idx])]] = (

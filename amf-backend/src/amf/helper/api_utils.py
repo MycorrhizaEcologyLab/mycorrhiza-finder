@@ -208,7 +208,7 @@ def save_annotations_to_db(
                 INSERT INTO cnn1annotations{values.colonisationType}
                 (
                     imagereferenceid, rownum, colnum, amcolonised, uncolonised,
-                    background, unreadable, dse, hybrid, question, questioncomment
+                    background, unreadable, dse, AM_DSE, question, questioncomment
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
@@ -235,8 +235,8 @@ def save_annotations_to_db(
                 INSERT INTO cnn1annotations{values.colonisationType}
                 (
                     imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo,
-                    Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm,
-                    HybridDse, Question, QuestionComment
+                    Uncolonised, Background, MainRoot, Unreadable, DSE, ErM,
+                    ErM_DSE, Question, QuestionComment
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
@@ -344,7 +344,7 @@ def save_predictions_to_db(
                 INSERT INTO cnn1predictions{values.colonisationType}
                 (
                     imagereferenceid, rownum, colnum, amcolonised, uncolonised,
-                    background, unreadable, dse, hybrid, contextuallabel
+                    background, unreadable, dse, AM_DSE, contextuallabel
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
@@ -369,8 +369,8 @@ def save_predictions_to_db(
                 INSERT INTO cnn1predictions{values.colonisationType}
                 (
                     imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo,
-                    Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm,
-                    HybridDse, contextuallabel
+                    Uncolonised, Background, MainRoot, Unreadable, DSE, ErM,
+                    ErM_DSE, contextuallabel
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
@@ -592,7 +592,7 @@ def download_entries_as_csv(
                     "Background",
                     "Unreadable",
                     "DSE",
-                    "Hybrid",
+                    "AM_DSE",
                     "Question",
                     "QuestionComment",
                 ]
@@ -607,7 +607,7 @@ def download_entries_as_csv(
                     "Background",
                     "Unreadable",
                     "DSE",
-                    "Hybrid",
+                    "AM_DSE",
                     "ContextualLabel",
                 ]
             )
@@ -625,8 +625,8 @@ def download_entries_as_csv(
                     "MainRoot",
                     "Unreadable",
                     "DSE",
-                    "HybridErm",
-                    "HybridDse",
+                    "ErM",
+                    "ErM_DSE",
                     "Question",
                     "QuestionComment",
                 ]
@@ -644,8 +644,8 @@ def download_entries_as_csv(
                     "MainRoot",
                     "Unreadable",
                     "DSE",
-                    "HybridErm",
-                    "HybridDse",
+                    "ErM",
+                    "ErM_DSE",
                     "ContextualLabel",
                 ]
             )

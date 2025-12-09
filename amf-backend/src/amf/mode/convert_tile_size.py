@@ -109,7 +109,7 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
                         "Background",
                         "Unreadable",
                         "DSE",
-                        "Hybrid",
+                        "AM_DSE",
                     ]
                 ]
                 .sum()
@@ -125,7 +125,7 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
                 "Background": 0,
                 "Unreadable": 0,
                 "DSE": 0,
-                "Hybrid": 0,
+                "AM_DSE": 0,
             }
 
             # Entering rule tree
@@ -157,10 +157,10 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
 
                     # All AMColonised cases
                     if majority_class_name == "AMColonised":
-                        # If there is any amount of DSE (including a Hybrid tile) from
-                        # the old tiles, new tiles should be classified as Hybrid.
-                        if ratios["DSE"] > 0.0 or ratios["Hybrid"] > 0.0:
-                            this_result["Hybrid"] = 1
+                        # If there is any amount of DSE (including an AM+DSE tile) from
+                        # the old tiles, new tiles should be classified as AM+DSE.
+                        if ratios["DSE"] > 0.0 or ratios["AM_DSE"] > 0.0:
+                            this_result["AM_DSE"] = 1
 
                         # All other cases, including the cases where the majority class
                         # ratio is only 0.33 or 0.25
@@ -173,45 +173,45 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
                     if majority_class_name == "Uncolonised":
                         # All types of colonisation are given priority, as no minimum
                         # colonisation is required.
-                        # If there is any AMColonised (as minority) or DSE/Hybrid tiles
+                        # If there is any AMColonised (as minority) or DSE/AM+DSE tiles
                         # present (also as minority):
                         if ratios["AMColonised"] > 0.0 and (
-                            ratios["DSE"] > 0.0 or ratios["Hybrid"] > 0.0
+                            ratios["DSE"] > 0.0 or ratios["AM_DSE"] > 0.0
                         ):
-                            this_result["Hybrid"] = 1
+                            this_result["AM_DSE"] = 1
 
-                        # If there is any AMColonised (as minority), DSE/Hybrid == 0.0
+                        # If there is any AMColonised (as minority) and no DSE/AM+DSE
                         elif (
                             ratios["AMColonised"] > 0.0
                             and ratios["DSE"] == 0.0
-                            and ratios["Hybrid"] == 0.0
+                            and ratios["AM_DSE"] == 0.0
                         ):
                             this_result["AMColonised"] = 1
 
-                        # If there is a single DSE tile present
+                        # If there is a single DSE tile present and no AM
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] > 0.0
-                            and ratios["Hybrid"] == 0.0
+                            and ratios["AM_DSE"] == 0.0
                         ):
                             this_result["DSE"] = 1
 
-                        # If there is a single Hybrid tile present
+                        # If there is a single AM+DSE tile present and no AM
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] == 0.0
-                            and ratios["Hybrid"] > 0.0
+                            and ratios["AM_DSE"] > 0.0
                         ):
-                            this_result["Hybrid"] = 1
+                            this_result["AM_DSE"] = 1
 
-                        # If there is a single Hybrid tile present, whilst a DSE tile is
+                        # If there is a single AM+DSE tile present, whilst a DSE tile is
                         # present as well.
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] > 0.0
-                            and ratios["Hybrid"] > 0.0
+                            and ratios["AM_DSE"] > 0.0
                         ):
-                            this_result["Hybrid"] = 1
+                            this_result["AM_DSE"] = 1
 
                         # Cases where there is no AMColonised, DSE or Unreadable are all
                         # considered Uncolonised, as only 10 % need to be occupied
@@ -226,18 +226,18 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
                     if majority_class_name == "Background":
                         # All types of colonisation are given priority, as no minimum
                         # colonisation is required.
-                        # If there is any AMColonised (as minority) or DSE/Hybrid tiles
+                        # If there is any AMColonised (as minority) or DSE/AM+DSE tiles
                         # present (also as minority):
                         if ratios["AMColonised"] > 0.0 and (
-                            ratios["DSE"] > 0.0 or ratios["Hybrid"] > 0.0
+                            ratios["DSE"] > 0.0 or ratios["AM_DSE"] > 0.0
                         ):
-                            this_result["Hybrid"] = 1
+                            this_result["AM_DSE"] = 1
 
-                        # If there is any AMColonised (as minority), DSE/Hybrid == 0.0
+                        # If there is any AMColonised (as minority) and no DSE/AM_DSE
                         elif (
                             ratios["AMColonised"] > 0.0
                             and ratios["DSE"] == 0.0
-                            and ratios["Hybrid"] == 0.0
+                            and ratios["AM_DSE"] == 0.0
                         ):
                             this_result["AMColonised"] = 1
 
@@ -245,33 +245,33 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] > 0.0
-                            and ratios["Hybrid"] == 0.0
+                            and ratios["AM_DSE"] == 0.0
                         ):
                             this_result["DSE"] = 1
 
-                        # If there is a single Hybrid tile present
+                        # If there is a single AM+DSE tile present and no AM
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] == 0.0
-                            and ratios["Hybrid"] > 0.0
+                            and ratios["AM_DSE"] > 0.0
                         ):
-                            this_result["Hybrid"] = 1
+                            this_result["AM_DSE"] = 1
 
-                        # If there is a single Hybrid tile present, whilst a DSE tile is
+                        # If there is a single AM+DSE tile present, whilst a DSE tile is
                         # present as well.
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] > 0.0
-                            and ratios["Hybrid"] > 0.0
+                            and ratios["AM_DSE"] > 0.0
                         ):
-                            this_result["Hybrid"] = 1
+                            this_result["AM_DSE"] = 1
 
                         # If there is a single Uncolonised tile present, whilst all
                         # Colonisation tiles are 0, it is Uncolonised in all cases.
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] == 0.0
-                            and ratios["Hybrid"] == 0.0
+                            and ratios["AM_DSE"] == 0.0
                             and ratios["Uncolonised"] > 0.0
                         ):
                             this_result["Uncolonised"] = 1
@@ -282,7 +282,7 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
                         elif (
                             ratios["AMColonised"] == 0.0
                             and ratios["DSE"] == 0.0
-                            and ratios["Hybrid"] == 0.0
+                            and ratios["AM_DSE"] == 0.0
                             and ratios["Uncolonised"] == 0.0
                             and ratios["Unreadable"] > 0.0
                         ):
@@ -305,53 +305,52 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
                         elif ratios["Unreadable"] <= 0.5:
                             # Again, all types of colonisation are given priority as no
                             # minimum colonisation is required.
-                            # If there is any AMColonised (as minority) or DSE/Hybrid
+                            # If there is any AMColonised (as minority) or DSE/AM+DSE
                             # tiles present (also as minority):
                             if ratios["AMColonised"] > 0.0 and (
-                                ratios["DSE"] > 0.0 or ratios["Hybrid"] > 0.0
+                                ratios["DSE"] > 0.0 or ratios["AM_DSE"] > 0.0
                             ):
-                                this_result["Hybrid"] = 1
+                                this_result["AM_DSE"] = 1
 
-                            # If there is any AMColonised (as minority),
-                            # DSE/Hybrid == 0.0
+                            # If there is any AMColonised (as minority) and no DSE
                             elif (
                                 ratios["AMColonised"] > 0.0
                                 and ratios["DSE"] == 0.0
-                                and ratios["Hybrid"] == 0.0
+                                and ratios["AM_DSE"] == 0.0
                             ):
                                 this_result["AMColonised"] = 1
 
-                            # If there is a single DSE tile present
+                            # If there is a single DSE tile present and no AM
                             elif (
                                 ratios["AMColonised"] == 0.0
                                 and ratios["DSE"] > 0.0
-                                and ratios["Hybrid"] == 0.0
+                                and ratios["AM_DSE"] == 0.0
                             ):
                                 this_result["DSE"] = 1
 
-                            # If there is a single Hybrid tile present
+                            # If there is a single AM+DSE tile present
                             elif (
                                 ratios["AMColonised"] == 0.0
                                 and ratios["DSE"] == 0.0
-                                and ratios["Hybrid"] > 0.0
+                                and ratios["AM_DSE"] > 0.0
                             ):
-                                this_result["Hybrid"] = 1
+                                this_result["AM_DSE"] = 1
 
-                            # If there is a single Hybrid tile present, whilst a DSE
+                            # If there is a single AM+DSE tile present, whilst a DSE
                             # tile is present as well.
                             elif (
                                 ratios["AMColonised"] == 0.0
                                 and ratios["DSE"] > 0.0
-                                and ratios["Hybrid"] > 0.0
+                                and ratios["AM_DSE"] > 0.0
                             ):
-                                this_result["Hybrid"] = 1
+                                this_result["AM_DSE"] = 1
 
                             # If there is a single Uncolonised tile present, whilst all
                             # Colonisation tiles are 0, it is Uncolonised in all cases.
                             elif (
                                 ratios["AMColonised"] == 0.0
                                 and ratios["DSE"] == 0.0
-                                and ratios["Hybrid"] == 0.0
+                                and ratios["AM_DSE"] == 0.0
                                 and ratios["Uncolonised"] > 0.0
                             ):
                                 this_result["Uncolonised"] = 1
@@ -363,25 +362,25 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
                     # The following consideration is true for all cases
                     # (including ratio['DSE'] >= 0.25)
                     if majority_class_name == "DSE":
-                        # If there is a single AMColonised or Hybrid tile present whilst
+                        # If there is a single AMColonised or AM+DSE tile present whilst
                         # DSE is present.
-                        if ratios["AMColonised"] > 0.0 or ratios["Hybrid"] > 0.0:
-                            this_result["Hybrid"] = 1
+                        if ratios["AMColonised"] > 0.0 or ratios["AM_DSE"] > 0.0:
+                            this_result["AM_DSE"] = 1
 
                         # In all other cases, AMColonised and DSE == 0.0 and the other
-                        # classes have lower priority as compared to Hybrid.
-                        # Technically, Hybrid could be summarised within one criterion,
+                        # classes have lower priority as compared to AM+DSE.
+                        # Technically, AM+DSE could be summarised within one criterion,
                         # but this is written out explicitly for consistency.
                         else:
                             this_result["DSE"] = 1
 
-                    # All Hybrid cases
+                    # All AM+DSE cases
                     # The following consideration is true for all cases
-                    # (including ratio['DSE'] >= 0.25). Once a single Hybrid tile is
-                    # present and has at leas the same ratio as compared to all other
-                    # classes, the new tile class is Hybrid.
-                    if majority_class_name == "Hybrid":
-                        this_result["Hybrid"] = 1
+                    # (including ratio['DSE'] >= 0.25). Once a single AM+DSE tile is
+                    # present and has at least the same ratio as compared to all other
+                    # classes, the new tile class is AM+DSE.
+                    if majority_class_name == "AM_DSE":
+                        this_result["AM_DSE"] = 1
 
             rescaled_tile_annotations.append(this_result)
 
