@@ -126,3 +126,7 @@ The main steps for generating a new executable are creating a production build o
 For MacOS and Linux, you must build the exe on these respective platforms. Besides this, there are two small differences:
 1. You must replace the `-Recurse` flag with `-rf`;
 2. In the `pyinstaller` command, replace all `;` with `:`.
+
+## Credits
+
+This version of the MycorrhizaFinder tool has been developed by the Royal Botanical Gardens, Kew through the Natural Capital and Ecosystem Assessment (NCEA) programme. The NCEA is Defra's largest research and development programme. It is generating a robust evidence base of the location, extent and condition of our natural capital and ecosystems, and how the state of nature is changing over time. The original tool was developed by the Sainsbury Laboratory, University of Cambridge (see Evangelisti et al. 2021, https://doi.org/10.1111/nph.17697).
