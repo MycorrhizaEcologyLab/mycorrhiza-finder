@@ -234,7 +234,7 @@ export default class PredictionsApi {
   }
 
   static async downloadEntries(id, type, colonisation_type) {
-    const downloadEntriesUrl = `http://127.0.0.1:8001/download-entries?id_=${id}&type=${type}&colonisation_type=${colonisation_type}`;
+    const downloadEntriesUrl = `http://127.0.0.1:8001/download-entries?id_=${id}&type_=${type}&colonisation_type=${colonisation_type}`;
     return await this.getFromBackend(downloadEntriesUrl);
   }
 
