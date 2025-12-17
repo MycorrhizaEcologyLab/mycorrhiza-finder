@@ -12,6 +12,7 @@ This repository, and this README, are aimed at development of the source code, a
 2. [Running the tool locally](#running-the-tool-locally)
 3. [Contributing to the repo](#contributing-to-the-repo)
 4. [Building new versions of the tool](#building-new-versions-of-the-tool)
+5. [Credits and how to cite](#credits-and-how-to-cite)
 
 ## Setting up your local development environment
 
