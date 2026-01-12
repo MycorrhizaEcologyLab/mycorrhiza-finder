@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from typing import Type
 
@@ -7,6 +8,7 @@ import numpy as np
 import pandas as pd
 import sklearn.metrics as metrics
 import torch
+from loguru import logger
 from numpy.typing import NDArray
 from scipy.optimize import OptimizeResult, minimize
 from sklearn.metrics import f1_score, log_loss
@@ -15,7 +17,8 @@ from tqdm import tqdm
 
 import amf.helper.config as AmfConfig
 import amf.helper.load as AmfLoad
-import amf.helper.log as AmfLog
+
+# import amf.helper.log as AmfLog
 import amf.helper.model as AmfModel
 
 
@@ -303,7 +306,8 @@ def cal_results(
     logits, labels = logits_data
 
     name = "Calibration"
-    AmfLog.info("Calibrating model")
+    # AmfLog.info("Calibrating model")
+    logger.info("Calibrating model")
     t1 = time.time()
 
     # Defining labels and model
@@ -358,7 +362,11 @@ def run(input_files: list[str]) -> int:
 
     # Validate input folder structure
     if not cal_img_list:
-        AmfLog.error("There is no train subfolder", AmfLog.ERR_NO_DATA)
+        # AmfLog.error("There is no train subfolder", AmfLog.ERR_NO_DATA)
+        logger.error("There is no train subfolder")
+        # ERR_NO_DATA = 10
+        sys.exit(10)
+        # REMOVE?
         return 500
 
     # Create timestamped folder for results
@@ -382,7 +390,8 @@ def run(input_files: list[str]) -> int:
     # Get logits from all tiles
     all_logits = []
     all_labels = []
-    AmfLog.info("Calculating model outputs for use in calibration")
+    # AmfLog.info("Calculating model outputs for use in calibration")
+    logger.info("Calculating model outputs for use in calibration")
     with torch.no_grad():  # Disabling gradient calculations
         for batch_x, batch_y in tqdm(
             cal_dataset_loader,

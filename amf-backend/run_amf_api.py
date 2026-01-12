@@ -73,7 +73,7 @@ else:
 ### CONFIG
 
 # Set this to True when developing and False when building exes
-IS_DEV = False
+IS_DEV = True
 
 
 def shutdown() -> Response:

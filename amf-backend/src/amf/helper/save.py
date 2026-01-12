@@ -44,11 +44,13 @@ import h5py
 import numpy as np
 import pandas as pd
 import torch
+from loguru import logger
 from torchinfo import summary
 from torchview import draw_graph
 
 import amf.helper.config as AmfConfig
-import amf.helper.log as AmfLog
+
+# import amf.helper.log as AmfLog
 import amf.helper.plot as AmfPlot
 import amf.helper.zipfile as zf
 from amf.helper.api_objects import PredictionValues
@@ -242,7 +244,8 @@ def prediction_table(results: pd.DataFrame, path: str) -> None:
                 )
                 save_predictions_to_db(crsr, values)
 
-            AmfLog.info("Saved results to DB")
+            # AmfLog.info("Saved results to DB")
+            logger.info("Saved results to DB")
 
         else:
             directory = os.path.dirname(path)
@@ -257,4 +260,5 @@ def prediction_table(results: pd.DataFrame, path: str) -> None:
 
             save_settings(path)
 
-            AmfLog.info(f"Saved results to CSV at {path}")
+            # AmfLog.info(f"Saved results to CSV at {path}")
+            logger.info(f"Saved results to CSV at {path}")

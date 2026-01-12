@@ -3,9 +3,10 @@ import sys
 from configparser import ConfigParser
 
 import psycopg2
+from loguru import logger
 from psycopg2 import sql
 
-import amf.helper.log as AmfLog
+# import amf.helper.log as AmfLog
 
 if getattr(sys, "frozen", False):  # i.e. a pyinstaller build
     db_ini_path = os.path.join(sys._MEIPASS, "database.ini")  # type: ignore[attr-defined]
@@ -45,11 +46,17 @@ def connect(
         connection.autocommit = True
         return connection
     except (Exception, psycopg2.DatabaseError) as error:
-        AmfLog.error(
+        # AmfLog.error(
+        #     "Cannot connect to database, consider restarting your postgres service: "
+        #     f"{error}",
+        #     exit_code=AmfLog.ERR_NO_DATABASE_CONNECTION,
+        # )
+        logger.error(
             "Cannot connect to database, consider restarting your postgres service: "
-            f"{error}",
-            exit_code=AmfLog.ERR_NO_DATABASE_CONNECTION,
+            f"{error}"
         )
+        # ERR_NO_DATABASE_CONNECTION = 42
+        sys.exit(42)
 
 
 def create_database_if_not_exists(db_name: str, user: str, password: str) -> None:

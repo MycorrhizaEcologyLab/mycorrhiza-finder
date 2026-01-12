@@ -4,12 +4,15 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
+from loguru import logger
 from numpy.typing import NDArray
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 import amf.helper.config as AmfConfig
 import amf.helper.load as AmfLoad
-import amf.helper.log as AmfLog
+
+# import amf.helper.log as AmfLog
 import amf.helper.model as AmfModel
 from amf.helper.acquisition_functions import get_batchbald_batch
 
@@ -50,10 +53,10 @@ def bald_acquisition(
 
     all_probs = []  # Store all MC Dropout softmax outputs
 
-    AmfLog.progress_bar(0, mc_samples, indent=1)
+    # AmfLog.progress_bar(0, mc_samples, indent=1)
 
     with torch.no_grad():
-        for i in range(mc_samples):
+        for i in tqdm(range(mc_samples)):
             batch_probs = []
             for batch_x, batch_y in dataloader:
                 batch_x = batch_x.to(device)
@@ -67,7 +70,7 @@ def bald_acquisition(
                 np.vstack(batch_probs)
             )  # Store each MC iteration's probabilities
 
-            AmfLog.progress_bar(i, mc_samples, indent=1)
+            # AmfLog.progress_bar(i, mc_samples, indent=1)
 
     all_probs = np.stack(all_probs, axis=0)  # Shape: (mc_samples, N, num_classes)
 
@@ -109,10 +112,10 @@ def batch_bald_acquisition(
 
     all_probs = []  # Store all MC Dropout softmax outputs
 
-    AmfLog.progress_bar(0, mc_samples, indent=1)
+    # AmfLog.progress_bar(0, mc_samples, indent=1)
 
     with torch.no_grad():
-        for i in range(mc_samples):
+        for i in tqdm(range(mc_samples)):
             batch_probs = []
             for batch_x, batch_y in dataloader:
                 batch_x = batch_x.to(device)
@@ -126,7 +129,7 @@ def batch_bald_acquisition(
                 np.vstack(batch_probs)
             )  # Store each MC iteration's probabilities
 
-            AmfLog.progress_bar(i, mc_samples, indent=1)
+            # AmfLog.progress_bar(i, mc_samples, indent=1)
 
     all_probs = np.stack(all_probs, axis=1)  # Shape: (N, mc_samples, num_classes)
     all_probs = torch.tensor(np.log(all_probs + 1e-8))
@@ -147,9 +150,13 @@ def run(input_files: list[str]) -> int:
     batch_size = AmfConfig.get("batch_size")
     output_dir = AmfConfig.get("outdir")
 
-    AmfLog.info(
-        "Running active learning to procure optimal tiles for retraining using "
-        f"{method}."
+    # AmfLog.info(
+    #     "Running active learning to procure optimal tiles for retraining using "
+    #     f"{method}."
+    # )
+    logger.info(
+        f"Running active learning to procure optimal tiles for retraining using \
+        {method}."
     )
 
     parts = AmfLoad.categorise_path(input_files)
@@ -175,7 +182,8 @@ def run(input_files: list[str]) -> int:
     output_dict: dict[str, list[list[int]]] = defaultdict(lambda: [[], []])
 
     for file_name in grouped_data:
-        AmfLog.info(f"Acquiring samples for {file_name}")
+        # AmfLog.info(f"Acquiring samples for {file_name}")
+        logger.info(f"Acquiring samples for {file_name}")
         x, rows, cols = grouped_data[file_name]
 
         if method == "bald":
