@@ -34,6 +34,7 @@ Functions
 
 import os
 import random
+import time
 from collections import Counter
 from datetime import datetime
 from typing import Any, Callable, cast
@@ -267,9 +268,6 @@ def threshold_empty_tiles(
             root_tiles.append((tile, r, c))
 
     return background_tiles, root_tiles
-
-
-import time
 
 
 def predict_level1(
