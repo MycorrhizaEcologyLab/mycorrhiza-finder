@@ -58,38 +58,34 @@ def table_header() -> list[str]:
     return ["row", "col"] + cast(list[str], AmfConfig.get("header"))
 
 
-def process_row_1(
+def process_batch(
     model: torch.nn.Module,
     image: Image.Image,
-    nrows: int,
-    ncols: int,
-    r: int,
+    tiles_coords: list[tuple[int, int]],
     temperature_factor: float,
 ) -> pd.DataFrame:
     """
-    Predict colonisation (level 1 model) on a single tile row with PyTorch.
+    Predict colonisation (level 1 model) on a batch of tiles with PyTorch.
     :param model: level 1 model PyTorch model for predictions.
-    :param image: Input image to extract tiles.
-    :param nrows: Total number of rows in the image.
-    :param ncols: Total number of columns in the image.
-    :param r: Current row index.
+    :param image: Input image to extract tiles from.
+    :param tiles_coords: List of (row, col) tuples for tiles in this batch.
     :param temperature_factor: Factor used to scale probabilities.
     :return: DataFrame of predictions.
     """
     # Make sure device is available.
     device = AmfConfig.get("device")
 
-    # First, extract all tiles within a row.
-    row_unnormalised = [AmfSegm.tile(image, r, c) for c in range(ncols)]
-    row = AmfSegm.preprocess(row_unnormalised)  # Normalize the tiles.
+    # Extract tiles for this batch.
+    batch_unnormalised = [AmfSegm.tile(image, r, c) for r, c in tiles_coords]
+    batch = AmfSegm.preprocess(batch_unnormalised)  # Normalize the tiles.
 
     # Convert to PyTorch tensor
-    row_tensor = torch.tensor(row, dtype=torch.float32)
-    row_tensor = row_tensor.to(device)  # Move to the same device as the model
+    batch_tensor = torch.tensor(batch, dtype=torch.float32)
+    batch_tensor = batch_tensor.to(device)  # Move to the same device as the model
 
     # Predict using the model
     with torch.no_grad():  # No gradient tracking for inference
-        output = model(row_tensor)  # Get predictions from the model
+        output = model(batch_tensor)  # Get predictions from the model
 
     # Temperature scaling: scale logits using the temperature factor
     scaled_output = output / temperature_factor
@@ -98,9 +94,6 @@ def process_row_1(
     output = F.softmax(
         scaled_output, dim=1
     )  # Assuming output is not already in probability form
-
-    # Update the progress bar
-    AmfLog.progress_bar(r + 1, nrows, indent=1)
 
     # Convert prediction tensor back to DataFrame
     return pd.DataFrame(output.cpu().numpy())
@@ -260,24 +253,43 @@ def predict_level1(
     :return: Table with predictions and changes made by contextual predictions.
     """
 
-    # Initialize the progress bar.
-    AmfLog.progress_bar(0, nrows, indent=1)
+    # Get batch size from config
+    batch_size = AmfConfig.get("batch_size")
 
-    # Retrieve predictions within the image row by row.
-    results = []  # List to hold results for each row
-    for r in range(nrows):
-        # Process each row
-        result_df = process_row_1(model, image, nrows, ncols, r, temperature_factor)
-        results.append(result_df)
+    # Generate all tile coordinates in sequence from top-left to bottom-right
+    all_tiles_coords = [(r, c) for r in range(nrows) for c in range(ncols)]
+
+    total_tiles = len(all_tiles_coords)
+
+    # Initialize the progress bar.
+    AmfLog.progress_bar(0, total_tiles, indent=1)
+
+    # Process tiles in batches
+    results = []  # List to hold results for each batch
+    rows = []  # List to store row indices
+    cols = []  # List to store column indices
+
+    for batch_start in range(0, total_tiles, batch_size):
+        batch_end = min(batch_start + batch_size, total_tiles)
+        batch_coords = all_tiles_coords[batch_start:batch_end]
+
+        # Process this batch
+        batch_result = process_batch(model, image, batch_coords, temperature_factor)
+        results.append(batch_result)
+
+        # Store coordinates for this batch
+        for r, c in batch_coords:
+            rows.append(r)
+            cols.append(c)
+
+        # Update the progress bar
+        AmfLog.progress_bar(batch_end, total_tiles, indent=1)
 
     # Concatenate to a single Pandas dataframe
     table = pd.concat(results, ignore_index=True)
 
-    col_values = list(range(ncols)) * nrows
-    row_values = [x // ncols for x in range(nrows * ncols)]
-
-    table.insert(0, column="col", value=col_values)
-    table.insert(0, column="row", value=row_values)
+    table.insert(0, column="col", value=cols)
+    table.insert(0, column="row", value=rows)
     table.columns = table_header()
 
     table["ContextualLabel"] = None
@@ -326,7 +338,7 @@ def prepare_metrics(
 
     if col_type == "am":
         # Save number of root tilesclasses in results_dict
-        # Takes the numer of tiles for each class from results_dict and sums them up,
+        # Takes the number of tiles for each class from results_dict and sums them up,
         # subtracts background images and unreadable
         # The first two values of results_dict are exclude, since they are defined as
         # strings
