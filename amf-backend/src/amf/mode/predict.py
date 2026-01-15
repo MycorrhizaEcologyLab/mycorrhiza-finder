@@ -234,6 +234,44 @@ def apply_contextual_confidence(
     return table, changes_df
 
 
+def tile_entire_image(
+    image: Image.Image, nrows: int, ncols: int
+) -> list[NDArray[np.uint8]]:
+    """
+    Extract all tiles from an image along with their position.
+
+    :param image: The source image.
+    :param nrows: Number of rows of tiles.
+    :param ncols: Number of columns of tiles.
+    :return: List of tiles as NumPy arrays.
+    """
+    tiles = []
+    for r in range(nrows):
+        for c in range(ncols):
+            tile = AmfSegm.tile(image, r, c)
+            tiles.append([tile, r, c])
+    return tiles
+
+
+def threshold_empty_tiles(
+    tiles: list[NDArray[np.uint8]], threshold: float = 0.9
+) -> list[NDArray[np.uint8]]:
+    background_tiles = []
+    root_tiles = []
+    for tile, r, c in enumerate(tiles):
+        # Calculate mean pixel intensity across tile
+        mean_intensity = np.mean(tile) / 255.0  # Normalise to [0, 1]
+        if mean_intensity >= threshold:
+            background_tiles.append((tile, r, c))
+        else:
+            root_tiles.append((tile, r, c))
+
+    return background_tiles, root_tiles
+
+
+import time
+
+
 def predict_level1(
     image: Image.Image,
     nrows: int,
@@ -268,6 +306,9 @@ def predict_level1(
     results = []  # List to hold results for each batch
     rows = []  # List to store row indices
     cols = []  # List to store column indices
+    print(f"Processing {total_tiles} tiles in batches of {batch_size}...")
+
+    start_time = time.time()
 
     for batch_start in range(0, total_tiles, batch_size):
         batch_end = min(batch_start + batch_size, total_tiles)
@@ -284,6 +325,8 @@ def predict_level1(
 
         # Update the progress bar
         AmfLog.progress_bar(batch_end, total_tiles, indent=1)
+
+    print("--- %s seconds ---" % (time.time() - start_time))
 
     # Concatenate to a single Pandas dataframe
     table = pd.concat(results, ignore_index=True)
