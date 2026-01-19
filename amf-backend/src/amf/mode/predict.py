@@ -61,8 +61,7 @@ def table_header() -> list[str]:
 
 def process_batch(
     model: torch.nn.Module,
-    image: Image.Image,
-    tiles_coords: list[tuple[int, int]],
+    batch_unnormalised: NDArray,
     temperature_factor: float,
 ) -> pd.DataFrame:
     """
@@ -77,7 +76,7 @@ def process_batch(
     device = AmfConfig.get("device")
 
     # Extract tiles for this batch.
-    batch_unnormalised = [AmfSegm.tile(image, r, c) for r, c in tiles_coords]
+    # batch_unnormalised = [AmfSegm.tile(image, r, c) for r, c in tiles_coords]
     batch = AmfSegm.preprocess(batch_unnormalised)  # Normalize the tiles.
 
     # Convert to PyTorch tensor
@@ -259,13 +258,16 @@ def threshold_empty_tiles(
 ) -> list[NDArray[np.uint8]]:
     background_tiles = []
     root_tiles = []
-    for tile, r, c in enumerate(tiles):
+    # print(tiles.shape)
+    # print(tiles)
+    # exit()
+    for [tile, r, c] in tiles:
         # Calculate mean pixel intensity across tile
         mean_intensity = np.mean(tile) / 255.0  # Normalise to [0, 1]
         if mean_intensity >= threshold:
-            background_tiles.append((tile, r, c))
+            background_tiles.append([tile, r, c])
         else:
-            root_tiles.append((tile, r, c))
+            root_tiles.append([tile, r, c])
 
     return background_tiles, root_tiles
 
@@ -295,7 +297,11 @@ def predict_level1(
     # Generate all tile coordinates in sequence from top-left to bottom-right
     all_tiles_coords = [(r, c) for r in range(nrows) for c in range(ncols)]
 
-    total_tiles = len(all_tiles_coords)
+    all_tiles = tile_entire_image(image, nrows, ncols)
+    background_tiles, root_tiles = threshold_empty_tiles(all_tiles, threshold=0.97)
+
+    # total_tiles = len(all_tiles_coords)
+    total_tiles = len(root_tiles)
 
     # Initialize the progress bar.
     AmfLog.progress_bar(0, total_tiles, indent=1)
@@ -304,22 +310,34 @@ def predict_level1(
     results = []  # List to hold results for each batch
     rows = []  # List to store row indices
     cols = []  # List to store column indices
+    print(f"{len(background_tiles)} background tiles identified and autoclassified.")
     print(f"Processing {total_tiles} tiles in batches of {batch_size}...")
 
     start_time = time.time()
 
+    for tile, r, c in background_tiles:
+        background_pred = np.zeros(len(AmfConfig.get("header")))
+        background_pred[2] = 1.0
+        results.append(pd.DataFrame([background_pred]))
+        rows.append(r)
+        cols.append(c)
+
     for batch_start in range(0, total_tiles, batch_size):
         batch_end = min(batch_start + batch_size, total_tiles)
-        batch_coords = all_tiles_coords[batch_start:batch_end]
+        batch = root_tiles[batch_start:batch_end]
 
-        # Process this batch
-        batch_result = process_batch(model, image, batch_coords, temperature_factor)
-        results.append(batch_result)
-
+        batch_tiles = []
         # Store coordinates for this batch
-        for r, c in batch_coords:
+        for tile, r, c in batch:
+            batch_tiles.append(tile)
             rows.append(r)
             cols.append(c)
+
+        # Process this batch
+        batch_result = process_batch(model, batch_tiles, temperature_factor)
+        # print(f"Batch result shape: {batch_result.shape}")
+        # print(f"Batch result: {batch_result}")
+        results.append(batch_result)
 
         # Update the progress bar
         AmfLog.progress_bar(batch_end, total_tiles, indent=1)
