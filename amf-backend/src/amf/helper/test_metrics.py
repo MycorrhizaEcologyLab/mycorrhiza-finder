@@ -123,18 +123,25 @@ class TestMetrics:
         self.metrics_collector.add_generic_metric("Macro precision", macro_precision)
         self.metrics_collector.add_generic_metric("Macro recall", macro_recall)
         self.metrics_collector.add_generic_metric("Macro f1 score", macro_f1)
-        print(f"Macro F1 Score: {macro_f1 * 100:.2f}%")
+        # print(f"Macro F1 Score: {macro_f1 * 100:.2f}%")
+        logger.info(f"Macro F1 Score: {macro_f1 * 100:.2f}%")
 
         # Print per-class metrics
-        print("\nPer-Class Metrics:")
+        # print("\nPer-Class Metrics:")
+        logger.info("\nPer-Class Metrics:")
         for class_name, acc, prec, rec, f1 in zip(
             self.class_names, accuracy, precision, recall, f1_score
         ):
-            print(f"{class_name}:")
-            print(f"  Accuracy: {acc * 100:.2f}%")
-            print(f"  Precision: {prec * 100:.2f}%")
-            print(f"  Recall: {rec * 100:.2f}%")
-            print(f"  F1 Score: {f1 * 100:.2f}%")
+            # print(f"{class_name}:")
+            # print(f"  Accuracy: {acc * 100:.2f}%")
+            # print(f"  Precision: {prec * 100:.2f}%")
+            # print(f"  Recall: {rec * 100:.2f}%")
+            # print(f"  F1 Score: {f1 * 100:.2f}%")
+            logger.info(f"{class_name}:")
+            logger.info(f"  Accuracy: {acc * 100:.2f}%")
+            logger.info(f"  Precision: {prec * 100:.2f}%")
+            logger.info(f"  Recall: {rec * 100:.2f}%")
+            logger.info(f"  F1 Score: {f1 * 100:.2f}%")
 
             # Add metrics to metrics collector
             self.metrics_collector.add_class_metric(f"{class_name}", "Accuracy", acc)

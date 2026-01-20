@@ -21,6 +21,8 @@ import threading
 import time
 from operator import attrgetter
 
+from loguru import logger
+
 try:
     import zlib  # We may need its compression method
 
@@ -1368,7 +1370,8 @@ class ZipFile:
         if not endrec:
             raise BadZipFile("File is not a zip file")
         if self.debug > 1:
-            print(endrec)
+            # print(endrec)
+            logger.debug(endrec)
         size_cd = endrec[_ECD_SIZE]  # bytes in central directory
         offset_cd = endrec[_ECD_OFFSET]  # offset of central directory
         self._comment = endrec[_ECD_COMMENT]  # archive comment
@@ -1381,7 +1384,8 @@ class ZipFile:
 
         if self.debug > 2:
             inferred = concat + offset_cd
-            print("given, inferred, offset", offset_cd, inferred, concat)
+            # print("given, inferred, offset", offset_cd, inferred, concat)
+            logger.debug("given, inferred, offset", offset_cd, inferred, concat)
         # self.start_dir:  Position of start of central directory
         self.start_dir = offset_cd + concat
         fp.seek(self.start_dir, 0)
@@ -1396,7 +1400,8 @@ class ZipFile:
             if centdir[_CD_SIGNATURE] != stringCentralDir:
                 raise BadZipFile("Bad magic number for central directory")
             if self.debug > 2:
-                print(centdir)
+                # print(centdir)
+                logger.debug(centdir)
             filename = fp.read(centdir[_CD_FILENAME_LENGTH])
             flags = centdir[5]
             if flags & 0x800:
@@ -1454,7 +1459,8 @@ class ZipFile:
             )
 
             if self.debug > 2:
-                print("total", total)
+                # print("total", total)
+                logger.debug("total", total)
 
     def namelist(self):
         """Return a list of file names in the archive."""
@@ -1462,10 +1468,16 @@ class ZipFile:
 
     def printdir(self, file=None):
         """Print a table of contents for the zip file."""
-        print("%-46s %19s %12s" % ("File Name", "Modified    ", "Size"), file=file)
+        # print("%-46s %19s %12s" % ("File Name", "Modified    ", "Size"), file=file)
+        logger.debug(
+            "%-46s %19s %12s" % ("File Name", "Modified    ", "Size"), file=file
+        )
         for zinfo in self.filelist:
             date = "%d-%02d-%02d %02d:%02d:%02d" % zinfo.date_time[:6]
-            print("%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size), file=file)
+            # print("%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size), file=file)
+            logger.debug(
+                "%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size), file=file
+            )
 
     def testzip(self):
         """Read all the files and check the CRC."""

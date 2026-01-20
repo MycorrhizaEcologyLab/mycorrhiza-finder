@@ -263,12 +263,18 @@ def evaluate(
     macrof1 = f1_score(y_true=y_true, y_pred=preds, average="macro")
 
     if verbose:
-        print("Accuracy:", accuracy)
-        print("Error:", error)
-        print("ECE:", ece)
-        print("MCE:", mce)
-        print("Loss:", loss)
-        print("MacroF1:", macrof1)
+        # print("Accuracy:", accuracy)
+        # print("Error:", error)
+        # print("ECE:", ece)
+        # print("MCE:", mce)
+        # print("Loss:", loss)
+        # print("MacroF1:", macrof1)
+        logger.info(f"Accuracy: {accuracy}")
+        logger.info(f"Error: {error}")
+        logger.info(f"ECE: {ece}")
+        logger.info(f"MCE: {mce}")
+        logger.info(f"Loss: {loss}")
+        logger.info(f"MacroF1: {macrof1}")
 
     return (error, ece, mce, loss, macrof1)
 
@@ -327,13 +333,18 @@ def cal_results(
     df.loc[0] = [name, error, ece, mce, loss, macrof1]
     df.loc[1] = [(name + "_calib"), error2, ece2, mce2, loss2, macrof12]
 
-    print(
+    # print(
+    #     "Error %f; ece %f; mce %f; loss %f, macrof1 %f"
+    #     % evaluate(probs, labels, verbose=False, normalize=True)
+    # )
+    logger.info(
         "Error %f; ece %f; mce %f; loss %f, macrof1 %f"
         % evaluate(probs, labels, verbose=False, normalize=True)
     )
 
     t2 = time.time()
-    print("Time taken for this calibration:", (t2 - t1), "\n")
+    # print("Time taken for this calibration:", (t2 - t1), "\n")
+    logger.info(f"Time taken for this calibration: {(t2 - t1)}")
 
     return model.temp, df, probs
 
@@ -371,7 +382,8 @@ def run(input_files: list[str]) -> int:
 
     # Create timestamped folder for results
     results_dir = AmfConfig.get("outdir")
-    print(f"Results Directory: {results_dir}")
+    # print(f"Results Directory: {results_dir}")
+    logger.debug(f"Results Directory: {results_dir}")
 
     # Extracting tiles and labels using list logic, to omit getitem() method.
     cal_dataset = AmfLoad.TileFilesandData(cal_img_list)
@@ -486,8 +498,11 @@ def run(input_files: list[str]) -> int:
         calibrated_probs_path, sep=",", encoding="utf-8", index=False
     )
 
-    print(f"Temperature value saved to: {temp_value_path}")
-    print(f"Temperature scaling results saved to: {temp_scale_path}")
-    print(f"Calibrated probabilities saved to: {calibrated_probs_path}")
+    # print(f"Temperature value saved to: {temp_value_path}")
+    # print(f"Temperature scaling results saved to: {temp_scale_path}")
+    # print(f"Calibrated probabilities saved to: {calibrated_probs_path}")
+    logger.info(f"Temperature value saved to: {temp_value_path}")
+    logger.info(f"Temperature scaling results saved to: {temp_scale_path}")
+    logger.info(f"Calibrated probabilities saved to: {calibrated_probs_path}")
 
     return 200

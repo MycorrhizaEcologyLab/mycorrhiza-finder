@@ -64,7 +64,8 @@ def create_database_if_not_exists(db_name: str, user: str, password: str) -> Non
         "postgres", password
     )  # Get a new connection for this operation
     if connection is None:
-        print("Connection to database failed.")
+        # print("Connection to database failed.")
+        logger.error("Connection to database failed.")
         return
 
     with connection.cursor() as crsr:
@@ -78,8 +79,10 @@ def create_database_if_not_exists(db_name: str, user: str, password: str) -> Non
                     "LIMIT = -1;"
                 ).format(sql.Identifier(db_name), sql.Identifier(user))
             )
-            print(f"Database '{db_name}' created.")
+            # print(f"Database '{db_name}' created.")
+            logger.info(f"Database '{db_name}' created.")
         else:
-            print(f"Database '{db_name}' already exists.")
+            # print(f"Database '{db_name}' already exists.")
+            logger.debug(f"Database '{db_name}' already exists.")
 
     connection.close()

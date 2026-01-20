@@ -589,7 +589,8 @@ def write_metrics(
             columns=column_order,
         )
     except Exception as e:
-        print(f"Errors occured writing the metrics file: {e}")
+        # print(f"Errors occured writing the metrics file: {e}")
+        logger.error(f"Errors occurred writing the metrics file: {e}")
 
 
 def run(

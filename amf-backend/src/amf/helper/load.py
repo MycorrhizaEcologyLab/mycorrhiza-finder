@@ -281,7 +281,7 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
             #     "Generating balanced dataset."
             # )
             # REMOVE -----------> Extra message may appear differently as a single line
-            logger.debug(
+            logger.info(
                 f"Balance factor set to: {self.balance_factor}. \
                 Generating balanced dataset."
             )
@@ -293,7 +293,7 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
             #     "Generating unbalanced dataset."
             # )
             # REMOVE -----------> Extra message may appear differently as a single line
-            logger.debug(
+            logger.info(
                 f"Balance factor set to: {self.balance_factor}. \
                 Generating unbalanced dataset."
             )
@@ -372,9 +372,11 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
         total_samples = y.size(0)
         percentages = (class_counts / total_samples) * 100
 
-        print("Class Distribution before train/val split:")
+        # print("Class Distribution before train/val split:")
+        logger.debug("Class Distribution before train/val split:")
         for i, count in enumerate(class_counts):
-            print(f"Class {i}: {count} samples ({percentages[i]:.2f}%)")
+            # print(f"Class {i}: {count} samples ({percentages[i]:.2f}%)")
+            logger.debug(f"Class {i}: {count} samples ({percentages[i]:.2f}%)")
 
         uniqueargs_probe_hot_indexes = (
             (class_counts > 0).nonzero(as_tuple=True)[0].numpy()
@@ -389,7 +391,7 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
             # )
             logger.error(
                 "Training data does not represent all classes. Please reconsider \
-                training dataset curation"
+                training dataset curation."
             )
             # ERR_NO_DATA = 10
             sys.exit(10)
@@ -605,7 +607,8 @@ class TileFilesandData(
             list[int],
         ]
     ):
-        print(f"[{AmfConfig.invite()}] Tile extraction.")
+        # print(f"[{AmfConfig.invite()}] Tile extraction.")
+        logger.info("Tile extraction.")
 
         # Load image settings and annotations.
         annotations = [
@@ -617,7 +620,8 @@ class TileFilesandData(
 
         if is_unlabelled:
             dataset_list = list(dataset)
-            print(f"[{AmfConfig.invite()}] {len(dataset_list)} images in BALD dataset.")
+            # print(f"[{AmfConfig.invite()}] {len(dataset_list)} images in BALD dataset.")
+            logger.info(f"{len(dataset_list)} images in BALD dataset.")
 
             # Process and normalize dataset
             x, file_names, rows, cols = self._process_dataset_unlabelled(dataset_list)
@@ -634,15 +638,16 @@ class TileFilesandData(
                 # )
                 logger.error(
                     "Input images do not contain tile annotations. \
-                    Use amfbrowser to annotate tiles before training"
+                    Use amfbrowser to annotate tiles before training."
                 )
                 # ERR_NO_DATA = 10
                 sys.exit(10)
 
-            print(
-                f"[{AmfConfig.invite()}] {len(filtered_dataset)} images in filtered "
-                "dataset."
-            )
+            # print(
+            #     f"[{AmfConfig.invite()}] {len(filtered_dataset)} images in filtered "
+            #     "dataset."
+            # )
+            logger.info(f"{len(filtered_dataset)} images in filtered dataset.")
 
             # Process and normalize dataset
             x, y, file_names, rows, cols = self._process_dataset(filtered_dataset)
@@ -874,12 +879,16 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
 
                 # Drop question marks from the CSV
                 if "Question" in output.columns:
-                    print(f"Dropping questions from annotations for {image_name}")
+                    # print(f"Dropping questions from annotations for {image_name}")
+                    logger.info(f"Dropping questions from annotations for {image_name}")
                     output.drop("Question", axis=1, inplace=True, errors="ignore")
 
                 # Drop question comments from the CSV
                 if "QuestionComment" in output.columns:
-                    print(
+                    # print(
+                    #     f"Dropping question comments from annotations for {image_name}"
+                    # )
+                    logger.info(
                         f"Dropping question comments from annotations for {image_name}"
                     )
                     output.drop(
@@ -920,12 +929,16 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
             # If question does not exist then do not error when dropping
             # (for legacy CSVs)
             if "Question" in output.columns:
-                print(f"Dropping questions from annotations for {image_name}")
+                # print(f"Dropping questions from annotations for {image_name}")
+                logger.info(f"Dropping questions from annotations for {image_name}")
                 output.drop("Question", axis=1, inplace=True, errors="ignore")
 
             # Drop question comments from the CSV
             if "QuestionComment" in output.columns:
-                print(f"Dropping question comments from annotations for {image_name}")
+                # print(f"Dropping question comments from annotations for {image_name}")
+                logger.info(
+                    f"Dropping question comments from annotations for {image_name}"
+                )
                 output.drop("QuestionComment", axis=1, inplace=True, errors="ignore")
 
             # Further check that csv is not empty
@@ -935,7 +948,8 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
             return output
 
     except (AssertionError, ValueError, KeyError) as e:
-        print(f"Error in importing annotations: {e}")
+        # print(f"Error in importing annotations: {e}")
+        logger.error(f"Error in importing annotations: {e}")
         return None
 
 

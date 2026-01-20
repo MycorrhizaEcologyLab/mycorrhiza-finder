@@ -390,7 +390,7 @@ def load(name: str | None = None) -> torch.nn.Module:
         # This will currently only work for pth models.
 
         # AmfLog.text(f"Model for {colonisation_type} colonisation: {path}")
-        logger.debug(f"Model for {colonisation_type} colonisation: {path}")
+        logger.info(f"Model for {colonisation_type} colonisation: {path}")
         model = torch.load(path, map_location=torch.device(AmfConfig.get("device")))
         # AmfLog.text("Model load successful")
         logger.debug("Model load successful")
@@ -491,7 +491,7 @@ def load(name: str | None = None) -> torch.nn.Module:
             #     f"Initialise new network. Selected model type: {model_name}. "
             #     f"Pre-Trained Flag: {pt_flag}"
             # )
-            logger.debug(
+            logger.info(
                 f"Initialise new network. Selected model type: {model_name}. \
                 Pre-Trained Flag: {pt_flag}"
             )

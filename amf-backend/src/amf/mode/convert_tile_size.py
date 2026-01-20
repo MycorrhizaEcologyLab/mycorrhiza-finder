@@ -441,7 +441,8 @@ def convert_tile_size(path: str, tile_size: int) -> None:
             logger.warning(f"Skipping {path} as no annotations could be found")
 
     else:
-        print(f"Searching locally for {path}")
+        # print(f"Searching locally for {path}")
+        logger.debug(f"Searching locally for {path}")
         directory = os.path.dirname(path)
         files = os.listdir(directory)
 
@@ -488,8 +489,10 @@ def convert_tile_size(path: str, tile_size: int) -> None:
 
 
 def run(input_images: list[str]) -> int:
-    print("Running aggregation of tiles")
-    print("Image\t" + "\t".join(AmfConfig.human_readable_header()))
+    # print("Running aggregation of tiles")
+    # print("Image\t" + "\t".join(AmfConfig.human_readable_header()))
+    logger.info("Running aggregation of tiles")
+    logger.info("Image\t" + "\t".join(AmfConfig.human_readable_header()))
     try:
         if AmfConfig.get("colonisation_type") != "am":
             # AmfLog.error(
@@ -509,7 +512,8 @@ def run(input_images: list[str]) -> int:
             convert_tile_size(path, tile_size)
 
     except Exception as e:
-        print(f"Unable to process file: {path}", e)
+        # print(f"Unable to process file: {path}", e)
+        logger.error(f"Unable to process file: {path} - {e}")
         return 500
 
     return 200

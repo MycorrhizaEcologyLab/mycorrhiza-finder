@@ -101,7 +101,8 @@ def create_results_dir(label: str = "") -> str:
     if len(label):
         results_dir_path += "_" + label
     os.makedirs(results_dir_path)
-    print(f"Output directory created: {results_dir_path}")
+    # print(f"Output directory created: {results_dir_path}")
+    logger.info(f"Output directory created: {results_dir_path}")
     return results_dir_path
 
 
@@ -1381,7 +1382,7 @@ def get_input_files() -> list[str]:
     valid_types = ["image/jpeg", "image/tiff", "image/png"]
     images = [x for x in raw_list if mimetypes.guess_type(x)[0] in valid_types]
     # AmfLog.text(f"Input images: {len(images)}")
-    logger.debug(f"Input images: {len(images)}")
+    logger.info(f"Input images: {len(images)}")
     return images
 
 

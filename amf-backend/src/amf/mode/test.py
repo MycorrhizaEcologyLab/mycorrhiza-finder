@@ -187,14 +187,16 @@ def get_test_results(
     avg_loss = test_loss / batch_count
     test_accuracy = correct / total
 
-    print(f"Test Loss: {avg_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
+    # print(f"Test Loss: {avg_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
+    logger.info(f"Test Loss: {avg_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
 
     # General metrics collection
     metrics_collector.add_generic_metric("Test accuracy", test_accuracy)
     metrics_collector.add_generic_metric("Loss", avg_loss)
 
     # Convert to numpy arrays
-    print("Converting to numpy arrays")
+    # print("Converting to numpy arrays")
+    logger.debug("Converting to numpy arrays")
     predicted_labels = np.array(predicted_labels_list)
     true_labels = np.array(true_labels_list)
     all_probs = np.array(all_probs_list)
@@ -477,7 +479,8 @@ def run(input_images: list[str]) -> int:
 
     # Create timestamped folder for results
     results_dir = AmfConfig.get("outdir")
-    print(f"Results Directory: {results_dir}")
+    # print(f"Results Directory: {results_dir}")
+    logger.info(f"Results Directory: {results_dir}")
 
     # Creating dataset
     dataset_loader = AmfLoad.TileFilesandData(test_images)

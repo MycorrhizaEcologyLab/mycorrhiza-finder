@@ -133,7 +133,8 @@ def save_training_data(
         plot_data = AmfPlot.draw(history, epochs, "Loss", x_range, "loss", "val_loss")
         z.writestr("loss.png", plot_data.getvalue())
 
-    print(f"Saved model output to {save_path}")
+    # print(f"Saved model output to {save_path}")
+    logger.info(f"Saved model output to {save_path}")
 
 
 # Function to get a summary of the model architecture as txt file and graph.
@@ -186,7 +187,8 @@ def save_metrics(metrics_collector: MetricsCollector, path: str) -> None:
     """
     uniq = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
     zipf = os.path.join(path, f"results_{uniq}.zip")
-    print(f"    - saving as {zipf}... ", end="")
+    # print(f"    - saving as {zipf}... ", end="")
+    logger.debug(f"    - saving as {zipf}... ", end="")
 
     with zf.ZipFile(zipf, "w") as z:
         # Handle class metrics

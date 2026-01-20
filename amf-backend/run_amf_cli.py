@@ -25,7 +25,6 @@
 # IN THE SOFTWARE.
 
 import torch
-from loguru import logger
 
 import amf.helper.config as AmfConfig
 
@@ -39,6 +38,7 @@ import amf.mode.convert_tile_size as AmfConvertTileSize
 import amf.mode.predict as AmfPredict
 import amf.mode.test as AmfTest
 import amf.mode.train as AmfTrain
+from amf.helper.log import logger
 
 
 def main() -> None:
@@ -53,24 +53,24 @@ def main() -> None:
         if torch.cuda.is_available():
             AmfConfig.set_("device", "cuda:0")
             # AmfLog.text("Device set on automatic mode. Running via gpu")
-            logger.debug("Device set on automatic mode. Running via gpu")
+            logger.info("Device set on automatic mode. Running via gpu")
 
         else:
             AmfConfig.set_("device", "cpu")
             # AmfLog.text(
             #     "Device set on automatic mode. CUDA ist not available. Running via cpu"
             # )
-            logger.debug(
+            logger.info(
                 "Device set on automatic mode. CUDA is not available. Running via cpu"
             )
 
     elif device == "cpu":
         # AmfLog.text("Device manually set to cpu")
-        logger.debug("Device manually set to cpu")
+        logger.info("Device manually set to cpu")
 
     elif device == "cuda:0" and torch.cuda.is_available():
         # AmfLog.text("Device manually set to gpu")
-        logger.debug("Device manually set to gpu")
+        logger.info("Device manually set to gpu")
 
     elif device == "cuda:0" and not torch.cuda.is_available():
         raise ValueError("Device manually set to gpu. CUDA not available")
@@ -81,7 +81,7 @@ def main() -> None:
         )
 
     # AmfLog.text(f"Mode: {run_mode.upper()}")
-    logger.debug(f"Mode: {run_mode.upper()}")
+    logger.info(f"Mode: {run_mode.upper()}")
 
     if run_mode == "train":
         # AmfLog.text("This is the normal training route")
@@ -96,7 +96,7 @@ def main() -> None:
         )
         if get_tiles_for_labelling_using_active_learning:
             # AmfLog.text("Running active learning to get tiles for labelling.")
-            logger.debug("Running active learning to get tiles for labelling.")
+            logger.info("Running active learning to get tiles for labelling.")
             AmfBald.run(input_files)
 
         else:

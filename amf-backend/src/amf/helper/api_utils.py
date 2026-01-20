@@ -6,6 +6,7 @@ from typing import Any, cast
 
 import psycopg2
 from fastapi import HTTPException, Response
+from loguru import logger
 
 from amf.helper.api_objects import AnnotationValues, PredictionValues
 
@@ -47,7 +48,10 @@ def fetch_items(
         )
 
     if name != "" and id_ != "":
-        print("Both name and ID provided, name ignored in favour of more specific ID")
+        # print("Both name and ID provided, name ignored in favour of more specific ID")
+        logger.info(
+            "Both name and ID provided, name ignored in favour of more specific ID"
+        )
 
     values = {}
     image_ids = []
@@ -163,7 +167,11 @@ def save_annotations_to_db(
         )
         tile_edge = get_tile_edge(crsr, image_id)
         if tile_edge[0] != values.tileEdge:
-            print(
+            # print(
+            #     f"Tile edge does not match, update from {tile_edge[0]} to "
+            #     f"{values.tileEdge}"
+            # )
+            logger.info(
                 f"Tile edge does not match, update from {tile_edge[0]} to "
                 f"{values.tileEdge}"
             )
@@ -264,7 +272,8 @@ def save_annotations_to_db(
                     ),
                 )
 
-    print("Saved Image Reference ID: ", image_id)
+    # print("Saved Image Reference ID: ", image_id)
+    logger.info(f"Saved Image Reference ID: {image_id}")
     return image_id
 
 
@@ -467,13 +476,18 @@ def get_enabled(crsr: psycopg2.extensions.cursor, image_name: str) -> int | None
     crsr.execute(fetch_images, (image_name,))
     images = crsr.fetchall()
     if len(images) > 0:
-        print(f"Image ID {images[0][0]} is enabled for image name {image_name}")
+        # print(f"Image ID {images[0][0]} is enabled for image name {image_name}")
+        logger.info(f"Image ID {images[0][0]} is enabled for image name {image_name}")
         return cast(int, images[0][0])  # since ID is int in database
     else:
         # If no annotations enabled, get most recent timestamp and set this to enabled
-        print(
-            f"No enabled annotations for image {image_name}, return image with most "
-            "recent timestamp instead."
+        # print(
+        #     f"No enabled annotations for image {image_name}, return image with most "
+        #     "recent timestamp instead."
+        # )
+        logger.info(
+            f"No enabled annotations for image {image_name}, return image with most \
+                recent timestamp instead."
         )
         id_ = get_most_recent_timestamp(crsr, image_name)
         if id_ is not None:
