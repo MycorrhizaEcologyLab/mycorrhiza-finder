@@ -272,6 +272,185 @@ def threshold_empty_tiles(
     return background_tiles, root_tiles
 
 
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+
+
+def visualize_tile_intensity_distribution(
+    image: Image.Image,
+    nrows: int,
+    ncols: int,
+    threshold: float,
+    max_width: int = 8192,
+) -> None:
+    """
+    Visualize the distribution of mean pixel intensities across all tiles.
+    Creates three plots:
+    1. Histogram of intensity distribution with statistics
+    2. Spatial heatmap of tile intensities overlayed on the image
+    3. Threshold classification overlay showing background vs root tiles
+
+    :param image: The source image.
+    :param nrows: Number of rows of tiles.
+    :param ncols: Number of columns of tiles.
+    :param threshold: Threshold for classifying background tiles (0-1).
+    :param max_width: Maximum width for resized image (default 1024 pixels).
+    """
+    all_tiles = tile_entire_image(image, nrows, ncols)
+    background_tiles, root_tiles = threshold_empty_tiles(all_tiles, threshold=threshold)
+    print(f"Image width: {image.width}")
+
+    # Resize image for visualization while preserving aspect ratio
+    scale_factor = max_width / image.width if image.width > max_width else 1.0
+    if scale_factor < 1.0:
+        new_width = int(image.width * scale_factor)
+        new_height = int(image.height * scale_factor)
+        image_resized = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    else:
+        image_resized = image
+        scale_factor = 1.0
+
+    # Calculate mean intensities for all tiles
+    all_intensities = []
+    intensity_grid = np.zeros((nrows, ncols))
+    threshold_grid = np.zeros((nrows, ncols, 4))  # RGBA for transparency
+
+    # Create set of background tile positions for quick lookup
+    background_positions = {(r, c) for tile, r, c in background_tiles}
+
+    for tile, r, c in all_tiles:
+        mean_intensity = np.mean(tile) / 255.0
+        all_intensities.append(mean_intensity)
+        intensity_grid[r, c] = mean_intensity
+
+        # Create threshold visualization grid
+        if (r, c) in background_positions:
+            # Background tile: solid color (gray), mostly opaque
+            threshold_grid[r, c] = [0.5, 0.5, 0.5, 0.7]  # Gray with 70% opacity
+        else:
+            # Root tile: transparent
+            threshold_grid[r, c] = [0, 0, 0, 0]  # Fully transparent
+
+    background_intensities = [np.mean(tile) / 255.0 for tile, r, c in background_tiles]
+    root_intensities = [np.mean(tile) / 255.0 for tile, r, c in root_tiles]
+
+    # Get min and max intensity values for heatmap scaling
+    min_intensity = np.min(all_intensities)
+    max_intensity = np.max(all_intensities)
+
+    edge = AmfConfig.get("tile_edge")
+    edge_resized = int(edge * scale_factor)
+
+    # Create visualization with three subplots
+    fig = plt.figure(figsize=(180, 60))
+
+    # First subplot: Histogram
+    ax1 = plt.subplot(1, 3, 1)
+    ax1.hist(all_intensities, bins=50, alpha=0.7, label="All tiles", edgecolor="black")
+    ax1.axvline(
+        threshold,
+        color="red",
+        linestyle="--",
+        linewidth=2,
+        label=f"Threshold ({threshold})",
+    )
+    ax1.set_xlabel("Mean Pixel Intensity (normalized to [0, 1])")
+    ax1.set_ylabel("Frequency")
+    ax1.set_title("Distribution of Mean Pixel Intensities")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+
+    # Second subplot: Spatial heatmap
+    ax2 = plt.subplot(1, 3, 2)
+
+    # Display the resized image
+    ax2.imshow(image_resized, extent=[0, image_resized.width, image_resized.height, 0])
+
+    # Create heatmap overlay of tile intensities
+    im = ax2.imshow(
+        intensity_grid,
+        cmap="RdYlGn",
+        alpha=0.4,
+        extent=[0, image_resized.width, image_resized.height, 0],
+        vmin=min_intensity,
+        vmax=max_intensity,
+    )
+
+    # Draw tile grid lines
+    for r in range(nrows + 1):
+        ax2.axhline(y=r * edge_resized, color="gray", linewidth=0.5, alpha=0.5)
+    for c in range(ncols + 1):
+        ax2.axvline(x=c * edge_resized, color="gray", linewidth=0.5, alpha=0.5)
+
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax2, label="Mean Pixel Intensity")
+
+    ax2.set_xlabel("X Coordinate (pixels)")
+    ax2.set_ylabel("Y Coordinate (pixels)")
+    ax2.set_title("Spatial Distribution of Tile Intensities")
+
+    # Third subplot: Threshold classification overlay
+    ax3 = plt.subplot(1, 3, 3)
+
+    # Display the resized image
+    ax3.imshow(image_resized, extent=[0, image_resized.width, image_resized.height, 0])
+
+    # Overlay threshold classification (background tiles in gray, root tiles transparent)
+    threshold_grid_resized = np.zeros((image_resized.height, image_resized.width, 4))
+    for r in range(nrows):
+        for c in range(ncols):
+            y_start = int(r * edge_resized)
+            y_end = int((r + 1) * edge_resized)
+            x_start = int(c * edge_resized)
+            x_end = int((c + 1) * edge_resized)
+            # Only set alpha for background tiles; root tiles remain transparent (alpha=0)
+            threshold_grid_resized[y_start:y_end, x_start:x_end] = threshold_grid[r, c]
+
+    ax3.imshow(
+        threshold_grid_resized, extent=[0, image_resized.width, image_resized.height, 0]
+    )
+
+    # Draw tile grid lines
+    # for r in range(nrows + 1):
+    #     ax3.axhline(y=r * edge_resized, color="gray", linewidth=0.5, alpha=0.5)
+    # for c in range(ncols + 1):
+    #     ax3.axvline(x=c * edge_resized, color="gray", linewidth=0.5, alpha=0.5)
+
+    ax3.set_xlabel("X Coordinate (pixels)")
+    ax3.set_ylabel("Y Coordinate (pixels)")
+    ax3.set_title("Threshold Classification (Gray = Background)")
+
+    # Add summary statistics as text
+    stats_text = (
+        f"Total tiles: {len(all_tiles)}\n"
+        f"Background: {len(background_tiles)} ({100 * len(background_tiles) / len(all_tiles):.1f}%)\n"
+        f"Root tiles: {len(root_tiles)} ({100 * len(root_tiles) / len(all_tiles):.1f}%)\n"
+        f"Threshold: {threshold}"
+    )
+    ax3.text(
+        0.02,
+        0.98,
+        stats_text,
+        transform=ax3.transAxes,
+        fontsize=9,
+        verticalalignment="top",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
+        family="monospace",
+    )
+
+    # Fourth subplot: Resized image only (debug)
+    # ax4 = plt.subplot(1, 3, 4)
+    # ax4.imshow(image_resized)
+    # ax4.set_title("Resized Image (Debug)")
+    # ax4.axis("off")
+
+    plt.tight_layout()
+    # plt.show()
+    plt.savefig(f"Background Vis {int(threshold * 1000)} v4.png")
+    plt.close()
+    # exit()
+
+
 def predict_level1(
     image: Image.Image,
     nrows: int,
@@ -279,6 +458,7 @@ def predict_level1(
     model: torch.nn.Module,
     temperature_factor: float,
     base: str,
+    threshold: float = 0.985,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Identifies colonised root segments using PyTorch model.
@@ -295,10 +475,12 @@ def predict_level1(
     batch_size = AmfConfig.get("batch_size")
 
     # Generate all tile coordinates in sequence from top-left to bottom-right
-    all_tiles_coords = [(r, c) for r in range(nrows) for c in range(ncols)]
+    # all_tiles_coords = [(r, c) for r in range(nrows) for c in range(ncols)]
+
+    visualize_tile_intensity_distribution(image, nrows, ncols, threshold=threshold)
 
     all_tiles = tile_entire_image(image, nrows, ncols)
-    background_tiles, root_tiles = threshold_empty_tiles(all_tiles, threshold=0.97)
+    background_tiles, root_tiles = threshold_empty_tiles(all_tiles, threshold=threshold)
 
     # total_tiles = len(all_tiles_coords)
     total_tiles = len(root_tiles)
@@ -307,20 +489,27 @@ def predict_level1(
     AmfLog.progress_bar(0, total_tiles, indent=1)
 
     # Process tiles in batches
+
     results = []  # List to hold results for each batch
     rows = []  # List to store row indices
     cols = []  # List to store column indices
+
+    b_results = []  # List to hold background results if they
+    b_rows = []
+    b_cols = []
+
     print(f"{len(background_tiles)} background tiles identified and autoclassified.")
     print(f"Processing {total_tiles} tiles in batches of {batch_size}...")
 
     start_time = time.time()
 
-    for tile, r, c in background_tiles:
-        background_pred = np.zeros(len(AmfConfig.get("header")))
-        background_pred[2] = 1.0
-        results.append(pd.DataFrame([background_pred]))
-        rows.append(r)
-        cols.append(c)
+    if len(background_tiles) > 0:
+        for tile, r, c in background_tiles:
+            background_pred = np.zeros(len(AmfConfig.get("header")))
+            background_pred[2] = 1.0
+            b_results.append(pd.DataFrame([background_pred]))
+            b_rows.append(r)
+            b_cols.append(c)
 
     for batch_start in range(0, total_tiles, batch_size):
         batch_end = min(batch_start + batch_size, total_tiles)
@@ -357,6 +546,15 @@ def predict_level1(
     if use_contextual_confidence:
         AmfLog.info("Applying contextual refinement of predictions.")
         table, class_changes = apply_contextual_confidence(table, image, model, base)
+
+    if len(b_results) > 0:
+        b_table = pd.concat(b_results, ignore_index=True)
+        b_table.insert(0, column="col", value=b_cols)
+        b_table.insert(0, column="row", value=b_rows)
+        b_table.columns = table_header()
+        b_table["ContextualLabel"] = None
+
+        table = pd.concat([table, b_table], ignore_index=True)
 
     return table, class_changes
 
