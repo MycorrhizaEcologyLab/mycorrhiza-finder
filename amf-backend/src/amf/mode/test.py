@@ -21,8 +21,6 @@ from tqdm import tqdm
 
 import amf.helper.config as AmfConfig
 import amf.helper.load as AmfLoad
-
-# import amf.helper.log as AmfLog
 import amf.helper.model as AmfModel
 import amf.helper.save as AmfSave
 import amf.helper.segmentation as AmfSegm
@@ -128,14 +126,10 @@ def get_test_results(
                 tf = f.readline()
                 temperature_factor = float(tf)
         except Exception:
-            # AmfLog.warning(
-            #     f"Failed to read temperature factor from file {path}, setting to 1"
-            # )
             logger.warning(
                 f"Failed to read temperature factor from file {path}, setting to 1"
             )
 
-    # AmfLog.info(f"Using temperature factor of {temperature_factor}")
     logger.info(f"Using temperature factor of {temperature_factor}")
 
     # Defining loss function
@@ -219,10 +213,6 @@ def get_test_results(
         individual_tile_changes = []
 
         if len(low_confidence_indices) > 0:
-            # AmfLog.info(
-            #     f"Found {len(low_confidence_indices)} predictions with confidence "
-            #     f"lower than {contextual_confidence_threshold}. Applying max voting"
-            # )
             logger.info(
                 f"Found {len(low_confidence_indices)} predictions with confidence \
                 lower than {contextual_confidence_threshold}. Applying max voting"
@@ -359,16 +349,12 @@ def get_test_results(
 
             # Print summary of all class changes
             if class_changes:
-                # AmfLog.info("\n=== Summary of Class Changes ===")
                 logger.info("\n=== Summary of Class Changes ===")
                 total_changes = 0
                 for change, count in sorted(class_changes.items()):
-                    # AmfLog.info(f"{change}: {count} changes")
                     logger.info(f"{change}: {count} changes")
                     total_changes += count
-                # AmfLog.info(f"Total changes: {total_changes}")
                 logger.info(f"Total changes: {total_changes}")
-                # AmfLog.info("===============================\n")
                 logger.info("===============================\n")
 
                 # Save individual tile changes to CSV
@@ -379,29 +365,19 @@ def get_test_results(
                     # Save to CSV in the results directory
                     csv_path = os.path.join(results_dir, "tile_class_changes.csv")
                     changes_df.to_csv(csv_path, index=False)
-                    # AmfLog.info(
-                    #     f"Saved {len(individual_tile_changes)} individual tile changes "
-                    #     f"to {csv_path}"
-                    # )
                     logger.info(
                         f"Saved {len(individual_tile_changes)} individual tile changes \
                         to {csv_path}"
                     )
             else:
-                # AmfLog.info("No class changes occurred after max voting.")
                 logger.info("No class changes occurred after max voting.")
         else:
-            # AmfLog.info(
-            #     "Didn't find any predictions with confidence lower than "
-            #     f"{contextual_confidence_threshold}, so do not use context"
-            # )
             logger.info(
                 f"Didn't find any predictions with confidence lower than \
                 {contextual_confidence_threshold}, so do not use context"
             )
 
     # Check the shape of the arrays before forwarding them to TestMetrics
-    # AmfLog.info("Calling TestMetrics and initializing metrics")
     logger.info("Calling TestMetrics and initializing metrics")
 
     metrics = TestMetrics(
@@ -418,33 +394,25 @@ def get_test_results(
         cols,
     )
 
-    # AmfLog.info("Allocating metrics variables")
     logger.info("Allocating metrics variables")
     metrics.get_perfile_metrics()
-    # AmfLog.info("Generating confusion matrix")
     logger.info("Generating confusion matrix")
     metrics.get_conf_matrix()
-    # AmfLog.info("Generating images with incorrect tiles per image")
     logger.info("Generating images with incorrect tiles per image")
     metrics.get_pred_by_file()
-    # AmfLog.info("Generating images with incorrect tiles per class")
     logger.info("Generating images with incorrect tiles per class")
     metrics.get_pred_by_class()
-    # AmfLog.info("Generating number of tiles per confidence threshold")
     logger.info("Generating number of tiles per confidence threshold")
     metrics.get_num_tiles_per_confidence()
-    # AmfLog.info("Calculating test metrics per confidence threshold")
     logger.info("Calculating test metrics per confidence threshold")
     metrics.get_metrics_with_threshold_comparison()
 
-    # AmfLog.info("Saving metrics function.")
     logger.info("Saving metrics function.")
     AmfSave.save_metrics(metrics.metrics_collector, results_dir)
 
     # End timing
     end_time = time.time()
     execution_time = end_time - start_time
-    # AmfLog.text(f"Execution Time: {execution_time:.2f} seconds")
     logger.debug(f"Execution Time: {execution_time:.2f} seconds")
 
 
@@ -467,10 +435,6 @@ def run(input_images: list[str]) -> int:
 
     test_images = parts["test"]
     if len(test_images) == 0:
-        # AmfLog.error(
-        #     "No images found. Test data must be separated into a 'test' subfolder",
-        #     AmfLog.ERR_NO_DATA,
-        # )
         logger.error(
             "No images found. Test data must be separated into a 'test' subfolder"
         )

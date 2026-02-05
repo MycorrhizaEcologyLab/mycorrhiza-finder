@@ -8,8 +8,6 @@ from PIL import Image
 
 import amf.helper.config as AmfConfig
 
-# import amf.helper.log as AmfLog
-
 # This allows any size image
 Image.MAX_IMAGE_PIXELS = None
 
@@ -25,15 +23,10 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
         # does not work.
         try:
             im = Image.open(path)
-            # AmfLog.info(f"Original image size: {im.size}")
             logger.info(f"Original image size: {im.size}")
 
             # Check if annotation file exists - if not, convert the entire tif
             if os.path.isfile(os.path.splitext(path)[0] + ".xml"):
-                # AmfLog.info(
-                #     f"Found annotations in {os.path.splitext(path)[0]}.xml, cropping "
-                #     "tif file to match the given annotations"
-                # )
                 logger.info(
                     f"Found annotations in {os.path.splitext(path)[0]}.xml, cropping \
                     tif file to match the given annotations"
@@ -136,10 +129,6 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
                             f"{e.__class__.__name__}: {e}"
                         )
             else:
-                # AmfLog.info(
-                #     f"No annotations found for {os.path.splitext(path)[0]}, "
-                #     f"directly converting TIF to {file_type}"
-                # )
                 logger.info(
                     f"No annotations found for {os.path.splitext(path)[0]}, \
                     directly converting TIF to {file_type}"
@@ -159,7 +148,6 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
 
 def run(input_images: list[str]) -> int:
     file_type = AmfConfig.get("convert_image_file_type")
-    # AmfLog.info(f"Running conversion of tifs to {file_type}s")
     logger.info(f"Running conversion of tifs to {file_type}s")
 
     for path in input_images:

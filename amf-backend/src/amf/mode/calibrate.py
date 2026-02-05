@@ -17,8 +17,6 @@ from tqdm import tqdm
 
 import amf.helper.config as AmfConfig
 import amf.helper.load as AmfLoad
-
-# import amf.helper.log as AmfLog
 import amf.helper.model as AmfModel
 
 
@@ -312,7 +310,6 @@ def cal_results(
     logits, labels = logits_data
 
     name = "Calibration"
-    # AmfLog.info("Calibrating model")
     logger.info("Calibrating model")
     t1 = time.time()
 
@@ -373,7 +370,6 @@ def run(input_files: list[str]) -> int:
 
     # Validate input folder structure
     if not cal_img_list:
-        # AmfLog.error("There is no train subfolder", AmfLog.ERR_NO_DATA)
         logger.error("There is no train subfolder")
         # ERR_NO_DATA = 10
         sys.exit(10)
@@ -402,7 +398,6 @@ def run(input_files: list[str]) -> int:
     # Get logits from all tiles
     all_logits = []
     all_labels = []
-    # AmfLog.info("Calculating model outputs for use in calibration")
     logger.info("Calculating model outputs for use in calibration")
     with torch.no_grad():  # Disabling gradient calculations
         for batch_x, batch_y in tqdm(

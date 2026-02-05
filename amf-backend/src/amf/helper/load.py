@@ -19,8 +19,6 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 import amf.helper.config as AmfConfig
-
-# import amf.helper.log as AmfLog
 import amf.helper.segmentation as AmfSegm
 from amf.helper.api_utils import (
     check_entries_for_id,
@@ -160,7 +158,6 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
 
         # Calculate statistics if needed
         if self.calculate_distribution:
-            # AmfLog.info(f"Total images for train/val split: {len(input_files)}")
             logger.info(f"Total images for train/val split: {len(input_files)}")
             self._prepare_stats()
 
@@ -262,10 +259,6 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
                 del image
 
         if len(all_tiles) == 0:
-            # AmfLog.error(
-            #     "None of the training images had annotations, so fail",
-            #     AmfLog.ERR_MISSING_ANNOTATIONS,
-            # )
             logger.error("None of the training images had annotations, so fail")
             # ERR_MISSING_ANNOTATIONS = 32
             sys.exit(32)
@@ -276,11 +269,6 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
                 all_tiles, all_labels, self.balance_factor
             )
             # Create balanced dataset
-            # AmfLog.text(
-            #     f"Balance factor set to: {self.balance_factor}. "
-            #     "Generating balanced dataset."
-            # )
-            # REMOVE -----------> Extra message may appear differently as a single line
             logger.info(
                 f"Balance factor set to: {self.balance_factor}. \
                 Generating balanced dataset."
@@ -288,11 +276,6 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
             dataset = list(zip(balanced_tiles, balanced_labels))
         elif self.balance_factor == 0.0:
             # Create unbalanced dataset
-            # AmfLog.text(
-            #     f"Balance factor set to: {self.balance_factor}. "
-            #     "Generating unbalanced dataset."
-            # )
-            # REMOVE -----------> Extra message may appear differently as a single line
             logger.info(
                 f"Balance factor set to: {self.balance_factor}. \
                 Generating unbalanced dataset."
@@ -384,11 +367,6 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
         uniqueargs_headers = np.arange(len(class_counts))
 
         if not np.array_equal(uniqueargs_probe_hot_indexes, uniqueargs_headers):
-            # AmfLog.error(
-            #     "Training data does not represent all classes. Please reconsider "
-            #     "training dataset curation",
-            #     AmfLog.ERR_NO_DATA,
-            # )
             logger.error(
                 "Training data does not represent all classes. Please reconsider \
                 training dataset curation."
@@ -631,11 +609,6 @@ class TileFilesandData(
         else:
             filtered_dataset = [x for x in dataset if x[2] is not None]
             if len(filtered_dataset) == 0 and not is_bald_folder:
-                # AmfLog.error(
-                #     "Input images do not contain tile annotations. "
-                #     "Use amfbrowser to annotate tiles before training",
-                #     AmfLog.ERR_NO_DATA,
-                # )
                 logger.error(
                     "Input images do not contain tile annotations. \
                     Use amfbrowser to annotate tiles before training."
@@ -828,7 +801,6 @@ def import_settings(path: str) -> dict[str, int]:
         # Default to value in settings
         return {"tile_edge": AmfConfig.get("tile_edge")}
     except AssertionError as e:
-        # AmfLog.warning(f"Failed to import settings for {image_name}: {e}")
         logger.warning(f"Failed to import settings for {image_name}: {e}")
         # Default to value in settings
         return {"tile_edge": AmfConfig.get("tile_edge")}

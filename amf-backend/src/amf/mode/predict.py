@@ -48,8 +48,6 @@ from PIL import Image
 from tqdm import tqdm
 
 import amf.helper.config as AmfConfig
-
-# import amf.helper.log as AmfLog
 import amf.helper.model as AmfModel
 import amf.helper.save as AmfSave
 import amf.helper.segmentation as AmfSegm
@@ -102,9 +100,6 @@ def process_row_1(
         scaled_output, dim=1
     )  # Assuming output is not already in probability form
 
-    # Update the progress bar
-    # AmfLog.progress_bar(r + 1, nrows, indent=1)
-
     # Convert prediction tensor back to DataFrame
     return pd.DataFrame(output.cpu().numpy())
 
@@ -140,21 +135,12 @@ def apply_contextual_confidence(
 
     if len(low_confidence_indices) == 0:
         # No low confidence predictions to refine
-        # AmfLog.info(
-        #     "Found 0 predictions that are under the context threshold of "
-        #     f"{contextual_confidence_threshold}, so don't make any changes."
-        # )
         logger.info(
             f"Found 0 predictions that are under the context threshold of \
             {contextual_confidence_threshold}, so don't make any changes."
         )
         return table, pd.DataFrame()
 
-    # AmfLog.info(
-    #     f"Found {len(low_confidence_indices)} predictions that are under the context "
-    #     f"threshold of {contextual_confidence_threshold}. "
-    #     "Applying contextual refinement."
-    # )
     logger.info(
         f"Found {len(low_confidence_indices)} predictions that are under the context \
         threshold of {contextual_confidence_threshold}. Applying contextual refinement."
@@ -167,8 +153,6 @@ def apply_contextual_confidence(
     class_changes: dict[str, int] = {}
     # List to track individual tile changes
     individual_tile_changes = []
-
-    # AmfLog.progress_bar(0, len(low_confidence_indices), indent=1)
 
     # Process each low confidence tile
     for idx, confidence_idx in enumerate(tqdm(low_confidence_indices)):
@@ -230,28 +214,21 @@ def apply_contextual_confidence(
 
             table.at[confidence_idx, "ContextualLabel"] = final_class_name
 
-        # AmfLog.progress_bar(idx + 1, len(low_confidence_indices), indent=1)
-
     changes_df = pd.DataFrame()
     # Print summary of class changes
     if class_changes:
-        # AmfLog.info("\n=== Summary of Class Changes ===")
         logger.info("\n=== Summary of Class Changes ===")
         total_changes = 0
         for change, count in sorted(class_changes.items()):
-            # AmfLog.info(f"{change}: {count} changes")
             logger.info(f"{change}: {count} changes")
             total_changes += count
-        # AmfLog.info(f"Total changes: {total_changes}")
         logger.info(f"Total changes: {total_changes}")
-        # AmfLog.info("===============================\n")
         logger.info("===============================\n")
 
         # Save individual tile changes to CSV if there are any
         if individual_tile_changes:
             changes_df = pd.DataFrame(individual_tile_changes)
     else:
-        # AmfLog.info("No class changes occurred after contextual refinement.")
         logger.info("No class changes occurred after contextual refinement.")
 
     return table, changes_df
@@ -276,9 +253,6 @@ def predict_level1(
     :return: Table with predictions and changes made by contextual predictions.
     """
 
-    # Initialize the progress bar.
-    # AmfLog.progress_bar(0, nrows, indent=1)
-
     # Retrieve predictions within the image row by row.
     results = []  # List to hold results for each row
     for r in tqdm(range(nrows)):
@@ -300,7 +274,6 @@ def predict_level1(
     use_contextual_confidence = AmfConfig.get("use_contextual_confidence")
     class_changes = pd.DataFrame()
     if use_contextual_confidence:
-        # AmfLog.info("Applying contextual refinement of predictions.")
         logger.info("Applying contextual refinement of predictions.")
         table, class_changes = apply_contextual_confidence(table, image, model, base)
 
@@ -416,15 +389,12 @@ def prepare_metrics(
         )
 
     # Calculate bootstrap distribution and confidence intervals
-    # AmfLog.info("Calculating bootstrap distribution")
     logger.info("Calculating bootstrap distribution")
     bootstr_dist = bootstrap_distribution(tile_results_table)
-    # AmfLog.info("Calculating confidence intervals")
     logger.info("Calculating confidence intervals")
     results_dict = add_conf_intervals(bootstr_dist, results_dict, include_hybrid)
 
     # Retrieve cumulative count distribution for max probabilities per tile
-    # AmfLog.info("Calculating number of tiles per confidence level")
     logger.info("Calculating number of tiles per confidence level")
     count_distribution_dict = get_num_tiles_per_confidence(tile_results_table)
     results_dict.update(count_distribution_dict)
@@ -445,7 +415,6 @@ def write_metrics(
     """
     os.makedirs(folder, exist_ok=True)
     metrics_filepath = os.path.join(folder, timestamp_string + "_results.csv")
-    # AmfLog.info(f"Saving metrics as {metrics_filepath}... ", end="")
     logger.info(f"Saving metrics as {metrics_filepath}... ", end="")
 
     try:
@@ -604,7 +573,6 @@ def run(
     :param save: indicate whether results should be saved or returned.
     """
 
-    # AmfLog.info(f"Number of test images: {len(input_images)}")
     logger.info(f"Number of test images: {len(input_images)}")
 
     model = AmfModel.load()
@@ -638,21 +606,16 @@ def run(
                 tf = f.readline()
                 temperature_factor = float(tf)
         except Exception:
-            # AmfLog.warning(
-            #     f"Failed to read temperature factor from file {path}, setting to 1"
-            # )
             logger.warning(
                 f"Failed to read temperature factor from file {path}, setting to 1"
             )
 
-    # AmfLog.info(f"Using temperature factor of {temperature_factor}")
     logger.info(f"Using temperature factor of {temperature_factor}")
 
     collated_metrics = []  # Get results from each image together
     class_changes_total = []
     for path in input_images:
         base = os.path.basename(path)
-        # AmfLog.text(f"Image {base}")
         logger.debug(f"Image {base}")
 
         # Only updates tile edge if settings exist
@@ -666,7 +629,6 @@ def run(
         ncols = width // edge
 
         if nrows == 0 or ncols == 0:
-            # AmfLog.warning("Tile size ({edge} pixels) is too large")
             logger.warning("Tile size ({edge} pixels) is too large")
             continue
 
@@ -683,7 +645,6 @@ def run(
             if postprocess is None:
                 # None was cams, reuse for super-resolution.
                 AmfSave.prediction_table(table, path)
-                # AmfLog.info("Preparing metrics for prediction output")
                 logger.info("Preparing metrics for prediction output")
                 these_metrics = prepare_metrics(path, table)
                 collated_metrics.append(these_metrics)
@@ -699,9 +660,6 @@ def run(
         )
         final_class_changes_df = pd.concat(class_changes_total)
         final_class_changes_df.to_csv(csv_path, index=False)
-        # AmfLog.info(
-        #     f"Saved {len(final_class_changes_df)} individual tile changes to {csv_path}"
-        # )
         logger.info(
             f"Saved {len(final_class_changes_df)} individual tile changes to {csv_path}"
         )
@@ -728,7 +686,6 @@ def bootstrap_distribution(
 ) -> NDArray[np.float64]:
     # Retrieve number of classes
     n_classes = len(AmfConfig.get("header"))
-    # AmfLog.progress_bar(0, n_samples, indent=1)
 
     # Create matrix for storing Monte Carlo results
     # and the bootstrap distribution per class
@@ -737,7 +694,6 @@ def bootstrap_distribution(
 
     # Monte Carlo sampling
     for i in tqdm(range(n_samples)):
-        # AmfLog.progress_bar(i, n_samples, indent=1)
         mc_samples[i] = df_cal_probs.apply(sample_class, axis=1)
         bootstrap_dist[i] = np.bincount(mc_samples[i], minlength=n_classes)
 

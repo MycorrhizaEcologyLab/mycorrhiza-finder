@@ -22,8 +22,6 @@ from numpy.typing import NDArray
 from sklearn.metrics import confusion_matrix
 
 import amf.helper.config as AmfConfig
-
-# import amf.helper.log as AmfLog
 from amf.helper.metrics_collector import MetricsCollector
 
 random.seed(42)
@@ -589,7 +587,6 @@ class TestMetrics:
             )
 
         for filename, indices in incorrect_by_filename.items():
-            # AmfLog.info(f"Processing incorrect prediction images for {filename}")
             logger.info(f"Processing incorrect prediction images for {filename}")
             file_dir = os.path.join(self.results_dir, filename)
             os.makedirs(file_dir, exist_ok=True)  # Create a directory for each file
@@ -682,10 +679,6 @@ class TestMetrics:
 
         # Iterate over each class to plot its incorrectly predicted images
         for class_index in unique_classes:
-            # AmfLog.info(
-            #     "Processing incorrect prediction images for class "
-            #     f"{self.class_names[class_index]}"
-            # )
             logger.info(
                 f"Processing incorrect prediction images for class \
                 {self.class_names[class_index]}"

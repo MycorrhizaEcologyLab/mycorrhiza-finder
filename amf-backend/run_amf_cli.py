@@ -27,8 +27,6 @@
 import torch
 
 import amf.helper.config as AmfConfig
-
-# import amf.helper.log as AmfLog
 import amf.mode.bald as AmfBald
 import amf.mode.calibrate as AmfCalibrate
 import amf.mode.colonisation as AmfColonisation
@@ -52,24 +50,18 @@ def main() -> None:
     if device == "automatic":
         if torch.cuda.is_available():
             AmfConfig.set_("device", "cuda:0")
-            # AmfLog.text("Device set on automatic mode. Running via gpu")
             logger.info("Device set on automatic mode. Running via gpu")
 
         else:
             AmfConfig.set_("device", "cpu")
-            # AmfLog.text(
-            #     "Device set on automatic mode. CUDA ist not available. Running via cpu"
-            # )
             logger.info(
                 "Device set on automatic mode. CUDA is not available. Running via cpu"
             )
 
     elif device == "cpu":
-        # AmfLog.text("Device manually set to cpu")
         logger.info("Device manually set to cpu")
 
     elif device == "cuda:0" and torch.cuda.is_available():
-        # AmfLog.text("Device manually set to gpu")
         logger.info("Device manually set to gpu")
 
     elif device == "cuda:0" and not torch.cuda.is_available():
@@ -80,22 +72,18 @@ def main() -> None:
             'Invalid device. Set device to "cpu"", "cuda:0", "cuda:1", "automatic"'
         )
 
-    # AmfLog.text(f"Mode: {run_mode.upper()}")
     logger.info(f"Mode: {run_mode.upper()}")
 
     if run_mode == "train":
-        # AmfLog.text("This is the normal training route")
         logger.debug("This is the normal training route")
         flag = AmfConfig.get("mlflow_flag")
 
-        # AmfLog.text("mlflow logging enabled" if flag else "mlflow logging disabled")
         logger.debug("mlflow logging enabled" if flag else "mlflow logging disabled")
         input_files = AmfConfig.get_input_files()
         get_tiles_for_labelling_using_active_learning = AmfConfig.get(
             "get_tiles_for_labelling_using_active_learning"
         )
         if get_tiles_for_labelling_using_active_learning:
-            # AmfLog.text("Running active learning to get tiles for labelling.")
             logger.info("Running active learning to get tiles for labelling.")
             AmfBald.run(input_files)
 
@@ -112,7 +100,6 @@ def main() -> None:
         AmfTest.run(input_files)
 
     elif run_mode == "colonisation":
-        # AmfLog.text("Get colonisation percentage for annotations")
         logger.debug("Get colonisation percentage for annotations")
         input_files = AmfConfig.get_input_files()
         AmfColonisation.run(input_files)
