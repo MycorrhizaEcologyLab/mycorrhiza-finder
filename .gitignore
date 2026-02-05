@@ -6,6 +6,10 @@ amfenv
 *.pyc
 *.spec
 
+# Log/debug files
+*.log
+*.png
+
 # Trained networks
 **/trained_networks/**
 !**/trained_networks/README.txt
