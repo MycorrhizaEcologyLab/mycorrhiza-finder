@@ -38,6 +38,7 @@ Functions
 """
 
 import os
+import sys
 from typing import Type, cast
 
 import timm
@@ -46,10 +47,10 @@ import timm
 import torch
 import torch.nn as nn
 import torch.nn.init as init
+from loguru import logger
 from torchvision import models
 
 import amf.helper.config as AmfConfig
-import amf.helper.log as AmfLog
 
 MODEL_DICT = {
     "resnet": "resnet50.a1_in1k",
@@ -395,9 +396,9 @@ def load(name: str | None = None) -> torch.nn.Module:
     if path is not None and os.path.isfile(path):
         # This will currently only work for pth models.
 
-        AmfLog.text(f"Model for {colonisation_type} colonisation: {path}")
+        logger.info(f"Model for {colonisation_type} colonisation: {path}")
         model = torch.load(path, map_location=torch.device(AmfConfig.get("device")))
-        AmfLog.text("Model load successful")
+        logger.debug("Model load successful")
 
         # Check model name
         if isinstance(model, torch.nn.Module):
@@ -406,7 +407,7 @@ def load(name: str | None = None) -> torch.nn.Module:
             # TODO: ResNeXt has the same model.__class__.__name__ as ResNet.
             # Change to map correctly.
             if model_name in ["CNN1", "ResNet", "ResNeXt", "EfficientNet"]:
-                AmfLog.text(f"Model type: {model_name}")
+                logger.debug(f"Model type: {model_name}")
                 return model
             else:
                 raise ValueError(
@@ -415,12 +416,12 @@ def load(name: str | None = None) -> torch.nn.Module:
                 )
 
         else:
-            AmfLog.error(
-                "The provided model is not a torch.nn.Module instance",
-                exit_code=AmfLog.ERR_NO_PRETRAINED_MODEL,
-            )
+            logger.error("The provided model is not a torch.nn.Module instance")
+            # ERR_NO_PRETRAINED_MODEL = 20
+            sys.exit(20)
+
             raise RuntimeError(
-                "Unreachable code after AmfLog.error()"
+                "Unreachable code after logger.error() and sys.exit()"
             )  # TODO replace with proper exceptions
 
     else:
@@ -431,13 +432,15 @@ def load(name: str | None = None) -> torch.nn.Module:
 
             if AmfConfig.get("model_type") == "cnn1":
                 if pt_flag:
-                    AmfLog.error(
-                        "Pre-trained weights are unanavailable for CNN1. "
-                        "Please proceed with pre_trained=False",
-                        exit_code=AmfLog.ERR_NO_PRETRAINED_MODEL,
+                    logger.error(
+                        "Pre-trained weights are unanavailable for CNN1. \
+                        Please proceed with pre_trained=False"
                     )
+                    # ERR_NO_PRETRAINED_MODEL = 20
+                    sys.exit(20)
+
                     raise RuntimeError(
-                        "Unreachable code after AmfLog.error()"
+                        "Unreachable code after logger.error() and sys.exit()"
                     )  # TODO replace with proper exceptions
                 else:
                     model = create_cnn1()
@@ -464,31 +467,34 @@ def load(name: str | None = None) -> torch.nn.Module:
             #     )
 
             else:
-                AmfLog.error(
-                    "Invalid model type. Please choose one of the following model "
-                    "types: 'cnn1', 'resnet', 'resnext', 'efficientnet' or "
-                    "'efficientnetv2'.",
-                    exit_code=AmfLog.ERR_INVALID_MODEL,
+                logger.error(
+                    "Invalid model type. Please choose one of the following model \
+                    types: 'cnn1', 'resnet', 'resnext', 'efficientnet' or \
+                    'efficientnetv2'."
                 )
+                # ERR_INVALID_MODEL = 40
+                sys.exit(40)
+
                 raise RuntimeError(
-                    "Unreachable code after AmfLog.error()"
+                    "Unreachable code after logger.error() and sys.exit()"
                 )  # TODO replace with proper exceptions
 
             model_name = AmfConfig.get("model_type")  # Get class name of loaded model
-            AmfLog.text(
-                f"Initialise new network. Selected model type: {model_name}. "
-                f"Pre-Trained Flag: {pt_flag}"
+            logger.info(
+                f"Initialise new network. Selected model type: {model_name}. \
+                Pre-Trained Flag: {pt_flag}"
             )
 
             return cast(torch.nn.Module, model)
 
         else:  # missing pre-trained model in prediction mode.
-            AmfLog.error(
-                "A pre-trained model is required in prediction/calibration/test mode",
-                exit_code=AmfLog.ERR_NO_PRETRAINED_MODEL,
+            logger.error(
+                "A pre-trained model is required in prediction/calibration/test mode"
             )
+            # ERR_NO_PRETRAINED_MODEL = 20
+            sys.exit(20)
             raise RuntimeError(
-                "Unreachable code after AmfLog.error()"
+                "Unreachable code after logger.error() and sys.exit()"
             )  # TODO replace with proper exceptions
 
 

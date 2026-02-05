@@ -51,6 +51,8 @@ import datetime
 import sys
 from typing import Any
 
+from loguru import logger as logger
+
 ERR_NO_DATA = 10
 ERR_INVALID_DATA = 11
 ERR_NO_PRETRAINED_MODEL = 20
@@ -61,84 +63,15 @@ ERR_MISSING_ANNOTATIONS = 32
 ERR_INVALID_MODEL = 40
 ERR_NO_DATABASE_CONNECTION = 42
 
-
-def invite() -> str:
-    """
-    Command-line invite.
-    """
-    return f"[{datetime.datetime.now().strftime('%H:%M:%S')}]"
+logger.remove(0)
 
 
-def text(message: str, **kwargs: Any) -> None:
-    """
-    Prints an message on standard output.
-
-    :param message: The message to be printed.
-    :param ident: Indentation level (defaults to 0).
-    :param kwargs: Any relevant keyword argument.
-    """
-
-    print(f"{invite()} {message}.", **kwargs)
+def formatter(record: Any) -> str:
+    if record["level"].no == 10:
+        return "{time:MMMM D, YYYY - HH:mm:ss} | {message}\n"
+    else:
+        return "{time:MMMM D, YYYY - HH:mm:ss} | {level} | {message}\n"
 
 
-def info(message: str, **kwargs: Any) -> None:
-    """
-    Prints an message on standard output.
-
-    :param message: The message to be printed.
-    :param ident: Indentation level (defaults to 0).
-    :param kwargs: Any relevant keyword argument.
-    """
-
-    print(f"{invite()} INFO: {message}.", **kwargs)
-
-
-def warning(message: str, **kwargs: Any) -> None:
-    """
-    Prints a warning message on standard error.
-
-    :param message: The message to be printed.
-    :param ident: Indentation level (defaults to 0).
-    :param kwargs: Any relevant keyword argument.
-    """
-
-    print(f"{invite()} WARNING: {message}.", file=sys.stderr, **kwargs)
-
-
-def error(message: str, exit_code: int, **kwargs: Any) -> None:
-    """
-    Prints an error message on standard error and quits.
-
-    :param message: The message to be printed.
-    :param exit_code: The exit code to return when closing the application.
-    :param ident: Indentation level (defaults to 0).
-    :param kwargs: Any relevant keyword argument.
-    """
-
-    print(f"{invite()} ERROR: {message}.", file=sys.stderr, **kwargs)
-
-    if exit_code is not None and exit_code != 0:
-        sys.exit(exit_code)
-
-
-def progress_bar(iteration: int, total: int, indent: int = 0) -> None:
-    """
-    Displays a progress bar.
-
-    :param iteration: Current iteration value.
-    :param total: Total iteration count (to calculate percentages).
-    :param indent: Indentation level (defaults to 0).
-    """
-
-    if total > 0:
-        percent = 100.0 * iteration / float(total)
-
-        completed = round(50.0 * iteration / total)
-        remaining = 50 - completed
-
-        bar = "█" * completed + "-" * remaining
-
-        print(" " * 4 * indent + f"- processing |{bar}| {percent:.1f}%", end="\r")
-
-        if iteration == total:
-            print()  # newline
+logger.add(f"{datetime.date.today()}.log", format=formatter, level=0)
+logger.add(sys.stderr, format=formatter, level=0)

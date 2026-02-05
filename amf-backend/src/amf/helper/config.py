@@ -54,8 +54,8 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 from typing import Any, cast
 
 import torch
+from loguru import logger
 
-import amf.helper.log as AmfLog
 from amf.helper.api_objects import (
     BaseConfig,
     CalibrateConfig,
@@ -100,7 +100,7 @@ def create_results_dir(label: str = "") -> str:
     if len(label):
         results_dir_path += "_" + label
     os.makedirs(results_dir_path)
-    print(f"Output directory created: {results_dir_path}")
+    logger.info(f"Output directory created: {results_dir_path}")
     return results_dir_path
 
 
@@ -292,7 +292,7 @@ def get(id_: str) -> Any:
         return monitors[id_]
 
     else:
-        AmfLog.warning(f"Unknown parameter {id_}")
+        logger.warning(f"Unknown parameter {id_}")
         return None
 
 
@@ -305,7 +305,7 @@ def find_files_in_directory(directory: str, convert_tiff: bool = False) -> list[
     ]
 
     if convert_tiff:
-        AmfLog.info("Also searching for tif files")
+        logger.info("Also searching for tif files")
         search_patterns.append(os.path.join(directory, "**", "*.tif"))
         search_patterns.append(os.path.join(directory, "**", "*.tiff"))
 
@@ -347,7 +347,7 @@ def set_(id_: str, value: Any, create: bool = False, use_none: bool = False) -> 
             PAR[id_] = value
 
         else:
-            AmfLog.warning(f"Unknown parameter {id_}")
+            logger.warning(f"Unknown parameter {id_}")
 
 
 def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
@@ -1382,7 +1382,7 @@ def get_input_files() -> list[str]:
 
     valid_types = ["image/jpeg", "image/tiff", "image/png"]
     images = [x for x in raw_list if mimetypes.guess_type(x)[0] in valid_types]
-    AmfLog.text(f"Input images: {len(images)}")
+    logger.info(f"Input images: {len(images)}")
     return images
 
 
@@ -1439,7 +1439,7 @@ def set_train_config(trainConfig: TrainConfig) -> None:
     if trainConfig.trainActiveLearning:
         set_("learning_rate_active_learning", trainConfig.learningRateActiveLearning)
         set_("epochs_active_learning", trainConfig.epochsActiveLearning)
-        AmfLog.info("Training mode after active learning")
+        logger.info("Training mode after active learning")
     else:
         set_("learning_rate", trainConfig.learningRate)
         set_("epochs", trainConfig.epochs)
@@ -1641,21 +1641,21 @@ def set_device(device: str) -> None:
     if device == "automatic":
         if torch.cuda.is_available():
             set_("device", "cuda:0")
-            AmfLog.text("Device set on automatic mode. Running via gpu")
+            logger.debug("Device set on automatic mode. Running via gpu")
 
         else:
             set_("num_workers", 0)
             set_("device", "cpu")
-            AmfLog.text(
+            logger.debug(
                 "Device set on automatic mode. CUDA is not available. Running via cpu"
             )
 
     elif device == "cpu":
         set_("num_workers", 0)
-        AmfLog.text("Device manually set to cpu")
+        logger.debug("Device manually set to cpu")
 
     elif device == "cuda:0" and torch.cuda.is_available():
-        AmfLog.text("Device manually set to gpu")
+        logger.debug("Device manually set to gpu")
 
     elif device == "cuda:0" and not torch.cuda.is_available():
         raise ValueError("Device manually set to gpu. CUDA not available")

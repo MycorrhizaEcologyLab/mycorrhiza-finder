@@ -23,7 +23,7 @@ import amf.helper.load as AmfLoad
 import amf.helper.model as AmfModel
 from amf.helper.acquisition_functions import get_batchbald_batch
 from amf.mode.train import class_weights
-
+from amf.helper.log import logger
 
 def add_dropout_layers(model: nn.Module, p: float = 0.25) -> nn.Module:
     model = deepcopy(model)
@@ -316,7 +316,7 @@ def train_model(
         history["val_loss"].append(avg_val_loss)
 
         if avg_val_loss < best_val_loss:
-            print("Average validation loss improved, updating saved model weights.")
+            logger.info("Average validation loss improved, updating saved model weights.")
             best_val_loss = avg_val_loss
             best_model_weights = (
                 model.state_dict()
@@ -418,7 +418,7 @@ def simulate_active_learning(
     list[NDArray[np.float64]],
     list[dict[str, int]],
 ]:
-    print(f"Method is {method}.")
+    logger.info(f"Method is {method}.")
     loss_array = []
     f1_scores_array = []
     bald_indices_array = []  # To store the indices of selected samples
@@ -453,8 +453,8 @@ def simulate_active_learning(
                 range(num_unlabelled), num_samples_to_be_labelled_per_iteration
             )
 
-        # Print the selected indices for the current iteration
-        print(f"Iteration {i + 1} - Selected indices for labeling: {indices_to_label}")
+        # Log the selected indices for the current iteration
+        logger.debug(f"Iteration {i + 1} - Selected indices for labeling: {indices_to_label}")
         bald_indices_array.append(indices_to_label)
 
         class_names = ["AM+", "M−", "Background", "Unreadable", "DSE", "Hybrid"]
@@ -468,7 +468,6 @@ def simulate_active_learning(
             )
         class_dict_in_selected_labels_array.append(class_dict_in_selected_labels)
 
-        # print(f"Evaluation on test for {method} acquisition method. Iteration {i}")
         loss, f1_scores, conf_matrix = evaluate_model(x_test, y_test, model, device)
         loss_array.append(loss)
         f1_scores_array.append(f1_scores)
@@ -550,14 +549,14 @@ def main(data_directory_name: str) -> None:
     model_batch_bald = copy.deepcopy(model)
     model_batch_bald = model_batch_bald.to(device)
 
-    print("length of x_train: ", len(x_train))
-    print("length of y_train: ", len(y_train))
-    print("length of x_val: ", len(x_val))
-    print("length of y_val: ", len(y_val))
-    print("length of x_unlabelled: ", len(x_unlabelled))
-    print("length of y_unlabelled: ", len(y_unlabelled))
-    print("length of x_test: ", len(x_test))
-    print("length of y_test: ", len(y_test))
+    logger.info(f"Length of x_train: {len(x_train)}")
+    logger.info(f"Length of y_train: {len(y_train)}")
+    logger.info(f"Length of x_val: {len(x_val)}")
+    logger.info(f"Length of y_val: {len(y_val)}")
+    logger.info(f"Length of x_unlabelled: {len(x_unlabelled)}")
+    logger.info(f"Length of y_unlabelled: {len(y_unlabelled)}")
+    logger.info(f"Length of x_test: {len(x_test)}")
+    logger.info(f"Length of y_test: {len(y_test)}")
 
     num_iterations = 2
     num_samples_to_select_per_iteration = 2
@@ -631,15 +630,15 @@ def main(data_directory_name: str) -> None:
     )
 
     num_iterations = len(loss_array_bald)
-    print("Comparison of BALD and Random Methods:")
+    logger.debug("Comparison of BALD and Random Methods:")
     for i in range(num_iterations):
-        print(f"\nIteration {i + 1}:")
+        logger.debug(f"\nIteration {i + 1}:")
 
         # Output for BALD method
         loss_bald = loss_array_bald[i]
         f1_scores_bald = f1_scores_array_bald[i]
         f1_bald_formatted = [f"{score:.2f}" for score in f1_scores_bald]
-        print(
+        logger.debug(
             f"  BALD - Loss: {loss_bald:.2f}, "
             f"F1 Scores (per class): {f1_bald_formatted}, "
             f"Macro F1: {f1_scores_bald.mean():.2f}, "
@@ -651,7 +650,7 @@ def main(data_directory_name: str) -> None:
         loss_random = loss_array_random[i]
         f1_scores_random = f1_scores_array_random[i]
         f1_random_formatted = [f"{score:.2f}" for score in f1_scores_random]
-        print(
+        logger.debug(
             f"  Random - Loss: {loss_random:.2f}, "
             f"F1 Scores (per class): {f1_random_formatted}, "
             f"Macro F1: {f1_scores_random.mean():.2f}, "
@@ -663,7 +662,7 @@ def main(data_directory_name: str) -> None:
         loss_batch_bald = loss_array_batch_bald[i]
         f1_scores_batch_bald = f1_scores_array_batch_bald[i]
         f1_batch_bald_formatted = [f"{score:.2f}" for score in f1_scores_batch_bald]
-        print(
+        logger.debug(
             f"  BatchBALD - Loss: {loss_batch_bald:.2f}, "
             f"F1 Scores (per class): {f1_batch_bald_formatted}, "
             f"Macro F1: {f1_scores_batch_bald.mean():.2f}, "
@@ -671,9 +670,9 @@ def main(data_directory_name: str) -> None:
             f"Class Dictionary: {class_dict_in_selected_labels_array_batch_bald[i]}"
         )
 
-    print("macro f1 for bald: ", [i.mean() for i in f1_scores_array_bald])
-    print("macro f1 for random: ", [i.mean() for i in f1_scores_array_random])
-    print("macro f1 for batch bald: ", [i.mean() for i in f1_scores_array_batch_bald])
+    logger.info(f"Macro f1 for bald: {[i.mean() for i in f1_scores_array_bald]}")
+    logger.info(f"Macro f1 for random: {[i.mean() for i in f1_scores_array_random]}")
+    logger.info(f"Macro f1 for batch bald: {[i.mean() for i in f1_scores_array_batch_bald]}")
 
 
 if __name__ == "__main__":

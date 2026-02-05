@@ -2,13 +2,14 @@ import io
 import json
 import os
 import re
+import sys
 from typing import cast
 
 import imagesize
 import pandas as pd
+from loguru import logger
 
 import amf.helper.config as AmfConfig
-import amf.helper.log as AmfLog
 from amf.helper.api_objects import AnnotationValues
 from amf.helper.api_utils import (
     check_entries_for_id,
@@ -69,11 +70,12 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
     if "Question" in annotation_data.columns:
         num_questions = annotation_data["Question"].sum()
         if num_questions > 0:
-            AmfLog.error(
-                f"Cannot carry out tile conversion if questions exist, currently there "
-                f"are {num_questions} question(s)",
-                AmfLog.ERR_INVALID_DATA,
+            logger.error(
+                f"Cannot carry out tile conversion if questions exist, currently there \
+                are {num_questions} question(s)"
             )
+            # ERR_INVALID_DATA = 11
+            sys.exit(11)
 
         # Drop questions column
         annotation_data.drop("Question", axis=1, inplace=True, errors="ignore")
@@ -403,7 +405,7 @@ def convert_tile_size(path: str, tile_size: int) -> None:
             id_ = get_enabled(crsr, image_name)
 
             if id_ is None:
-                AmfLog.warning(
+                logger.warning(
                     f"Skipping {path} as no entries are saved in DB for this image"
                 )
                 return
@@ -425,10 +427,10 @@ def convert_tile_size(path: str, tile_size: int) -> None:
                 save_annotations_to_db(crsr, values)
                 return
 
-            AmfLog.warning(f"Skipping {path} as no annotations could be found")
+            logger.warning(f"Skipping {path} as no annotations could be found")
 
     else:
-        print(f"Searching locally for {path}")
+        logger.debug(f"Searching locally for {path}")
         directory = os.path.dirname(path)
         files = os.listdir(directory)
 
@@ -437,7 +439,7 @@ def convert_tile_size(path: str, tile_size: int) -> None:
 
         # Check for annotations
         if not matching_annotations:
-            AmfLog.warning(f"Skipping {path} as no annotations could be found")
+            logger.warning(f"Skipping {path} as no annotations could be found")
             return
 
         if len(matching_annotations) == 1:
@@ -454,34 +456,35 @@ def convert_tile_size(path: str, tile_size: int) -> None:
                 settings["tile_edge"] = SCALING_FACTOR * tile_size
                 json.dump(settings, file)
 
-            AmfLog.info(
-                f"Saved aggregated annotations and settings to {annotation_path} and "
-                f"{settings_path}"
+            logger.info(
+                f"Saved aggregated annotations and settings to {annotation_path} and \
+                {settings_path}"
             )
         else:
-            AmfLog.warning(
-                f"Multiple annotation files found for {image_name}. "
-                "Skipping processing."
+            logger.warning(
+                f"Multiple annotation files found for {image_name}. \
+                Skipping processing."
             )
 
 
 def run(input_images: list[str]) -> int:
-    print("Running aggregation of tiles")
-    print("Image\t" + "\t".join(AmfConfig.human_readable_header()))
+    logger.info("Running aggregation of tiles")
+    logger.info("Image\t" + "\t".join(AmfConfig.human_readable_header()))
     try:
         if AmfConfig.get("colonisation_type") != "am":
-            AmfLog.error(
-                f"Only support AM Colonisation for converting tile size, not "
-                f"{AmfConfig.get('colonisation_type')}. Cancel operation.",
-                AmfLog.ERR_INVALID_DATA,
+            logger.error(
+                f"Only support AM Colonisation for converting tile size, not \
+                {AmfConfig.get('colonisation_type')}. Cancel operation."
             )
+            # ERR_INVALID_DATA = 11
+            sys.exit(11)
 
         for path in input_images:
             tile_size = initialize_size(path)
             convert_tile_size(path, tile_size)
 
     except Exception as e:
-        print(f"Unable to process file: {path}", e)
+        logger.error(f"Unable to process file: {path} - {e}")
         return 500
 
     return 200

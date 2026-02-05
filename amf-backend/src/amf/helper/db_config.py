@@ -3,9 +3,8 @@ import sys
 from configparser import ConfigParser
 
 import psycopg2
+from loguru import logger
 from psycopg2 import sql
-
-import amf.helper.log as AmfLog
 
 if getattr(sys, "frozen", False):  # i.e. a pyinstaller build
     db_ini_path = os.path.join(sys._MEIPASS, "database.ini")  # type: ignore[attr-defined]
@@ -45,11 +44,12 @@ def connect(
         connection.autocommit = True
         return connection
     except (Exception, psycopg2.DatabaseError) as error:
-        AmfLog.error(
-            "Cannot connect to database, consider restarting your postgres service: "
-            f"{error}",
-            exit_code=AmfLog.ERR_NO_DATABASE_CONNECTION,
+        logger.error(
+            f"Cannot connect to database, consider restarting your postgres service: \
+                {error}"
         )
+        # ERR_NO_DATABASE_CONNECTION = 42
+        sys.exit(42)
 
 
 def create_database_if_not_exists(db_name: str, user: str, password: str) -> None:
@@ -57,7 +57,8 @@ def create_database_if_not_exists(db_name: str, user: str, password: str) -> Non
         "postgres", password
     )  # Get a new connection for this operation
     if connection is None:
-        print("Connection to database failed.")
+        # print("Connection to database failed.")
+        logger.error("Connection to database failed.")
         return
 
     with connection.cursor() as crsr:
@@ -71,8 +72,10 @@ def create_database_if_not_exists(db_name: str, user: str, password: str) -> Non
                     "LIMIT = -1;"
                 ).format(sql.Identifier(db_name), sql.Identifier(user))
             )
-            print(f"Database '{db_name}' created.")
+            # print(f"Database '{db_name}' created.")
+            logger.info(f"Database '{db_name}' created.")
         else:
-            print(f"Database '{db_name}' already exists.")
+            # print(f"Database '{db_name}' already exists.")
+            logger.debug(f"Database '{db_name}' already exists.")
 
     connection.close()

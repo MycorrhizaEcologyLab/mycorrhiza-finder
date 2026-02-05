@@ -3,10 +3,10 @@ import os
 import warnings
 import xml.etree.ElementTree as ET
 
+from loguru import logger
 from PIL import Image
 
 import amf.helper.config as AmfConfig
-import amf.helper.log as AmfLog
 
 # This allows any size image
 Image.MAX_IMAGE_PIXELS = None
@@ -23,13 +23,13 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
         # does not work.
         try:
             im = Image.open(path)
-            AmfLog.info(f"Original image size: {im.size}")
+            logger.info(f"Original image size: {im.size}")
 
             # Check if annotation file exists - if not, convert the entire tif
             if os.path.isfile(os.path.splitext(path)[0] + ".xml"):
-                AmfLog.info(
-                    f"Found annotations in {os.path.splitext(path)[0]}.xml, cropping "
-                    "tif file to match the given annotations"
+                logger.info(
+                    f"Found annotations in {os.path.splitext(path)[0]}.xml, cropping \
+                    tif file to match the given annotations"
                 )
                 # Parse annotations from XML provided by slidemaster - this needs
                 # to have the exact same name as the TIF image you want to parse
@@ -63,9 +63,9 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
                         if int(attribs["y"]) > max_y:
                             max_y = int(attribs["y"])
 
-                    print(
-                        f"Annotation {name} has top left coord {(min_x, min_y)} and "
-                        f"bottom right coord {(max_x, max_y)}"
+                    logger.debug(
+                        f"Annotation {name} has top left coord {(min_x, min_y)} and \
+                            bottom right coord {(max_x, max_y)}"
                     )
 
                     annotation_coords[name] = [
@@ -92,14 +92,14 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
 
                         # Proceed if valid
                         if box_width > 0 and box_height > 0:
-                            print(f"{image} has crop box {crop_box}")
+                            logger.debug(f"{image} has crop box {crop_box}")
                             # Crop image to box
                             crop = im.crop(crop_box)
                             outfile_crop = (
                                 f"{os.path.splitext(path)[0]}_{image}.{file_type}"
                             )
                             if os.path.isfile(outfile_crop):
-                                print(
+                                logger.debug(
                                     f"JPEG already exists: {outfile_crop}. Skipping..."
                                 )
                                 continue
@@ -108,18 +108,20 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
                             crop.convert("RGB").save(
                                 outfile_crop, subsampling=0, quality=95
                             )
-                            print(f"Saving image to {outfile_crop}")
+                            logger.debug(f"Saving image to {outfile_crop}")
                         else:
-                            print(f"Invalid crop box for image {image}: {crop_box}")
+                            logger.debug(
+                                f"Invalid crop box for image {image}: {crop_box}"
+                            )
                     except Exception as e:
                         warnings.warn(
                             f"Failed to crop {image} due to error: "
                             f"{e.__class__.__name__}: {e}"
                         )
             else:
-                AmfLog.info(
-                    f"No annotations found for {os.path.splitext(path)[0]}, "
-                    f"directly converting TIF to {file_type}"
+                logger.info(
+                    f"No annotations found for {os.path.splitext(path)[0]}, \
+                    directly converting TIF to {file_type}"
                 )
                 outfile_crop = f"{os.path.splitext(path)[0]}.{file_type}"
                 im.convert("RGB").save(outfile_crop, subsampling=0, quality=95)
@@ -130,12 +132,12 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
         except Exception as e:
             im.close()
             gc.collect()
-            print(f"Failed to crop due to error: {e.__class__.__name__}: {e}")
+            logger.error(f"Failed to crop due to error: {e.__class__.__name__}: {e}")
 
 
 def run(input_images: list[str]) -> int:
     file_type = AmfConfig.get("convert_image_file_type")
-    AmfLog.info(f"Running conversion of tifs to {file_type}s")
+    logger.info(f"Running conversion of tifs to {file_type}s")
 
     for path in input_images:
         convert_tiff(path, file_type)

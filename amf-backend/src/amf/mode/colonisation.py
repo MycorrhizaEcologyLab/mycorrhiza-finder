@@ -7,11 +7,11 @@
 import random
 
 import numpy as np
+from loguru import logger
 from numpy.typing import NDArray
 
 import amf.helper.config as AmfConfig
 import amf.helper.load as AmfLoad
-import amf.helper.log as AmfLog
 import amf.helper.save as AmfSave
 from amf.helper.metrics_collector import MetricsCollector
 from amf.helper.test_metrics import TestMetrics
@@ -45,10 +45,10 @@ def get_colonisation_results(
         cols=cols,
     )
 
-    AmfLog.info("Allocating metrics variables")
+    logger.info("Allocating metrics variables")
     metrics.get_perfile_metrics(colonised_only=True)
 
-    AmfLog.info("Saving metrics function.")
+    logger.info("Saving metrics function.")
     AmfSave.save_metrics(metrics.metrics_collector, results_dir)
 
 
@@ -59,12 +59,12 @@ def run(input_images: list[str]) -> int:
     :param input_images: input images to use for predictions.
     """
 
-    AmfLog.info("Output colonisation percentage for a set of annotations.")
+    logger.info("Output colonisation percentage for a set of annotations.")
     metrics_collector = MetricsCollector()
 
     # Create timestamped folder for results
     results_dir = AmfConfig.get("outdir")
-    AmfLog.info(f"Results Directory: {results_dir}")
+    logger.info(f"Results Directory: {results_dir}")
 
     # Creating dataset
     dataset_loader = AmfLoad.TileFilesandData(input_images)

@@ -3,6 +3,7 @@ import json
 import os
 import random
 import re
+import sys
 from collections import defaultdict
 from typing import cast
 
@@ -11,13 +12,13 @@ import pandas as pd
 
 # Torch functionalities
 import torch
+from loguru import logger
 from numpy.typing import ArrayLike, NDArray
 from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 import amf.helper.config as AmfConfig
-import amf.helper.log as AmfLog
 import amf.helper.segmentation as AmfSegm
 from amf.helper.api_utils import (
     check_entries_for_id,
@@ -157,7 +158,7 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
 
         # Calculate statistics if needed
         if self.calculate_distribution:
-            AmfLog.info(f"Total images for train/val split: {len(input_files)}")
+            logger.info(f"Total images for train/val split: {len(input_files)}")
             self._prepare_stats()
 
     def _prepare_dataset(
@@ -258,10 +259,9 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
                 del image
 
         if len(all_tiles) == 0:
-            AmfLog.error(
-                "None of the training images had annotations, so fail",
-                AmfLog.ERR_MISSING_ANNOTATIONS,
-            )
+            logger.error("None of the training images had annotations, so fail")
+            # ERR_MISSING_ANNOTATIONS = 32
+            sys.exit(32)
 
         if self.balance_factor != 0.0:
             # Apply balancing
@@ -269,16 +269,16 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
                 all_tiles, all_labels, self.balance_factor
             )
             # Create balanced dataset
-            AmfLog.text(
-                f"Balance factor set to: {self.balance_factor}. "
-                "Generating balanced dataset."
+            logger.info(
+                f"Balance factor set to: {self.balance_factor}. \
+                Generating balanced dataset."
             )
             dataset = list(zip(balanced_tiles, balanced_labels))
         elif self.balance_factor == 0.0:
             # Create unbalanced dataset
-            AmfLog.text(
-                f"Balance factor set to: {self.balance_factor}. "
-                "Generating unbalanced dataset."
+            logger.info(
+                f"Balance factor set to: {self.balance_factor}. \
+                Generating unbalanced dataset."
             )
             dataset = list(zip(all_tiles, all_labels))
 
@@ -355,9 +355,9 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
         total_samples = y.size(0)
         percentages = (class_counts / total_samples) * 100
 
-        print("Class Distribution before train/val split:")
+        logger.debug("Class Distribution before train/val split:")
         for i, count in enumerate(class_counts):
-            print(f"Class {i}: {count} samples ({percentages[i]:.2f}%)")
+            logger.debug(f"Class {i}: {count} samples ({percentages[i]:.2f}%)")
 
         uniqueargs_probe_hot_indexes = (
             (class_counts > 0).nonzero(as_tuple=True)[0].numpy()
@@ -365,11 +365,12 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
         uniqueargs_headers = np.arange(len(class_counts))
 
         if not np.array_equal(uniqueargs_probe_hot_indexes, uniqueargs_headers):
-            AmfLog.error(
-                "Training data does not represent all classes. Please reconsider "
-                "training dataset curation",
-                AmfLog.ERR_NO_DATA,
+            logger.error(
+                "Training data does not represent all classes. Please reconsider \
+                training dataset curation."
             )
+            # ERR_NO_DATA = 10
+            sys.exit(10)
 
     def __len__(self) -> int:
         return len(self.dataset)
@@ -582,7 +583,7 @@ class TileFilesandData(
             list[int],
         ]
     ):
-        print(f"[{AmfConfig.invite()}] Tile extraction.")
+        logger.info("Tile extraction.")
 
         # Load image settings and annotations.
         annotations = [
@@ -594,7 +595,7 @@ class TileFilesandData(
 
         if is_unlabelled:
             dataset_list = list(dataset)
-            print(f"[{AmfConfig.invite()}] {len(dataset_list)} images in BALD dataset.")
+            logger.info(f"{len(dataset_list)} images in BALD dataset.")
 
             # Process and normalize dataset
             x, file_names, rows, cols = self._process_dataset_unlabelled(dataset_list)
@@ -604,16 +605,14 @@ class TileFilesandData(
         else:
             filtered_dataset = [x for x in dataset if x[2] is not None]
             if len(filtered_dataset) == 0 and not is_bald_folder:
-                AmfLog.error(
-                    "Input images do not contain tile annotations. "
-                    "Use amfbrowser to annotate tiles before training",
-                    AmfLog.ERR_NO_DATA,
+                logger.error(
+                    "Input images do not contain tile annotations. \
+                    Use amfbrowser to annotate tiles before training."
                 )
+                # ERR_NO_DATA = 10
+                sys.exit(10)
 
-            print(
-                f"[{AmfConfig.invite()}] {len(filtered_dataset)} images in filtered "
-                "dataset."
-            )
+            logger.info(f"{len(filtered_dataset)} images in filtered dataset.")
 
             # Process and normalize dataset
             x, y, file_names, rows, cols = self._process_dataset(filtered_dataset)
@@ -794,7 +793,7 @@ def import_settings(path: str) -> dict[str, int]:
         # Default to value in settings
         return {"tile_edge": AmfConfig.get("tile_edge")}
     except AssertionError as e:
-        AmfLog.warning(f"Failed to import settings for {image_name}: {e}")
+        logger.warning(f"Failed to import settings for {image_name}: {e}")
         # Default to value in settings
         return {"tile_edge": AmfConfig.get("tile_edge")}
 
@@ -844,12 +843,12 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
 
                 # Drop question marks from the CSV
                 if "Question" in output.columns:
-                    print(f"Dropping questions from annotations for {image_name}")
+                    logger.info(f"Dropping questions from annotations for {image_name}")
                     output.drop("Question", axis=1, inplace=True, errors="ignore")
 
                 # Drop question comments from the CSV
                 if "QuestionComment" in output.columns:
-                    print(
+                    logger.info(
                         f"Dropping question comments from annotations for {image_name}"
                     )
                     output.drop(
@@ -890,12 +889,14 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
             # If question does not exist then do not error when dropping
             # (for legacy CSVs)
             if "Question" in output.columns:
-                print(f"Dropping questions from annotations for {image_name}")
+                logger.info(f"Dropping questions from annotations for {image_name}")
                 output.drop("Question", axis=1, inplace=True, errors="ignore")
 
             # Drop question comments from the CSV
             if "QuestionComment" in output.columns:
-                print(f"Dropping question comments from annotations for {image_name}")
+                logger.info(
+                    f"Dropping question comments from annotations for {image_name}"
+                )
                 output.drop("QuestionComment", axis=1, inplace=True, errors="ignore")
 
             # Further check that csv is not empty
@@ -905,7 +906,7 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
             return output
 
     except (AssertionError, ValueError, KeyError) as e:
-        print(f"Error in importing annotations: {e}")
+        logger.error(f"Error in importing annotations: {e}")
         return None
 
 

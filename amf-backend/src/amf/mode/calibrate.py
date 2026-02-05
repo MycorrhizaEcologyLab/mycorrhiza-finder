@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from typing import Type
 
@@ -7,6 +8,7 @@ import numpy as np
 import pandas as pd
 import sklearn.metrics as metrics
 import torch
+from loguru import logger
 from numpy.typing import NDArray
 from scipy.optimize import OptimizeResult, minimize
 from sklearn.metrics import f1_score, log_loss
@@ -15,7 +17,6 @@ from tqdm import tqdm
 
 import amf.helper.config as AmfConfig
 import amf.helper.load as AmfLoad
-import amf.helper.log as AmfLog
 import amf.helper.model as AmfModel
 
 
@@ -260,12 +261,12 @@ def evaluate(
     macrof1 = f1_score(y_true=y_true, y_pred=preds, average="macro")
 
     if verbose:
-        print("Accuracy:", accuracy)
-        print("Error:", error)
-        print("ECE:", ece)
-        print("MCE:", mce)
-        print("Loss:", loss)
-        print("MacroF1:", macrof1)
+        logger.info(f"Accuracy: {accuracy}")
+        logger.info(f"Error: {error}")
+        logger.info(f"ECE: {ece}")
+        logger.info(f"MCE: {mce}")
+        logger.info(f"Loss: {loss}")
+        logger.info(f"MacroF1: {macrof1}")
 
     return (error, ece, mce, loss, macrof1)
 
@@ -303,7 +304,7 @@ def cal_results(
     logits, labels = logits_data
 
     name = "Calibration"
-    AmfLog.info("Calibrating model")
+    logger.info("Calibrating model")
     t1 = time.time()
 
     # Defining labels and model
@@ -323,13 +324,13 @@ def cal_results(
     df.loc[0] = [name, error, ece, mce, loss, macrof1]
     df.loc[1] = [(name + "_calib"), error2, ece2, mce2, loss2, macrof12]
 
-    print(
+    logger.info(
         "Error %f; ece %f; mce %f; loss %f, macrof1 %f"
         % evaluate(probs, labels, verbose=False, normalize=True)
     )
 
     t2 = time.time()
-    print("Time taken for this calibration:", (t2 - t1), "\n")
+    logger.info(f"Time taken for this calibration: {(t2 - t1)}")
 
     return model.temp, df, probs
 
@@ -358,12 +359,13 @@ def run(input_files: list[str]) -> int:
 
     # Validate input folder structure
     if not cal_img_list:
-        AmfLog.error("There is no train subfolder", AmfLog.ERR_NO_DATA)
-        return 500
+        logger.error("There is no train subfolder")
+        # ERR_NO_DATA = 10
+        sys.exit(10)
 
     # Create timestamped folder for results
     results_dir = AmfConfig.get("outdir")
-    print(f"Results Directory: {results_dir}")
+    logger.debug(f"Results Directory: {results_dir}")
 
     # Extracting tiles and labels using list logic, to omit getitem() method.
     cal_dataset = AmfLoad.TileFilesandData(cal_img_list)
@@ -382,7 +384,7 @@ def run(input_files: list[str]) -> int:
     # Get logits from all tiles
     all_logits = []
     all_labels = []
-    AmfLog.info("Calculating model outputs for use in calibration")
+    logger.info("Calculating model outputs for use in calibration")
     with torch.no_grad():  # Disabling gradient calculations
         for batch_x, batch_y in tqdm(
             cal_dataset_loader,
@@ -477,8 +479,8 @@ def run(input_files: list[str]) -> int:
         calibrated_probs_path, sep=",", encoding="utf-8", index=False
     )
 
-    print(f"Temperature value saved to: {temp_value_path}")
-    print(f"Temperature scaling results saved to: {temp_scale_path}")
-    print(f"Calibrated probabilities saved to: {calibrated_probs_path}")
+    logger.info(f"Temperature value saved to: {temp_value_path}")
+    logger.info(f"Temperature scaling results saved to: {temp_scale_path}")
+    logger.info(f"Calibrated probabilities saved to: {calibrated_probs_path}")
 
     return 200

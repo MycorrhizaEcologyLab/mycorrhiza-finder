@@ -44,11 +44,11 @@ import h5py
 import numpy as np
 import pandas as pd
 import torch
+from loguru import logger
 from torchinfo import summary
 from torchview import draw_graph
 
 import amf.helper.config as AmfConfig
-import amf.helper.log as AmfLog
 import amf.helper.plot as AmfPlot
 import amf.helper.zipfile as zf
 from amf.helper.api_objects import PredictionValues
@@ -131,7 +131,7 @@ def save_training_data(
         plot_data = AmfPlot.draw(history, epochs, "Loss", x_range, "loss", "val_loss")
         z.writestr("loss.png", plot_data.getvalue())
 
-    print(f"Saved model output to {save_path}")
+    logger.info(f"Saved model output to {save_path}")
 
 
 # Function to get a summary of the model architecture as txt file and graph.
@@ -184,7 +184,7 @@ def save_metrics(metrics_collector: MetricsCollector, path: str) -> None:
     """
     uniq = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
     zipf = os.path.join(path, f"results_{uniq}.zip")
-    print(f"    - saving as {zipf}... ", end="")
+    logger.debug(f"    - saving as {zipf}... ", end="")
 
     with zf.ZipFile(zipf, "w") as z:
         # Handle class metrics
@@ -242,7 +242,7 @@ def prediction_table(results: pd.DataFrame, path: str) -> None:
                 )
                 save_predictions_to_db(crsr, values)
 
-            AmfLog.info("Saved results to DB")
+            logger.info("Saved results to DB")
 
         else:
             directory = os.path.dirname(path)
@@ -257,4 +257,4 @@ def prediction_table(results: pd.DataFrame, path: str) -> None:
 
             save_settings(path)
 
-            AmfLog.info(f"Saved results to CSV at {path}")
+            logger.info(f"Saved results to CSV at {path}")

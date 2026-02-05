@@ -45,6 +45,7 @@ Functions
 # New total imports log for train_flx
 # Original AMFinder imports.
 import random
+import sys
 from typing import Any
 
 # from torch.utils.data.distributed import DistributedSampler
@@ -55,12 +56,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim
+from loguru import logger
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import amf.helper.config as AmfConfig
 import amf.helper.load as AmfLoad
-import amf.helper.log as AmfLog
 import amf.helper.model as AmfModel
 import amf.helper.save as AmfSave
 
@@ -92,7 +93,7 @@ def class_weights(
     - epsilon (float): Small constant to avoid division by zero (default 1e-6).
     """
 
-    print(f"[{AmfConfig.invite()}] Class weights")
+    logger.debug("Class weights")
 
     # Sum along axis 0 to count class occurrences (shape: (C,))
     class_counts = torch.sum(y, dim=0)
@@ -147,7 +148,10 @@ class EarlyStopping:
             self.counter += 1
 
             if self.verbose:
-                print(f"EarlyStopping counter: {self.counter} out of {self.patience}")
+                logger.debug(
+                    f"EarlyStopping counter: {self.counter} out of \
+                             {self.patience}"
+                )
 
             if (
                 self.counter >= self.patience
@@ -190,7 +194,10 @@ class ReduceLROnPlateau:
                     new_lr = max(old_lr * self.factor, self.min_lr)
                     param_group["lr"] = new_lr
                     if self.verbose:
-                        print(f"Reducing lerning rate from {old_lr} to {new_lr}")
+                        logger.debug(
+                            f"Reducing learning rate from {old_lr} \
+                                     to {new_lr}"
+                        )
 
         else:
             self.best_loss = val_loss
@@ -223,8 +230,9 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
 
     # Validate input folder structure
     if not full_list:
-        AmfLog.error("There is no train subfolder", AmfLog.ERR_NO_DATA)
-        return 500
+        logger.error("There is no train subfolder")
+        # ERR_NO_DATA = 10
+        sys.exit(10)
 
     full_dataset = AmfLoad.TileDatasetLoader(
         full_list,
@@ -257,7 +265,7 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
     labels = labels.type(torch.float32)
     weights = class_weights(labels, "effective_num")
     class_weights_tensor = torch.tensor(weights[1], dtype=torch.float32).to(device)
-    AmfLog.text(f"Weights: {weights}")
+    logger.debug(f"Weights: {weights}")
     loss_func = nn.CrossEntropyLoss(weight=class_weights_tensor)
     # Root segmentation (colonized vs non-colonized vs background).
     # ConvNet I has a standard, single input/single output architecture,
@@ -267,7 +275,7 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
     # Initialising relevant variables
     bs = AmfConfig.get("batch_size")
     num_workers = AmfConfig.get("num_workers")
-    AmfLog.info(f"Running on {num_workers} separate workers")
+    logger.info(f"Running on {num_workers} separate workers")
     train_loader = DataLoader(
         train_dataset,
         batch_size=bs,
@@ -373,9 +381,9 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
             history["val_loss"].append(avg_val_loss)
 
             # Log losses
-            AmfLog.text(
-                f"Epoch {epoch + 1}/{num_epochs}, "
-                f"Average validation loss: {avg_val_loss:.4f}"
+            logger.debug(
+                f"Epoch {epoch + 1}/{num_epochs}, \
+                Average validation loss: {avg_val_loss:.4f}"
             )
 
             if flag:
@@ -387,11 +395,11 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
             if (
                 early_stopping is not None
             ):  # TODO: This needs to be tied to the config file!
-                AmfLog.text("Early stopping mechanism active")
+                # logger.debug("Early stopping mechanism active")
                 early_stopping.check_early_stop(model, avg_val_loss)
                 AmfConfig.set_("early_stopping", early_stopping)
                 if early_stopping.early_stop:
-                    AmfLog.text("Early stopping triggered.")
+                    logger.debug("Early stopping triggered.")
                     model.load_state_dict(
                         early_stopping.best_weights
                     )  # Save best weights
@@ -400,7 +408,7 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
                     break  # Exit the training loop if early stopping condition is met
 
             if avg_val_loss < best_val_loss:
-                AmfLog.text(
+                logger.info(
                     "Average validation loss improved, updating saved model weights."
                 )
                 best_val_loss = avg_val_loss
@@ -410,7 +418,7 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
 
             # Step the learning rate scheduler
             if reduce_lr is not None:
-                AmfLog.text("Reduce LR mechanism active")
+                # logger.debug("Reduce LR mechanism active")
                 reduce_lr.step(avg_val_loss)
                 AmfConfig.set_("reduce_lr_on_plateau", reduce_lr)
 

@@ -32,9 +32,9 @@ from typing import cast
 import imagesize
 import numpy as np
 import pandas as pd
+from loguru import logger
 
 import amf.helper.config as AmfConfig
-import amf.helper.log as AmfLog
 from amf.helper.api_objects import AnnotationValues
 from amf.helper.api_utils import (
     check_entries_for_id,
@@ -126,7 +126,7 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
 
     # Override with contextual labels if enabled and available
     if use_contextual_confidence and contextual_labels is not None:
-        AmfLog.info(
+        logger.info(
             "Using contextual confidence for converting predictions to annotations"
         )
         header = AmfConfig.get("header")
@@ -136,7 +136,7 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
                 conv[idx, :] = 0
                 conv[idx, header.index(label)] = 1
 
-    print(
+    logger.debug(
         os.path.basename(path)
         + "\t"
         + "\t".join([str(x) for x in np.sum(conv, axis=0)])
@@ -168,7 +168,7 @@ def create_annotations(path: str, tile_size: int) -> None:
             id_ = get_enabled(crsr, image_name)
 
             if id_ is None:
-                AmfLog.info(
+                logger.info(
                     f"Skipping {path} as no entries are saved in DB for this image"
                 )
                 return
@@ -176,7 +176,7 @@ def create_annotations(path: str, tile_size: int) -> None:
             existing_entries = check_entries_for_id(crsr, id_, colonisation_type)
 
             if existing_entries[id_]["cnn1_annotations_exist"]:
-                AmfLog.info(
+                logger.info(
                     f"Skipping {path} as annotations already exist for enabled image"
                 )
                 return
@@ -195,7 +195,7 @@ def create_annotations(path: str, tile_size: int) -> None:
                 save_annotations_to_db(crsr, values)
                 return
 
-            AmfLog.info(f"Skipping {path} as no predictions could be found")
+            logger.info(f"Skipping {path} as no predictions could be found")
     else:
         directory = os.path.dirname(path)
         files = os.listdir(directory)
@@ -207,14 +207,14 @@ def create_annotations(path: str, tile_size: int) -> None:
         # annotions and predictions per image, unlike the DB which allows many)
         for file in files:
             if re.match(re_check_annotations, file):
-                AmfLog.info(f"Skipping {path} as annotations already exist")
+                logger.info(f"Skipping {path} as annotations already exist")
                 return
 
             if re.match(re_check_predictions, file):
                 preds.append(file)
 
         if preds == []:
-            AmfLog.info(f"Skipping {path} as no predictions could be found")
+            logger.info(f"Skipping {path} as no predictions could be found")
 
         elif len(preds) == 1:
             full_preds_path = os.path.join(directory, preds[0])
@@ -222,15 +222,15 @@ def create_annotations(path: str, tile_size: int) -> None:
             update_archive(out, full_preds_path)
 
         else:
-            AmfLog.info(
+            logger.info(
                 f"Skipping {path} as <amf convert> does not \
-                    support multiple prediction files."
+                support multiple prediction files."
             )
 
 
 def run(input_images: list[str]) -> int:
-    print("Running conversion of predictions to annotations")
-    print("Image\t" + "\t".join(AmfConfig.human_readable_header()))
+    logger.info("Running conversion of predictions to annotations")
+    logger.info("Image\t" + "\t".join(AmfConfig.human_readable_header()))
 
     for path in input_images:
         tile_size = initialize_size(path)
