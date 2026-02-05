@@ -213,7 +213,6 @@ def run(input_files: list[str]) -> int:
     output_file = f"{output_dir}/output_data.csv"
     df.to_csv(output_file, index=False)
 
-    # print(f"CSV saved at {output_file}")
     logger.info(f"CSV saved at {output_file}")
 
     return 500

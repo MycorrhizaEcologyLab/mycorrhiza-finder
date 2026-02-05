@@ -215,7 +215,7 @@ def apply_contextual_confidence(
             table.at[confidence_idx, "ContextualLabel"] = final_class_name
 
     changes_df = pd.DataFrame()
-    # Print summary of class changes
+    # Log summary of class changes
     if class_changes:
         logger.info("\n=== Summary of Class Changes ===")
         total_changes = 0
@@ -558,7 +558,6 @@ def write_metrics(
             columns=column_order,
         )
     except Exception as e:
-        # print(f"Errors occured writing the metrics file: {e}")
         logger.error(f"Errors occurred writing the metrics file: {e}")
 
 

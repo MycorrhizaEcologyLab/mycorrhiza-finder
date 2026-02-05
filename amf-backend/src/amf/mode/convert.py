@@ -136,11 +136,6 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
                 conv[idx, :] = 0
                 conv[idx, header.index(label)] = 1
 
-    # print(
-    #     os.path.basename(path)
-    #     + "\t"
-    #     + "\t".join([str(x) for x in np.sum(conv, axis=0)])
-    # )
     logger.debug(
         os.path.basename(path)
         + "\t"
@@ -234,8 +229,6 @@ def create_annotations(path: str, tile_size: int) -> None:
 
 
 def run(input_images: list[str]) -> int:
-    # print("Running conversion of predictions to annotations")
-    # print("Image\t" + "\t".join(AmfConfig.human_readable_header()))
     logger.info("Running conversion of predictions to annotations")
     logger.info("Image\t" + "\t".join(AmfConfig.human_readable_header()))
 

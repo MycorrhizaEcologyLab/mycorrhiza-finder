@@ -100,7 +100,6 @@ def create_results_dir(label: str = "") -> str:
     if len(label):
         results_dir_path += "_" + label
     os.makedirs(results_dir_path)
-    # print(f"Output directory created: {results_dir_path}")
     logger.info(f"Output directory created: {results_dir_path}")
     return results_dir_path
 

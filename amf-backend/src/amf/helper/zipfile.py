@@ -1370,7 +1370,6 @@ class ZipFile:
         if not endrec:
             raise BadZipFile("File is not a zip file")
         if self.debug > 1:
-            # print(endrec)
             logger.debug(endrec)
         size_cd = endrec[_ECD_SIZE]  # bytes in central directory
         offset_cd = endrec[_ECD_OFFSET]  # offset of central directory
@@ -1384,7 +1383,6 @@ class ZipFile:
 
         if self.debug > 2:
             inferred = concat + offset_cd
-            # print("given, inferred, offset", offset_cd, inferred, concat)
             logger.debug("given, inferred, offset", offset_cd, inferred, concat)
         # self.start_dir:  Position of start of central directory
         self.start_dir = offset_cd + concat
@@ -1400,7 +1398,6 @@ class ZipFile:
             if centdir[_CD_SIGNATURE] != stringCentralDir:
                 raise BadZipFile("Bad magic number for central directory")
             if self.debug > 2:
-                # print(centdir)
                 logger.debug(centdir)
             filename = fp.read(centdir[_CD_FILENAME_LENGTH])
             flags = centdir[5]
@@ -1459,7 +1456,6 @@ class ZipFile:
             )
 
             if self.debug > 2:
-                # print("total", total)
                 logger.debug("total", total)
 
     def namelist(self):
@@ -1467,14 +1463,12 @@ class ZipFile:
         return [data.filename for data in self.filelist]
 
     def printdir(self, file=None):
-        """Print a table of contents for the zip file."""
-        # print("%-46s %19s %12s" % ("File Name", "Modified    ", "Size"), file=file)
+        """Log a table of contents for the zip file."""
         logger.debug(
             "%-46s %19s %12s" % ("File Name", "Modified    ", "Size"), file=file
         )
         for zinfo in self.filelist:
             date = "%d-%02d-%02d %02d:%02d:%02d" % zinfo.date_time[:6]
-            # print("%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size), file=file)
             logger.debug(
                 "%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size), file=file
             )

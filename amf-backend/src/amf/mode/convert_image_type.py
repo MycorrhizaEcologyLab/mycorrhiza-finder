@@ -63,10 +63,6 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
                         if int(attribs["y"]) > max_y:
                             max_y = int(attribs["y"])
 
-                    # print(
-                    #     f"Annotation {name} has top left coord {(min_x, min_y)} and "
-                    #     f"bottom right coord {(max_x, max_y)}"
-                    # )
                     logger.debug(
                         f"Annotation {name} has top left coord {(min_x, min_y)} and \
                             bottom right coord {(max_x, max_y)}"
@@ -96,7 +92,6 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
 
                         # Proceed if valid
                         if box_width > 0 and box_height > 0:
-                            # print(f"{image} has crop box {crop_box}")
                             logger.debug(f"{image} has crop box {crop_box}")
                             # Crop image to box
                             crop = im.crop(crop_box)
@@ -104,9 +99,6 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
                                 f"{os.path.splitext(path)[0]}_{image}.{file_type}"
                             )
                             if os.path.isfile(outfile_crop):
-                                # print(
-                                #     f"JPEG already exists: {outfile_crop}. Skipping..."
-                                # )
                                 logger.debug(
                                     f"JPEG already exists: {outfile_crop}. Skipping..."
                                 )
@@ -116,10 +108,8 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
                             crop.convert("RGB").save(
                                 outfile_crop, subsampling=0, quality=95
                             )
-                            # print(f"Saving image to {outfile_crop}")
                             logger.debug(f"Saving image to {outfile_crop}")
                         else:
-                            # print(f"Invalid crop box for image {image}: {crop_box}")
                             logger.debug(
                                 f"Invalid crop box for image {image}: {crop_box}"
                             )
@@ -142,7 +132,6 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
         except Exception as e:
             im.close()
             gc.collect()
-            # print(f"Failed to crop due to error: {e.__class__.__name__}: {e}")
             logger.error(f"Failed to crop due to error: {e.__class__.__name__}: {e}")
 
 

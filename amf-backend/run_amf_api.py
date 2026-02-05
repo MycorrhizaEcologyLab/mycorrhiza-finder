@@ -263,11 +263,9 @@ async def resize_image(
         image.save(img_byte_io, format="JPEG")
         img_byte_arr = img_byte_io.getvalue()
     except Exception as e:
-        # print(e)
         logger.error(e)
         raise HTTPException(status_code=500, detail="Something went wrong")
     finally:
-        # print(f"[{AmfConfig.invite()}] Returning resized image")
         logger.success("Returning resized image")
         file.file.close()
         return Response(content=img_byte_arr, media_type="image/jpeg")
@@ -297,11 +295,9 @@ async def tile_image(file: UploadFile = File(...)) -> dict[str, int]:
 
         AmfConfig.set_("tiles", current_image)
     except Exception as e:
-        # print(e)
         logger.error(e)
         raise HTTPException(status_code=500, detail="Something went wrong")
     finally:
-        # print(f"[{AmfConfig.invite()}] Image tiled and saved to memory")
         logger.success("Image tiled and saved to memory")
         file.file.close()
         return {"num_rows": num_rows, "num_cols": num_cols}
@@ -319,7 +315,6 @@ def get_tiles(startIndex: int, batchSize: int = 1000) -> Response:
 @app.post("/set-tile-edge")
 def set_tile_edge(tileEdgeConfig: TileEdgeConfig) -> int:
     AmfConfig.set_("tile_edge", tileEdgeConfig.tileEdge)
-    # print(f"[{AmfConfig.invite()}] Tile edge set to {tileEdgeConfig.tileEdge}")
     logger.info(f"Tile edge set to {tileEdgeConfig.tileEdge}")
     return 200
 
@@ -374,7 +369,6 @@ def check_if_settings_exists(crsr: psycopg2.extensions.cursor) -> bool:
     table_exists = crsr.fetchone()[0]
 
     if not table_exists:
-        # print("Table settings does not exist.")
         logger.debug("Table settings does not exist.")
         return False
 
@@ -384,11 +378,9 @@ def check_if_settings_exists(crsr: psycopg2.extensions.cursor) -> bool:
     row_count = crsr.fetchone()[0]
 
     if row_count == 0:
-        # print("Settings exists but it is empty.")
         logger.debug("Settings exists but it is empty.")
         return False
     else:
-        # print(f"Settings exists and it contains {row_count} rows.")
         logger.info(f"Settings exists and it contains {row_count} rows.")
         return True
 
@@ -424,7 +416,6 @@ if __name__ == "__main__":
         # Check if settings exist, and if not populate table with default values
         settings_exist = check_if_settings_exists(crsr)
         if not settings_exist:
-            # print("Populating settings.")
             logger.info("Populating settings.")
             crsr.execute(
                 open(
@@ -436,7 +427,6 @@ if __name__ == "__main__":
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS") and not IS_DEV:
         open_browser()
 
-    # print(f"Running in {'development' if IS_DEV else 'production'} mode")
     logger.info(f"Running in {'development' if IS_DEV else 'production'} mode")
 
     # Spin up FastAPI endpoints

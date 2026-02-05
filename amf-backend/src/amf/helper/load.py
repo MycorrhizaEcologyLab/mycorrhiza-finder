@@ -355,10 +355,8 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
         total_samples = y.size(0)
         percentages = (class_counts / total_samples) * 100
 
-        # print("Class Distribution before train/val split:")
         logger.debug("Class Distribution before train/val split:")
         for i, count in enumerate(class_counts):
-            # print(f"Class {i}: {count} samples ({percentages[i]:.2f}%)")
             logger.debug(f"Class {i}: {count} samples ({percentages[i]:.2f}%)")
 
         uniqueargs_probe_hot_indexes = (
@@ -585,7 +583,6 @@ class TileFilesandData(
             list[int],
         ]
     ):
-        # print(f"[{AmfConfig.invite()}] Tile extraction.")
         logger.info("Tile extraction.")
 
         # Load image settings and annotations.
@@ -598,7 +595,6 @@ class TileFilesandData(
 
         if is_unlabelled:
             dataset_list = list(dataset)
-            # print(f"[{AmfConfig.invite()}] {len(dataset_list)} images in BALD dataset.")
             logger.info(f"{len(dataset_list)} images in BALD dataset.")
 
             # Process and normalize dataset
@@ -616,10 +612,6 @@ class TileFilesandData(
                 # ERR_NO_DATA = 10
                 sys.exit(10)
 
-            # print(
-            #     f"[{AmfConfig.invite()}] {len(filtered_dataset)} images in filtered "
-            #     "dataset."
-            # )
             logger.info(f"{len(filtered_dataset)} images in filtered dataset.")
 
             # Process and normalize dataset
@@ -851,15 +843,11 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
 
                 # Drop question marks from the CSV
                 if "Question" in output.columns:
-                    # print(f"Dropping questions from annotations for {image_name}")
                     logger.info(f"Dropping questions from annotations for {image_name}")
                     output.drop("Question", axis=1, inplace=True, errors="ignore")
 
                 # Drop question comments from the CSV
                 if "QuestionComment" in output.columns:
-                    # print(
-                    #     f"Dropping question comments from annotations for {image_name}"
-                    # )
                     logger.info(
                         f"Dropping question comments from annotations for {image_name}"
                     )
@@ -901,13 +889,11 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
             # If question does not exist then do not error when dropping
             # (for legacy CSVs)
             if "Question" in output.columns:
-                # print(f"Dropping questions from annotations for {image_name}")
                 logger.info(f"Dropping questions from annotations for {image_name}")
                 output.drop("Question", axis=1, inplace=True, errors="ignore")
 
             # Drop question comments from the CSV
             if "QuestionComment" in output.columns:
-                # print(f"Dropping question comments from annotations for {image_name}")
                 logger.info(
                     f"Dropping question comments from annotations for {image_name}"
                 )
@@ -920,7 +906,6 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
             return output
 
     except (AssertionError, ValueError, KeyError) as e:
-        # print(f"Error in importing annotations: {e}")
         logger.error(f"Error in importing annotations: {e}")
         return None
 

@@ -112,7 +112,7 @@ class TestMetrics:
         recall = np.nan_to_num(recall, nan=0.0)
         f1_score = np.nan_to_num(f1_score, nan=0.0)
 
-        # Print Macro F1 Score
+        # Log Macro F1 Score
         macro_acc = cast(float, np.average(accuracy))
         macro_precision = cast(float, np.average(precision))
         macro_recall = cast(float, np.average(recall))
@@ -121,20 +121,13 @@ class TestMetrics:
         self.metrics_collector.add_generic_metric("Macro precision", macro_precision)
         self.metrics_collector.add_generic_metric("Macro recall", macro_recall)
         self.metrics_collector.add_generic_metric("Macro f1 score", macro_f1)
-        # print(f"Macro F1 Score: {macro_f1 * 100:.2f}%")
         logger.info(f"Macro F1 Score: {macro_f1 * 100:.2f}%")
 
-        # Print per-class metrics
-        # print("\nPer-Class Metrics:")
+        # Log per-class metrics
         logger.info("\nPer-Class Metrics:")
         for class_name, acc, prec, rec, f1 in zip(
             self.class_names, accuracy, precision, recall, f1_score
         ):
-            # print(f"{class_name}:")
-            # print(f"  Accuracy: {acc * 100:.2f}%")
-            # print(f"  Precision: {prec * 100:.2f}%")
-            # print(f"  Recall: {rec * 100:.2f}%")
-            # print(f"  F1 Score: {f1 * 100:.2f}%")
             logger.info(f"{class_name}:")
             logger.info(f"  Accuracy: {acc * 100:.2f}%")
             logger.info(f"  Precision: {prec * 100:.2f}%")

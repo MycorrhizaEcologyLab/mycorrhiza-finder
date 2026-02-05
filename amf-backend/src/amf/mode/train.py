@@ -93,7 +93,6 @@ def class_weights(
     - epsilon (float): Small constant to avoid division by zero (default 1e-6).
     """
 
-    # print(f"[{AmfConfig.invite()}] Class weights")
     logger.debug("Class weights")
 
     # Sum along axis 0 to count class occurrences (shape: (C,))
@@ -149,7 +148,6 @@ class EarlyStopping:
             self.counter += 1
 
             if self.verbose:
-                # print(f"EarlyStopping counter: {self.counter} out of {self.patience}")
                 logger.debug(
                     f"EarlyStopping counter: {self.counter} out of \
                              {self.patience}"
@@ -196,7 +194,6 @@ class ReduceLROnPlateau:
                     new_lr = max(old_lr * self.factor, self.min_lr)
                     param_group["lr"] = new_lr
                     if self.verbose:
-                        # print(f"Reducing lerning rate from {old_lr} to {new_lr}")
                         logger.debug(
                             f"Reducing learning rate from {old_lr} \
                                      to {new_lr}"
