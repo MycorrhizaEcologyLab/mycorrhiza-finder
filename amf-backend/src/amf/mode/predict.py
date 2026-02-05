@@ -39,6 +39,7 @@ from collections import Counter
 from datetime import datetime
 from typing import Any, Callable, cast
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
@@ -254,8 +255,17 @@ def tile_entire_image(
 
 
 def threshold_empty_tiles(
-    tiles: list[NDArray[np.uint8]], threshold: float = 0.9
+    tiles: list[NDArray[np.uint8]],
+    threshold: float,
 ) -> list[NDArray[np.uint8]]:
+    """
+    Function to assign tiles to either background or root category based on mean pixel
+    intensity.
+
+    :param tiles: List of tiles as numpy arrays with their row and column indices.
+    :param threshold: Mean pixel intensity threshold to classify a tile as background.
+    :return: Lists of background and root tiles as separate numpy arrays.
+    """
     background_tiles = []
     root_tiles = []
     # print(tiles.shape)
@@ -272,11 +282,7 @@ def threshold_empty_tiles(
     return background_tiles, root_tiles
 
 
-import matplotlib.patches as patches
-import matplotlib.pyplot as plt
-
-
-def visualize_tile_intensity_distribution(
+def visualise_tile_intensity_distribution(
     image: Image.Image,
     nrows: int,
     ncols: int,
@@ -284,7 +290,7 @@ def visualize_tile_intensity_distribution(
     max_width: int = 8192,
 ) -> None:
     """
-    Visualize the distribution of mean pixel intensities across all tiles.
+    Visualise the distribution of mean pixel intensities across all tiles.
     Creates three plots:
     1. Histogram of intensity distribution with statistics
     2. Spatial heatmap of tile intensities overlayed on the image
@@ -295,6 +301,7 @@ def visualize_tile_intensity_distribution(
     :param ncols: Number of columns of tiles.
     :param threshold: Threshold for classifying background tiles (0-1).
     :param max_width: Maximum width for resized image (default 1024 pixels).
+    :return: None (saves visualisation as .png file).
     """
     all_tiles = tile_entire_image(image, nrows, ncols)
     background_tiles, root_tiles = threshold_empty_tiles(all_tiles, threshold=threshold)
@@ -330,9 +337,6 @@ def visualize_tile_intensity_distribution(
         else:
             # Root tile: transparent
             threshold_grid[r, c] = [0, 0, 0, 0]  # Fully transparent
-
-    background_intensities = [np.mean(tile) / 255.0 for tile, r, c in background_tiles]
-    root_intensities = [np.mean(tile) / 255.0 for tile, r, c in root_tiles]
 
     # Get min and max intensity values for heatmap scaling
     min_intensity = np.min(all_intensities)
@@ -438,17 +442,9 @@ def visualize_tile_intensity_distribution(
         family="monospace",
     )
 
-    # Fourth subplot: Resized image only (debug)
-    # ax4 = plt.subplot(1, 3, 4)
-    # ax4.imshow(image_resized)
-    # ax4.set_title("Resized Image (Debug)")
-    # ax4.axis("off")
-
     plt.tight_layout()
-    # plt.show()
     plt.savefig(f"Background Vis {int(threshold * 1000)} v4.png")
     plt.close()
-    # exit()
 
 
 def predict_level1(
@@ -458,7 +454,7 @@ def predict_level1(
     model: torch.nn.Module,
     temperature_factor: float,
     base: str,
-    threshold: float = 0.985,
+    threshold: float = 0.99,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Identifies colonised root segments using PyTorch model.
@@ -468,21 +464,20 @@ def predict_level1(
     :param model: trained level 1 model used for predictions.
     :param temperature_factor: scaling factor for probabilities.
     :param base: image name.
+    :param threshold: threshold for classifying background tiles (0-1)
     :return: Table with predictions and changes made by contextual predictions.
     """
 
     # Get batch size from config
     batch_size = AmfConfig.get("batch_size")
 
-    # Generate all tile coordinates in sequence from top-left to bottom-right
-    # all_tiles_coords = [(r, c) for r in range(nrows) for c in range(ncols)]
-
-    visualize_tile_intensity_distribution(image, nrows, ncols, threshold=threshold)
+    # DEBUG: Enable to visualise which tiles are thresholded as background
+    # visualise_tile_intensity_distribution(image, nrows, ncols, threshold=threshold)
 
     all_tiles = tile_entire_image(image, nrows, ncols)
+    # Threshold out background tiles on mean pixel intensity, 0.985 is a good balance
     background_tiles, root_tiles = threshold_empty_tiles(all_tiles, threshold=threshold)
 
-    # total_tiles = len(all_tiles_coords)
     total_tiles = len(root_tiles)
 
     # Initialize the progress bar.
@@ -498,10 +493,12 @@ def predict_level1(
     b_rows = []
     b_cols = []
 
-    print(f"{len(background_tiles)} background tiles identified and autoclassified.")
-    print(f"Processing {total_tiles} tiles in batches of {batch_size}...")
+    # TODO: Replace with logger messages and delete prints
+    # print(f"{len(background_tiles)} background tiles identified and autoclassified.")
+    # print(f"Processing {total_tiles} tiles in batches of {batch_size}...")
 
-    start_time = time.time()
+    # DEBUG: Enable for tracking total execution time of inference over a root image
+    # start_time = time.time()
 
     if len(background_tiles) > 0:
         for tile, r, c in background_tiles:
@@ -524,14 +521,13 @@ def predict_level1(
 
         # Process this batch
         batch_result = process_batch(model, batch_tiles, temperature_factor)
-        # print(f"Batch result shape: {batch_result.shape}")
-        # print(f"Batch result: {batch_result}")
         results.append(batch_result)
 
         # Update the progress bar
         AmfLog.progress_bar(batch_end, total_tiles, indent=1)
 
-    print("--- %s seconds ---" % (time.time() - start_time))
+    # TODO: Replace with logger message if needed and delete print
+    # print("--- %s seconds ---" % (time.time() - start_time))
 
     # Concatenate to a single Pandas dataframe
     table = pd.concat(results, ignore_index=True)
