@@ -446,6 +446,7 @@ def load(name: str | None = None) -> torch.nn.Module:
                 model = timm.create_model(
                     model_id, pretrained=pt_flag, num_classes=num_classes
                 )
+            # -----> Old implementation using torchvision models, delete after testing <--------
             # elif AmfConfig.get("model_type") == "resnet":
             #     model = create_resnet50(num_classes=num_classes, pre_trained=pt_flag)
 
