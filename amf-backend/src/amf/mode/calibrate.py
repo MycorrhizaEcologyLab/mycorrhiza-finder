@@ -362,8 +362,6 @@ def run(input_files: list[str]) -> int:
         logger.error("There is no train subfolder")
         # ERR_NO_DATA = 10
         sys.exit(10)
-        # REMOVE?
-        return 500
 
     # Create timestamped folder for results
     results_dir = AmfConfig.get("outdir")

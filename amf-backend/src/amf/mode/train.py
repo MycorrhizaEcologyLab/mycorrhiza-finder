@@ -234,8 +234,6 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
         # ERR_NO_DATA = 10
         sys.exit(10)
 
-        return 500
-
     full_dataset = AmfLoad.TileDatasetLoader(
         full_list,
         use_augmentation=AmfConfig.get("data_augm"),
