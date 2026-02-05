@@ -28,8 +28,8 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
             # Check if annotation file exists - if not, convert the entire tif
             if os.path.isfile(os.path.splitext(path)[0] + ".xml"):
                 logger.info(
-                    f"Found annotations in {os.path.splitext(path)[0]}.xml, cropping \
-                    tif file to match the given annotations"
+                    f"Found annotations in {os.path.splitext(path)[0]}.xml, cropping "
+                    f"tif file to match the given annotations"
                 )
                 # Parse annotations from XML provided by slidemaster - this needs
                 # to have the exact same name as the TIF image you want to parse
@@ -64,8 +64,8 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
                             max_y = int(attribs["y"])
 
                     logger.debug(
-                        f"Annotation {name} has top left coord {(min_x, min_y)} and \
-                            bottom right coord {(max_x, max_y)}"
+                        f"Annotation {name} has top left coord {(min_x, min_y)} and "
+                        f"bottom right coord {(max_x, max_y)}"
                     )
 
                     annotation_coords[name] = [
@@ -120,8 +120,8 @@ def convert_tiff(path: str, file_type: str = "jpg") -> None:
                         )
             else:
                 logger.info(
-                    f"No annotations found for {os.path.splitext(path)[0]}, \
-                    directly converting TIF to {file_type}"
+                    f"No annotations found for {os.path.splitext(path)[0]}, "
+                    f"directly converting TIF to {file_type}"
                 )
                 outfile_crop = f"{os.path.splitext(path)[0]}.{file_type}"
                 im.convert("RGB").save(outfile_crop, subsampling=0, quality=95)

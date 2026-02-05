@@ -149,8 +149,7 @@ class EarlyStopping:
 
             if self.verbose:
                 logger.debug(
-                    f"EarlyStopping counter: {self.counter} out of \
-                             {self.patience}"
+                    f"EarlyStopping counter: {self.counter} out of {self.patience}"
                 )
 
             if (
@@ -195,8 +194,7 @@ class ReduceLROnPlateau:
                     param_group["lr"] = new_lr
                     if self.verbose:
                         logger.debug(
-                            f"Reducing learning rate from {old_lr} \
-                                     to {new_lr}"
+                            f"Reducing learning rate from {old_lr} to {new_lr}"
                         )
 
         else:
@@ -382,8 +380,8 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
 
             # Log losses
             logger.debug(
-                f"Epoch {epoch + 1}/{num_epochs}, \
-                Average validation loss: {avg_val_loss:.4f}"
+                f"Epoch {epoch + 1}/{num_epochs}, "
+                f"Average validation loss: {avg_val_loss:.4f}"
             )
 
             if flag:

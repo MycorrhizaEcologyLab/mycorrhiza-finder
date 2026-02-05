@@ -71,8 +71,8 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
         num_questions = annotation_data["Question"].sum()
         if num_questions > 0:
             logger.error(
-                f"Cannot carry out tile conversion if questions exist, currently there \
-                are {num_questions} question(s)"
+                f"Cannot carry out tile conversion if questions exist, currently there "
+                f"are {num_questions} question(s)"
             )
             # ERR_INVALID_DATA = 11
             sys.exit(11)
@@ -457,13 +457,13 @@ def convert_tile_size(path: str, tile_size: int) -> None:
                 json.dump(settings, file)
 
             logger.info(
-                f"Saved aggregated annotations and settings to {annotation_path} and \
-                {settings_path}"
+                f"Saved aggregated annotations and settings to {annotation_path} and "
+                f"{settings_path}"
             )
         else:
             logger.warning(
-                f"Multiple annotation files found for {image_name}. \
-                Skipping processing."
+                f"Multiple annotation files found for {image_name}. "
+                f"Skipping processing."
             )
 
 
@@ -473,8 +473,8 @@ def run(input_images: list[str]) -> int:
     try:
         if AmfConfig.get("colonisation_type") != "am":
             logger.error(
-                f"Only support AM Colonisation for converting tile size, not \
-                {AmfConfig.get('colonisation_type')}. Cancel operation."
+                f"Only support AM Colonisation for converting tile size, not "
+                f"{AmfConfig.get('colonisation_type')}. Cancel operation."
             )
             # ERR_INVALID_DATA = 11
             sys.exit(11)

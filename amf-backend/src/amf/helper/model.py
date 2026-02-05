@@ -433,8 +433,8 @@ def load(name: str | None = None) -> torch.nn.Module:
             if AmfConfig.get("model_type") == "cnn1":
                 if pt_flag:
                     logger.error(
-                        "Pre-trained weights are unanavailable for CNN1. \
-                        Please proceed with pre_trained=False"
+                        "Pre-trained weights are unanavailable for CNN1. "
+                        "Please proceed with pre_trained=False"
                     )
                     # ERR_NO_PRETRAINED_MODEL = 20
                     sys.exit(20)
@@ -468,9 +468,9 @@ def load(name: str | None = None) -> torch.nn.Module:
 
             else:
                 logger.error(
-                    "Invalid model type. Please choose one of the following model \
-                    types: 'cnn1', 'resnet', 'resnext', 'efficientnet' or \
-                    'efficientnetv2'."
+                    "Invalid model type. Please choose one of the following model "
+                    "types: 'cnn1', 'resnet', 'resnext', 'efficientnet' or "
+                    "'efficientnetv2'."
                 )
                 # ERR_INVALID_MODEL = 40
                 sys.exit(40)
@@ -481,8 +481,8 @@ def load(name: str | None = None) -> torch.nn.Module:
 
             model_name = AmfConfig.get("model_type")  # Get class name of loaded model
             logger.info(
-                f"Initialise new network. Selected model type: {model_name}. \
-                Pre-Trained Flag: {pt_flag}"
+                f"Initialise new network. Selected model type: {model_name}. "
+                f"Pre-Trained Flag: {pt_flag}"
             )
 
             return cast(torch.nn.Module, model)

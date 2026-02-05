@@ -131,14 +131,14 @@ def apply_contextual_confidence(
     if len(low_confidence_indices) == 0:
         # No low confidence predictions to refine
         logger.info(
-            f"Found 0 predictions that are under the context threshold of \
-            {contextual_confidence_threshold}, so don't make any changes."
+            f"Found 0 predictions that are under the context threshold of "
+            f"{contextual_confidence_threshold}, so don't make any changes."
         )
         return table, pd.DataFrame()
 
     logger.info(
-        f"Found {len(low_confidence_indices)} predictions that are under the context \
-        threshold of {contextual_confidence_threshold}. Applying contextual refinement."
+        f"Found {len(low_confidence_indices)} predictions that are under the context "
+        f"threshold of {contextual_confidence_threshold}. Applying contextual refinement."
     )
 
     # Create a mapping from class names to indices

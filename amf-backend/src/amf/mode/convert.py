@@ -223,8 +223,8 @@ def create_annotations(path: str, tile_size: int) -> None:
 
         else:
             logger.info(
-                f"Skipping {path} as <amf convert> does not \
-                support multiple prediction files."
+                f"Skipping {path} as <amf convert> does not "
+                f"support multiple prediction files."
             )
 
 

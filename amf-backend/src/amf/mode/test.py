@@ -212,8 +212,8 @@ def get_test_results(
 
         if len(low_confidence_indices) > 0:
             logger.info(
-                f"Found {len(low_confidence_indices)} predictions with confidence \
-                lower than {contextual_confidence_threshold}. Applying max voting"
+                f"Found {len(low_confidence_indices)} predictions with confidence "
+                f"lower than {contextual_confidence_threshold}. Applying max voting"
             )
 
             # Group by image to minimize image loading
@@ -364,15 +364,15 @@ def get_test_results(
                     csv_path = os.path.join(results_dir, "tile_class_changes.csv")
                     changes_df.to_csv(csv_path, index=False)
                     logger.info(
-                        f"Saved {len(individual_tile_changes)} individual tile changes \
-                        to {csv_path}"
+                        f"Saved {len(individual_tile_changes)} individual tile changes "
+                        f"to {csv_path}"
                     )
             else:
                 logger.info("No class changes occurred after max voting.")
         else:
             logger.info(
-                f"Didn't find any predictions with confidence lower than \
-                {contextual_confidence_threshold}, so do not use context"
+                f"Didn't find any predictions with confidence lower than "
+                f"{contextual_confidence_threshold}, so do not use context"
             )
 
     # Check the shape of the arrays before forwarding them to TestMetrics

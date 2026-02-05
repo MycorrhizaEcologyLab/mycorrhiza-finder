@@ -45,8 +45,8 @@ def connect(
         return connection
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(
-            f"Cannot connect to database, consider restarting your postgres service: \
-                {error}"
+            f"Cannot connect to database, consider restarting your postgres service: "
+            f"{error}"
         )
         # ERR_NO_DATABASE_CONNECTION = 42
         sys.exit(42)
@@ -57,7 +57,6 @@ def create_database_if_not_exists(db_name: str, user: str, password: str) -> Non
         "postgres", password
     )  # Get a new connection for this operation
     if connection is None:
-        # print("Connection to database failed.")
         logger.error("Connection to database failed.")
         return
 
@@ -72,10 +71,8 @@ def create_database_if_not_exists(db_name: str, user: str, password: str) -> Non
                     "LIMIT = -1;"
                 ).format(sql.Identifier(db_name), sql.Identifier(user))
             )
-            # print(f"Database '{db_name}' created.")
             logger.info(f"Database '{db_name}' created.")
         else:
-            # print(f"Database '{db_name}' already exists.")
             logger.debug(f"Database '{db_name}' already exists.")
 
     connection.close()

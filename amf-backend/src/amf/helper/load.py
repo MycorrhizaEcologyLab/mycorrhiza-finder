@@ -270,15 +270,15 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
             )
             # Create balanced dataset
             logger.info(
-                f"Balance factor set to: {self.balance_factor}. \
-                Generating balanced dataset."
+                f"Balance factor set to: {self.balance_factor}. "
+                f"Generating balanced dataset."
             )
             dataset = list(zip(balanced_tiles, balanced_labels))
         elif self.balance_factor == 0.0:
             # Create unbalanced dataset
             logger.info(
-                f"Balance factor set to: {self.balance_factor}. \
-                Generating unbalanced dataset."
+                f"Balance factor set to: {self.balance_factor}. "
+                f"Generating unbalanced dataset."
             )
             dataset = list(zip(all_tiles, all_labels))
 
@@ -366,8 +366,8 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
 
         if not np.array_equal(uniqueargs_probe_hot_indexes, uniqueargs_headers):
             logger.error(
-                "Training data does not represent all classes. Please reconsider \
-                training dataset curation."
+                "Training data does not represent all classes. Please reconsider "
+                "training dataset curation."
             )
             # ERR_NO_DATA = 10
             sys.exit(10)
@@ -606,8 +606,8 @@ class TileFilesandData(
             filtered_dataset = [x for x in dataset if x[2] is not None]
             if len(filtered_dataset) == 0 and not is_bald_folder:
                 logger.error(
-                    "Input images do not contain tile annotations. \
-                    Use amfbrowser to annotate tiles before training."
+                    "Input images do not contain tile annotations. "
+                    "Use amfbrowser to annotate tiles before training."
                 )
                 # ERR_NO_DATA = 10
                 sys.exit(10)

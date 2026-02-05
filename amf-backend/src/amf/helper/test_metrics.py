@@ -673,8 +673,8 @@ class TestMetrics:
         # Iterate over each class to plot its incorrectly predicted images
         for class_index in unique_classes:
             logger.info(
-                f"Processing incorrect prediction images for class \
-                {self.class_names[class_index]}"
+                f"Processing incorrect prediction images for class "
+                f"{self.class_names[class_index]}"
             )
             # Indices where this class is the true class but was predicted incorrectly
             incorrect_indices = np.where(

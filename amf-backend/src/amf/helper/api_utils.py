@@ -475,8 +475,8 @@ def get_enabled(crsr: psycopg2.extensions.cursor, image_name: str) -> int | None
     else:
         # If no annotations enabled, get most recent timestamp and set this to enabled
         logger.info(
-            f"No enabled annotations for image {image_name}, return image with most \
-                recent timestamp instead."
+            f"No enabled annotations for image {image_name}, return image with most "
+            f"recent timestamp instead."
         )
         id_ = get_most_recent_timestamp(crsr, image_name)
         if id_ is not None:

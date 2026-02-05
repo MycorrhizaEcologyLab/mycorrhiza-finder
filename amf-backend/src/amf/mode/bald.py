@@ -141,8 +141,8 @@ def run(input_files: list[str]) -> int:
     output_dir = AmfConfig.get("outdir")
 
     logger.info(
-        f"Running active learning to procure optimal tiles for retraining using \
-        {method}."
+        f"Running active learning to procure optimal tiles for retraining using "
+        f"{method}."
     )
 
     parts = AmfLoad.categorise_path(input_files)
