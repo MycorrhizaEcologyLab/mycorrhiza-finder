@@ -104,7 +104,7 @@ class ExactJointEntropy(JointEntropy):
 
         pbar = tqdm(total=B, desc="ExactJointEntropy.compute_batch", leave=False)
 
-        @toma.execute.chunked(log_probs_B_K_C, initial_step=1024, dimension=0)  # type: ignore[misc]
+        @toma.execute.chunked(log_probs_B_K_C, initial_step=1024, dimension=0)  # type: ignore[untyped-decorator]
         def chunked_joint_entropy(
             chunked_log_probs_b_K_C: torch.Tensor, start: int, end: int
         ) -> None:
@@ -260,7 +260,7 @@ class SampledJointEntropy(JointEntropy):
 
         pbar = tqdm(total=B, desc="SampledJointEntropy.compute_batch", leave=False)
 
-        @toma.execute.chunked(log_probs_B_K_C, initial_step=1024, dimension=0)  # type: ignore[misc]
+        @toma.execute.chunked(log_probs_B_K_C, initial_step=1024, dimension=0)  # type: ignore[untyped-decorator]
         def chunked_joint_entropy(
             chunked_log_probs_b_K_C: torch.Tensor, start: int, end: int
         ) -> None:

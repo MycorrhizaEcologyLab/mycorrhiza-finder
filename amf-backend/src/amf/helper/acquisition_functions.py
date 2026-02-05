@@ -25,7 +25,7 @@ def compute_conditional_entropy(log_probs_N_K_C: torch.Tensor) -> torch.Tensor:
 
     pbar = tqdm(total=N, desc="Conditional Entropy", leave=False)
 
-    @toma.execute.chunked(log_probs_N_K_C, 1024)  # type: ignore[misc]
+    @toma.execute.chunked(log_probs_N_K_C, 1024)  # type: ignore[untyped-decorator]
     def compute(log_probs_n_K_C: torch.Tensor, start: int, end: int) -> None:
         nats_n_K_C = log_probs_n_K_C * torch.exp(log_probs_n_K_C)
 
@@ -44,7 +44,7 @@ def compute_entropy(log_probs_N_K_C: torch.Tensor) -> torch.Tensor:
 
     pbar = tqdm(total=N, desc="Entropy", leave=False)
 
-    @toma.execute.chunked(log_probs_N_K_C, 1024)  # type: ignore[misc]
+    @toma.execute.chunked(log_probs_N_K_C, 1024)  # type: ignore[untyped-decorator]
     def compute(log_probs_n_K_C: torch.Tensor, start: int, end: int) -> None:
         mean_log_probs_n_C = torch.logsumexp(log_probs_n_K_C, dim=1) - math.log(K)
         mean_log_probs_n_C = torch.logsumexp(log_probs_n_K_C, dim=1) - torch.log(
