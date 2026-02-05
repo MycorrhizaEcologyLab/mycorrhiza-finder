@@ -62,14 +62,13 @@ def table_header() -> list[str]:
 
 def process_batch(
     model: torch.nn.Module,
-    batch_unnormalised: NDArray,
+    batch_unnormalised: list[Any],
     temperature_factor: float,
 ) -> pd.DataFrame:
     """
     Predict colonisation (level 1 model) on a batch of tiles with PyTorch.
     :param model: level 1 model PyTorch model for predictions.
-    :param image: Input image to extract tiles from.
-    :param tiles_coords: List of (row, col) tuples for tiles in this batch.
+    :param batch_unnormalised: Input batch of tiles.
     :param temperature_factor: Factor used to scale probabilities.
     :return: DataFrame of predictions.
     """
@@ -77,7 +76,6 @@ def process_batch(
     device = AmfConfig.get("device")
 
     # Extract tiles for this batch.
-    # batch_unnormalised = [AmfSegm.tile(image, r, c) for r, c in tiles_coords]
     batch = AmfSegm.preprocess(batch_unnormalised)  # Normalize the tiles.
 
     # Convert to PyTorch tensor
@@ -235,16 +233,14 @@ def apply_contextual_confidence(
     return table, changes_df
 
 
-def tile_entire_image(
-    image: Image.Image, nrows: int, ncols: int
-) -> list[NDArray[np.uint8]]:
+def tile_entire_image(image: Image.Image, nrows: int, ncols: int) -> list[list[Any]]:
     """
     Extract all tiles from an image along with their position.
 
     :param image: The source image.
     :param nrows: Number of rows of tiles.
     :param ncols: Number of columns of tiles.
-    :return: List of tiles as NumPy arrays.
+    :return: List of tiles as NumPy arrays with their row and column indices.
     """
     tiles = []
     for r in range(nrows):
@@ -255,9 +251,9 @@ def tile_entire_image(
 
 
 def threshold_empty_tiles(
-    tiles: list[NDArray[np.uint8]],
+    tiles: list[list[Any]],
     threshold: float,
-) -> list[NDArray[np.uint8]]:
+) -> tuple[list[list[np.uint8]], list[list[np.uint8]]]:
     """
     Function to assign tiles to either background or root category based on mean pixel
     intensity.
@@ -268,9 +264,6 @@ def threshold_empty_tiles(
     """
     background_tiles = []
     root_tiles = []
-    # print(tiles.shape)
-    # print(tiles)
-    # exit()
     for [tile, r, c] in tiles:
         # Calculate mean pixel intensity across tile
         mean_intensity = np.mean(tile) / 255.0  # Normalise to [0, 1]
@@ -413,12 +406,6 @@ def visualise_tile_intensity_distribution(
     ax3.imshow(
         threshold_grid_resized, extent=[0, image_resized.width, image_resized.height, 0]
     )
-
-    # Draw tile grid lines
-    # for r in range(nrows + 1):
-    #     ax3.axhline(y=r * edge_resized, color="gray", linewidth=0.5, alpha=0.5)
-    # for c in range(ncols + 1):
-    #     ax3.axvline(x=c * edge_resized, color="gray", linewidth=0.5, alpha=0.5)
 
     ax3.set_xlabel("X Coordinate (pixels)")
     ax3.set_ylabel("Y Coordinate (pixels)")
