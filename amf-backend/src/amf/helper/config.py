@@ -319,7 +319,7 @@ def find_files_in_directory(directory: str, convert_tiff: bool = False) -> list[
     return img_files
 
 
-def set_(id_: str, value: Any, create: bool = False) -> None:
+def set_(id_: str, value: Any, create: bool = False, use_none: bool = False) -> None:
     """
     Updates application settings.
 
@@ -328,7 +328,7 @@ def set_(id_: str, value: Any, create: bool = False) -> None:
     :param create: create id if it does not exist (optional).
     """
 
-    if value is None:
+    if value is None and not use_none:
         return
 
     else:
@@ -676,17 +676,23 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         ),
     )
 
-    x = PAR["pre_trained"]
     parser.add_argument(
         "-pretr",
         "--pretrain",
-        action="store_const",
+        action="store_true",
         dest="pre_trained",
-        const=True,
         help=(
             "Loads ImageNet weights if ResNet, ResNeXt or EfficentNet is selected for "
             "Model type."
         ),
+    )
+
+    parser.add_argument(
+        "-nopretr",
+        "--no-pretrain",
+        action="store_false",
+        dest="pre_trained",
+        help=("Do not load ImageNet weights."),
     )
 
     x = PAR["colonisation_type"]
@@ -1437,8 +1443,9 @@ def set_train_config(trainConfig: TrainConfig) -> None:
     else:
         set_("learning_rate", trainConfig.learningRate)
         set_("epochs", trainConfig.epochs)
-    set_("model", trainConfig.model)
-    set_("model_erm", trainConfig.modelErm)
+    # Model paths can be set to None by default for fresh training
+    set_("model", trainConfig.model, use_none=True)
+    set_("model_erm", trainConfig.modelErm, use_none=True)
     set_("model_type", trainConfig.modelType)
     set_("pre_trained", trainConfig.preTrained)
     set_("vfrac", trainConfig.vfrac)
@@ -1690,8 +1697,8 @@ def initialize() -> None:
         set_("adam_beta1", par.adam_beta1)
         set_("adam_beta2", par.adam_beta2)
         set_("balance_factor", par.balance_factor)
-        set_("model", par.model)
-        set_("model_erm", par.model_erm)
+        set_("model", par.model, use_none=True)
+        set_("model_erm", par.model_erm, use_none=True)
         set_("model_type", par.model_type)
         set_("pre_trained", par.pre_trained)
         set_("vfrac", par.vfrac)

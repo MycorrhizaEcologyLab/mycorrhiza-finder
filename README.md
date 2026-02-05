@@ -12,12 +12,13 @@ This repository, and this README, are aimed at development of the source code, a
 2. [Running the tool locally](#running-the-tool-locally)
 3. [Contributing to the repo](#contributing-to-the-repo)
 4. [Building new versions of the tool](#building-new-versions-of-the-tool)
+5. [Credits and how to cite](#credits-and-how-to-cite)
 
 ## Setting up your local development environment
 
 1. If you have not done so already, [download the pre-built executables](https://doi.org/10.5281/zenodo.17485909) and follow the instructions in the quick-start user guide to set up Postgres and to check that the tool runs.
 
-1. Install **node** from the [official website](https://nodejs.org/en/download). Version 22.13.1 is tested with the current version of the tool. For Windows, we would recommend downloading the .msi installer instead of using `fnm`. You can validate this worked by checking that the following command in terminal returns the corresponding version you have downloaded `node --version`.
+2. Install **node** from the [official website](https://nodejs.org/en/download). Version 22.13.1 is tested with the current version of the tool. For Windows, we would recommend downloading the .msi installer instead of using `fnm`. During installation you may be presented with the option to install chocolatey, but this can be ignored and left unchecked. You can validate node installed successfully by checking that the following command in a terminal returns the corresponding version you have downloaded `node --version`.
 
 2. Install **Python 3.11** from the [official website](https://www.python.org/downloads/) or from your package manager. We would recommend ticking the box asking whether you would like to add this to path. After the install, when you open a terminal and run `python --version`, the output should be `3.11.*`.
 
@@ -39,7 +40,7 @@ This repository, and this README, are aimed at development of the source code, a
     python -m pip install -e .
     ```
 
-8. `cd` to `amfbrowser` react and run
+8. `cd` to `amfbrowser-react` and run
     ```
     npm install
     ```

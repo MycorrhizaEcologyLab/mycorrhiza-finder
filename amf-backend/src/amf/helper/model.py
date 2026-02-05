@@ -41,6 +41,8 @@ import os
 import sys
 from typing import Type, cast
 
+import timm
+
 # PyTorch imports
 import torch
 import torch.nn as nn
@@ -49,6 +51,13 @@ from loguru import logger
 from torchvision import models
 
 import amf.helper.config as AmfConfig
+
+MODEL_DICT = {
+    "resnet": "resnet50.a1_in1k",
+    "resnext": "resnext50_32x4d.a1h_in1k",
+    "efficientnet": "tf_efficientnet_b5.in1k",
+    "efficientnetv2": "tf_efficientnetv2_m.in1k",
+}
 
 
 class ConvolutionalBlocks(nn.Module):
@@ -435,22 +444,27 @@ def load(name: str | None = None) -> torch.nn.Module:
                     )  # TODO replace with proper exceptions
                 else:
                     model = create_cnn1()
-
-            elif AmfConfig.get("model_type") == "resnet":
-                model = create_resnet50(num_classes=num_classes, pre_trained=pt_flag)
-
-            elif AmfConfig.get("model_type") == "resnext":
-                model = create_resnext50(num_classes=num_classes, pre_trained=pt_flag)
-
-            elif AmfConfig.get("model_type") == "efficientnet":
-                model = create_efficientnetb5(
-                    num_classes=num_classes, pre_trained=pt_flag
+            elif AmfConfig.get("model_type") in MODEL_DICT:
+                model_id = MODEL_DICT[AmfConfig.get("model_type")]
+                model = timm.create_model(
+                    model_id, pretrained=pt_flag, num_classes=num_classes
                 )
+            # -----> Old implementation using torchvision models, delete after testing <--------
+            # elif AmfConfig.get("model_type") == "resnet":
+            #     model = create_resnet50(num_classes=num_classes, pre_trained=pt_flag)
 
-            elif AmfConfig.get("model_type") == "efficientnetv2":
-                model = create_efficientnet_v2_m(
-                    num_classes=num_classes, pre_trained=pt_flag
-                )
+            # elif AmfConfig.get("model_type") == "resnext":
+            #     model = create_resnext50(num_classes=num_classes, pre_trained=pt_flag)
+
+            # elif AmfConfig.get("model_type") == "efficientnet":
+            #     model = create_efficientnetb5(
+            #         num_classes=num_classes, pre_trained=pt_flag
+            #     )
+
+            # elif AmfConfig.get("model_type") == "efficientnetv2":
+            #     model = create_efficientnet_v2_m(
+            #         num_classes=num_classes, pre_trained=pt_flag
+            #     )
 
             else:
                 logger.error(

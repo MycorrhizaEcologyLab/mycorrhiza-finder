@@ -178,7 +178,7 @@ def delete_image_reference(id_: int) -> None:
         return delete_image(crsr, id_)  # confusing as delete_image returns None
 
 
-@app.patch("/set-to-enabled/{id}")
+@app.patch("/set-to-enabled/{id_}")
 def set_to_enabled(id_: int) -> None:
     with conn, conn.cursor() as crsr:
         return set_to_enabled_in_db(crsr, id_)  # ditto
