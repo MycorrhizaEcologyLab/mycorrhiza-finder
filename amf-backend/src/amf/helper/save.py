@@ -39,6 +39,7 @@ import json
 import os
 import pickle
 from contextlib import redirect_stdout
+from zipfile import ZipFile
 
 import h5py
 import numpy as np
@@ -50,7 +51,6 @@ from torchview import draw_graph
 
 import amf.helper.config as AmfConfig
 import amf.helper.plot as AmfPlot
-import amf.helper.zipfile as zf
 from amf.helper.api_objects import PredictionValues
 from amf.helper.api_utils import save_predictions_to_db
 from amf.helper.db_config import connect
@@ -79,7 +79,7 @@ def save_training_data(
     zipf = now() + "_training.zip"
     zipf = os.path.join(AmfConfig.get("outdir"), zipf)
 
-    with zf.ZipFile(zipf, "w") as z:
+    with ZipFile(zipf, "w") as z:
         # Save the training history
         data = pickle.dumps(history, protocol=pickle.HIGHEST_PROTOCOL)
         z.writestr("history.bin", data)
@@ -186,7 +186,7 @@ def save_metrics(metrics_collector: MetricsCollector, path: str) -> None:
     zipf = os.path.join(path, f"results_{uniq}.zip")
     logger.debug(f"    - saving as {zipf}... ", end="")
 
-    with zf.ZipFile(zipf, "w") as z:
+    with ZipFile(zipf, "w") as z:
         # Handle class metrics
         if metrics_collector.per_class_metrics:
             class_metrics_df = metrics_collector.convert_to_dataframe(

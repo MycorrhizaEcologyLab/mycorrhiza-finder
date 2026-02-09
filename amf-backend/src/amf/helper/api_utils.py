@@ -1,8 +1,8 @@
 import csv
 import io
-import zipfile
 from datetime import datetime
 from typing import Any, cast
+from zipfile import ZipFile
 
 import psycopg2
 from fastapi import HTTPException, Response
@@ -670,7 +670,7 @@ def zip_files_for_transit(images: dict[str, bytes]) -> Response:
     zip_filename = "image-tiles.zip"
 
     s = io.BytesIO()
-    zf = zipfile.ZipFile(s, "w")
+    zf = ZipFile(s, "w")
 
     for key, value in images.items():
         zf.writestr(key, value)
