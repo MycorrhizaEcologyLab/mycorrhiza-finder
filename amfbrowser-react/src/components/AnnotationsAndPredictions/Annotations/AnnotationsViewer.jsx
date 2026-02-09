@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TiledAnnotationsGrid from "./TiledAnnotationsGrid";
 
 const AnnotationsViewer = ({

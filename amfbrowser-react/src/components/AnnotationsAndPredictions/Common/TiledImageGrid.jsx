@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import ImageTile from "./ImageTile";
 
 const TiledImageGrid = ({

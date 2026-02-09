@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
 import CircularProgress from "@mui/material/CircularProgress";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import PredictionsApi from "../../../api/amfinderApi";
 import { indexOfMax } from "../../Utils/utils";

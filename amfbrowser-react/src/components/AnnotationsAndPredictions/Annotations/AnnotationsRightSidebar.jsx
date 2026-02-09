@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useContext } from "react";
 import { styled } from "@mui/material/styles";
-import CircularProgressWithLabel from "../../Utils/CircularProgressWithLabel";
+import { useContext, useEffect, useState } from "react";
 import { GlobalContextProvider } from "../../../contexts/Contexts";
+import CircularProgressWithLabel from "../../Utils/CircularProgressWithLabel";
 
 const DrawerHeader = styled("div")(({ theme }) => ({
   display: "flex",

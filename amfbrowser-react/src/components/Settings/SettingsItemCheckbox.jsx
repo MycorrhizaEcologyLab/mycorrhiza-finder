@@ -1,5 +1,5 @@
-import React, { useState } from "react";
 import Checkbox from "@mui/material/Checkbox";
+import { useState } from "react";
 import { FaRedo } from "react-icons/fa";
 
 const SettingsItemCheckbox = ({
