@@ -90,12 +90,6 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 
-# Setup serve of static files - files from npm install must be copied here
-app.mount(
-    "/static",
-    StaticFiles(directory=os.path.join(wd, "_internal/static")),
-    name="static",
-)
 templates = Jinja2Templates(directory=os.path.join(wd, "_internal/templates"))
 
 # Enable CORS for locally running react app - DEV ONLY
