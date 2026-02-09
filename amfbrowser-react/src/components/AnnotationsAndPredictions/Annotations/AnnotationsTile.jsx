@@ -1,5 +1,5 @@
-import React, { memo, useState, useRef, useEffect } from "react";
-import { FaLock, FaEyeSlash } from "react-icons/fa";
+import { memo, useEffect, useRef, useState } from "react";
+import { FaEyeSlash } from "react-icons/fa";
 
 const AnnotationsTile = memo(
   ({

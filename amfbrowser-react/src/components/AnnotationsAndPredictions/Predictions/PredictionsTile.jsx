@@ -1,5 +1,5 @@
-import React, { memo, useContext } from "react";
 import "chart.js/auto";
+import { memo, useContext } from "react";
 import { Pie } from "react-chartjs-2";
 import { GlobalContextProvider } from "../../../contexts/Contexts";
 

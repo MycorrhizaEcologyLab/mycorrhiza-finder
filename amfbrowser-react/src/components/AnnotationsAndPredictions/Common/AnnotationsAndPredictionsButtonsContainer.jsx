@@ -1,7 +1,7 @@
-import React, { useContext } from "react";
-import AnnotationsAndPredictionsButtons from "./AnnotationsAndPredictionsButtons";
+import { useContext } from "react";
 import { GlobalContextProvider } from "../../../contexts/Contexts";
 import "../styles/selectors.css";
+import AnnotationsAndPredictionsButtons from "./AnnotationsAndPredictionsButtons";
 
 const AnnotationsAndPredictionsButtonsContainer = ({
   icons,

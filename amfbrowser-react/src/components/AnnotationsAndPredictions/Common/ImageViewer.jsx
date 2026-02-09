@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TiledImageGrid from "./TiledImageGrid";
 
 const ImageViewer = ({

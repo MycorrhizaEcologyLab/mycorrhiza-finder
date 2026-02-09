@@ -1,6 +1,5 @@
-import React from "react";
-import { FaTimes } from "react-icons/fa";
 import Fade from "@mui/material/Fade";
+import { FaTimes } from "react-icons/fa";
 
 const Modal = ({ isOpen, onClose, children, overrideStyles }) => {
   if (!isOpen) return null;

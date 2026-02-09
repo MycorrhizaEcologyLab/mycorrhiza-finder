@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
 import { isEmpty } from "lodash";
-import PredictionAndAnnotationTable from "./PredictionAndAnnotationTable";
+import { useEffect, useState } from "react";
 import PrimaryButton from "../Utils/PrimaryButton";
+import PredictionAndAnnotationTable from "./PredictionAndAnnotationTable";
 
 const PredictionAndAnnotationSelection = ({
   existingPredsAndAnnots,

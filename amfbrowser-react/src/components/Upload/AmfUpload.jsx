@@ -1,18 +1,18 @@
-import React, { useState, useContext, useRef, useEffect } from "react";
-import { toast } from "react-toastify";
-import Papa from "papaparse";
-import TextField from "@mui/material/TextField";
-import Radio from "@mui/material/Radio";
-import RadioGroup from "@mui/material/RadioGroup";
+import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormLabel from "@mui/material/FormLabel";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
+import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import Papa from "papaparse";
+import { useContext, useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
 
-import PrimaryButton from "../Utils/PrimaryButton";
-import { GlobalContextProvider } from "../../contexts/Contexts";
 import PredictionsApi from "../../api/amfinderApi";
+import { GlobalContextProvider } from "../../contexts/Contexts";
+import PrimaryButton from "../Utils/PrimaryButton";
 import "./styles/upload.css";
 
 const AmfUpload = () => {

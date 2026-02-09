@@ -1,11 +1,11 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import { styled } from "@mui/material/styles";
 import Switch from "@mui/material/Switch";
-import FormControlLabel from "@mui/material/FormControlLabel";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import PrimaryButton from "../../Utils/PrimaryButton";
 import NumericField from "../../Utils/NumericField";
+import PrimaryButton from "../../Utils/PrimaryButton";
 
 const DrawerHeader = styled("div")(({ theme }) => ({
   display: "flex",

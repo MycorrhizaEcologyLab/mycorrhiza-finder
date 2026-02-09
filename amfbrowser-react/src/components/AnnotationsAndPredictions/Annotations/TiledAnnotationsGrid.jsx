@@ -1,4 +1,3 @@
-import React from "react";
 import AnnotationsTile from "./AnnotationsTile";
 
 const TiledAnnotationsGrid = ({

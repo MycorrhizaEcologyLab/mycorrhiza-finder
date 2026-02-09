@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { FaRedo } from "react-icons/fa";
-import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import { useState } from "react";
+import { FaRedo } from "react-icons/fa";
 
 const SettingsItemSelect = ({
   name,

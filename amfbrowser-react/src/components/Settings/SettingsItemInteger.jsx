@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { FaRedo } from "react-icons/fa";
 import TextField from "@mui/material/TextField";
+import { useState } from "react";
+import { FaRedo } from "react-icons/fa";
 
 const SettingsItemInteger = ({
   name,

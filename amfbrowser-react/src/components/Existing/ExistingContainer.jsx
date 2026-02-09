@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useContext } from "react";
-import { toast } from "react-toastify";
 import Divider from "@mui/material/Divider";
-import Modal from "../Utils/Modal";
+import { useContext, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import PredictionsApi from "../../api/amfinderApi";
-import ImageNameContainer from "./ImageNameContainer";
-import ExistingTableContainer from "./ExistingTableContainer";
-import PrimaryButton from "../Utils/PrimaryButton";
 import { GlobalContextProvider } from "../../contexts/Contexts";
+import Modal from "../Utils/Modal";
+import PrimaryButton from "../Utils/PrimaryButton";
+import ExistingTableContainer from "./ExistingTableContainer";
+import ImageNameContainer from "./ImageNameContainer";
 import "./styles/existing.css";
 
 export default function ExistingContainer() {
