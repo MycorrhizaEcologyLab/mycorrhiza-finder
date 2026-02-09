@@ -1,5 +1,3 @@
-import React from "react";
-
 import combinedLogo from "../../assets/combined-logo.png";
 import "./styles/about.css";
 

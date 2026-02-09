@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, memo } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 const ImageTile = memo(
   ({

@@ -1,13 +1,13 @@
-import React, { useState } from "react";
 import Slider from "@mui/material/Slider";
 import Typography from "@mui/material/Typography";
+import { useState } from "react";
 
-import AnnotationsAndPredictionsButtonsContainer from "./AnnotationsAndPredictionsButtonsContainer";
-import ImageViewer from "./ImageViewer";
+import NumericField from "../../Utils/NumericField";
+import PrimaryButton from "../../Utils/PrimaryButton";
 import AnnotationsViewer from "../Annotations/AnnotationsViewer";
 import PredictionsViewer from "../Predictions/PredictionsViewer";
-import PrimaryButton from "../../Utils/PrimaryButton";
-import NumericField from "../../Utils/NumericField";
+import AnnotationsAndPredictionsButtonsContainer from "./AnnotationsAndPredictionsButtonsContainer";
+import ImageViewer from "./ImageViewer";
 
 const AnnotationsAndPredictionsCentralPane = ({
   icons,
