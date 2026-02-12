@@ -1,51 +1,4 @@
-# TODO replace with loguru
-
-# AMFinder - log.py
-#
-# MIT License
-# Copyright (c) 2021 Edouard Evangelisti, Carl Turner
-#               2024-2025 Royal Botanic Gardens, Kew
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to
-# deal in the Software without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-# sell copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-# IN THE SOFTWARE.
-
-"""
-Log functions.
-
-Displays message, warnings, errors, and progress bars.
-
-Constants
------------
-ERR_INVALID_MODEL - Wrong model.
-ERR_NO_PRETRAINED_MODEL - A pre-trained model is required but not provided.
-ERR_INVALID_MODEL_SHAPE - Wrong model input shape.
-ERR_INVALID_ANNOTATION_LEVEL -
-ERR_MISSING_ARCHIVE - Cannot find the zip archive associated with an image.
-ERR_MISSING_ANNOTATIONS - The given archive lacks stage 1 annotations.
-
-Functions
------------
-:function info: prints a message.
-:function warning: prints a warning message.
-:function error: prints an error message, and closes the application.
-:function progress_bar: displays a progress bar.
-
-"""
+"""Logging functionality."""  # TODO replace with loguru
 
 import datetime
 import sys
@@ -69,8 +22,7 @@ logger.remove(0)
 def formatter(record: Any) -> str:
     if record["level"].no == 10:
         return "{time:MMMM D, YYYY - HH:mm:ss} | {message}\n"
-    else:
-        return "{time:MMMM D, YYYY - HH:mm:ss} | {level} | {message}\n"
+    return "{time:MMMM D, YYYY - HH:mm:ss} | {level} | {message}\n"
 
 
 logger.add(f"{datetime.date.today()}.log", format=formatter, level=0)

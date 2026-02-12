@@ -141,10 +141,7 @@ class TestMetrics:
             self.metrics_collector.add_class_metric(f"{class_name}", "F1 Score", f1)
 
     def get_perfile_metrics(self, colonised_only: bool = False) -> None:
-        """
-        Gets the metrics separately for each file
-
-        """
+        """Get the metrics separately for each file"""
 
         def calculate_am_colonised_percentage(
             series: pd.Series,
@@ -237,7 +234,7 @@ class TestMetrics:
         def calculate_accuracy_for_class(
             group: pd.Series, class_label: int
         ) -> float | None:
-            """Calculate accuracy for a specific class within a grouped object."""
+            """Calculate accuracy for a specific class within a grouped DataFrame."""
             correct_predictions = (
                 group["Actual Label"] == group["Predicted Label"]
             ) & (group["Actual Label"] == class_label)
@@ -249,7 +246,7 @@ class TestMetrics:
             )
 
         def calculate_precision_for_class(group: pd.Series, class_label: int) -> float:
-            """Calculate precision for a specific class within a grouped object."""
+            """Calculate precision for a specific class within a grouped DataFrame."""
             tp_predictions = (group["Actual Label"] == group["Predicted Label"]) & (
                 group["Actual Label"] == class_label
             )
@@ -261,7 +258,7 @@ class TestMetrics:
             return tp / (tp + fp) if (tp + fp) > 0 else 0.0
 
         def calculate_recall_for_class(group: pd.Series, class_label: int) -> float:
-            """Calculate recall for a specific class within a grouped object."""
+            """Calculate recall for a specific class within a grouped DataFrame."""
             tp_predictions = (group["Actual Label"] == group["Predicted Label"]) & (
                 group["Actual Label"] == class_label
             )
@@ -273,6 +270,7 @@ class TestMetrics:
             return tp / (tp + fn) if (tp + fn) > 0 else 0.0
 
         def calculate_f1_for_class(group: pd.Series, class_label: int) -> float:
+            """Return F1 score for the specified class."""
             precision = calculate_precision_for_class(group, class_label)
             recall = calculate_recall_for_class(group, class_label)
             return (
@@ -282,8 +280,19 @@ class TestMetrics:
             )
 
         def calculate_class_count(
-            group: pd.Series, class_label: int
+            group: pd.DataFrame, class_label: int
         ) -> tuple[int, int]:
+            """Calculate the number of actual and predicted instances for given class.
+
+            Args:
+                group: Grouped DataFrame containing 'Actual Label' and 'Predicted Label'
+                    columns.
+                class_label: The class label to count.
+
+            Returns:
+                num_actual: Number of actual instances of the class.
+                num_pred: Number of predicted instances of the class.
+            """
             num_actual = (group["Actual Label"] == class_label).sum()
             num_pred = (group["Predicted Label"] == class_label).sum()
 
@@ -537,21 +546,19 @@ class TestMetrics:
         return
 
     def plot_class_examples(
-        self,
-        axes: NDArray[matplotlib.axes.Axes],
-        example_indices: list[np.uint8],
-        example_fileparts: list[str],
+        self, axes: NDArray[matplotlib.axes.Axes], example_indices: list[np.uint8]
     ) -> None:
-        """
-        Plots example images where a specific class was incorrectly predicted.
+        """Plot a specific selection of predictions on the supplied axes.
+
+        Args:
+            axes: Axes to plot on.
+            example_indices: Indices of test tiles to plot.
         """
         if self.predicted_labels is None:
             raise ValueError("Predicted labels cannot be None")
         if self.rows is None or self.cols is None:
             raise ValueError("rows and cols cannot be None")
-        for i, (example_idx, example_filepart) in enumerate(
-            zip(example_indices, example_fileparts)
-        ):
+        for i, example_idx in enumerate(example_indices):
             if i >= len(axes.flat):
                 break
             img = self.x_test[example_idx].squeeze()
@@ -566,6 +573,11 @@ class TestMetrics:
             axes.flat[i].axis("off")
 
     def get_pred_by_file(self) -> None:
+        """Produce a figure containing all incorrect predictions for each input image.
+
+        Outputs one image per class per input image file, containing a grid of all
+        incorrectly predicted tiles.
+        """
         incorrect_indices = np.where(self.predicted_labels != self.y_test_labels)[0]
 
         # Group incorrect predictions by filename
@@ -593,11 +605,6 @@ class TestMetrics:
                     for idx in indices
                     if self.y_test_labels[idx["index"]] == class_idx
                 ]
-                class_incorrect_fileparts = [
-                    idx["file_part"]
-                    for idx in indices
-                    if self.y_test_labels[idx["index"]] == class_idx
-                ]
                 # Skip if there are no incorrect predictions for this class
                 if not class_incorrect_indices:
                     continue
@@ -616,9 +623,7 @@ class TestMetrics:
                     f"Incorrect {class_name} Predictions for {filename}", fontsize=30
                 )
 
-                self.plot_class_examples(
-                    axes, class_incorrect_indices, class_incorrect_fileparts
-                )
+                self.plot_class_examples(axes, class_incorrect_indices)
 
                 total_plots = num_rows * num_columns
                 for unused_ax_idx in range(num_incorrect, total_plots):
@@ -633,9 +638,16 @@ class TestMetrics:
                 plt.close(fig)  # Close the figure to free memory
 
     def find_optimal_layout(self, num_items: int) -> tuple[int, int]:
-        """
-        Find the number of rows and columns for a grid layout with num_items,
-        aiming for a layout that is as square as possible.
+        """Find the number of rows and columns for a grid layout with num_items.
+
+        Aims for a layout that is as square as possible.
+
+        Args:
+            num_items: The total number of items to arrange.
+
+        Returns:
+            row: Number of rows.
+            col: Number of columns.
         """
         sqrt_val = int(math.sqrt(num_items))
         if sqrt_val * sqrt_val == num_items:
@@ -659,11 +671,11 @@ class TestMetrics:
         return row, col
 
     def get_pred_by_class(self) -> None:
-        """
-        Gets the predictions in each class that were incorrect and plots them in
-        separate files for each class.
-        """
+        """Produce a figure containing all incorrect predictions for each class.
 
+        Outputs one image per class, containing a grid of all incorrectly predicted
+        tiles.
+        """
         if self.predicted_labels is None:
             raise ValueError("Predicted labels must not be None")
 
@@ -731,6 +743,7 @@ class TestMetrics:
                 plt.savefig(save_path)
 
     def get_num_tiles_per_confidence(self) -> None:
+        """Generate CSV with the number of tiles below each confidence threshold."""
         if self.predicted_probs is None:
             raise ValueError("Predicted probabilities must not be None")
 
@@ -743,7 +756,7 @@ class TestMetrics:
         cumulative_count_dist = np.cumsum(counts)
         dict_percentages = {
             f"Tiles with confidence <= {threshold:.1f} in %": 100 * count / total_tiles
-            for threshold, count in zip(thresholds, cumulative_count_dist)
+            for threshold, count in zip(thresholds, cumulative_count_dist, strict=True)
         }
         df_percentages = pd.DataFrame([dict_percentages])
         save_path = os.path.join(self.results_dir, "num_tiles_per_threshold.csv")
@@ -756,6 +769,14 @@ class TestMetrics:
         )
 
     def get_metrics_with_threshold_comparison(self) -> None:
+        """Calculate mock metrics after replacing low confidence predictions.
+
+        For each confidence threshold, replaces predictions below the threshold with
+        true labels and recalculates metrics. This is to simulate the effect of manually
+        correcting low confidence predictions.
+
+        Results are saved to CSVs, one per confidence level.
+        """
         if self.predicted_probs is None:
             raise ValueError("Predicted probabilities must not be None")
         if self.predicted_labels is None:
@@ -772,10 +793,11 @@ class TestMetrics:
         os.makedirs(folder_path, exist_ok=True)
 
         for conversion_threshold in thresholds:
+            # Replace low confidence (below threshold) predictions with true labels
+            # (confusingly here stored in self.predictions)
             max_probs = self.predicted_probs.max(axis=1)
             rows_to_modify = max_probs <= conversion_threshold
             adjusted_predicted_labels = self.predicted_labels.copy()
-
             adjusted_predicted_labels[rows_to_modify] = np.argmax(
                 self.predictions[rows_to_modify], axis=1
             )
@@ -810,7 +832,7 @@ class TestMetrics:
             )
             data = []
             for class_name, acc, prec, rec, f1 in zip(
-                self.class_names, accuracy, precision, recall, f1_score
+                self.class_names, accuracy, precision, recall, f1_score, strict=True
             ):
                 data.append(
                     {

@@ -1,5 +1,9 @@
+"""Functions for interacting with the database for API calls."""
+
 import csv
 import io
+import warnings
+import zipfile
 from datetime import datetime
 from typing import Any, cast
 from zipfile import ZipFile
@@ -19,28 +23,26 @@ def fetch_items(
     cnn: str,
     colonisation_type: str,
 ) -> dict[str, list[Any]]:
-    """
-    Fetches items from the database based on provided parameters.
+    """Fetch items from the database for a single image.
 
     This function retrieves item data corresponding to either a name or an ID,
     where a preference is given to the ID if both are provided. If neither
     name nor ID is provided, an HTTPException is raised.
 
-    Parameters:
-    crsr (cursor): The database cursor used to execute SQL queries.
-    name (str): The name reference used to fetch image IDs; can be empty.
-    id_ (str): The specific ID reference for fetching item data; can be empty.
-    type_ (str): A string that represents predictions or annotations.
-    cnn (str): A string that represents the CNN.
-    colonisation_type (str): A string that represents am or erm
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        name: Name reference used to fetch image IDs; can be empty if id_ provided.
+        id_: Image ID; can be empty if name provided.
+        type_: "predictions" or "annotations".
+        cnn: Must be "1". Previously allowed "2" to indicate CNN1 or CNN2.
+        colonisation_type: "am" or "erm" (case insensitive).
 
-    Returns:
-    dict: A dictionary where keys are image IDs and values are lists of item data
-          corresponding to those IDs, excluding the image reference.
+    Returns: Dictionary where keys are image IDs and values are lists of item data
+        corresponding to those IDs, excluding the image reference.
 
     Raises:
-    HTTPException: If both name and id are empty, or if the parameters do not
-                   meet the expected input criteria.
+        HTTPException: If both name and id_ are empty, or if the parameters do not
+            meet the expected input criteria.
     """
     if name == "" and id_ == "":
         raise HTTPException(
@@ -77,24 +79,17 @@ def fetch_items(
 
 
 def set_to_enabled_in_db(crsr: psycopg2.extensions.cursor, id_: int) -> None:
-    """
-    Sets the 'Enabled' status of an image reference to true in the database for a given
-    ID.
+    """Set the enabled status of a given image to True.
 
     This function updates the 'Enabled' field of the image reference to true for
     the specified ID and then disables all other image references that have the same
     file name. The function returns the file name reference of the updated image.
 
-    Parameters:
-    crsr (cursor): The database cursor used to execute SQL queries.
-    id_ (int or str): The unique identifier of the image reference to be updated.
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        id_: Unique identifier of the image reference to be updated.
 
-    Returns:
-    str: The file name reference of the updated image.
-
-    Raises:
-    Exception: May raise exceptions related to database operations
-                (e.g., if the ID does not exist).
+    Returns: File name reference of the updated image.
     """
     update_enabled_query = (
         "UPDATE imageReference "
@@ -122,8 +117,7 @@ def set_to_enabled_in_db(crsr: psycopg2.extensions.cursor, id_: int) -> None:
 def save_annotations_to_db(
     crsr: psycopg2.extensions.cursor, values: AnnotationValues
 ) -> int:
-    """
-    Saves annotation data to the database associated with a specific image reference.
+    """Save annotations to the database for a single image.
 
     This function first checks if a provided image reference ID exists in the database.
     If it does not exist, it inserts a new record into the `imagereference` table.
@@ -133,18 +127,13 @@ def save_annotations_to_db(
     annotations for both Type One and Type Two annotations, replacing any existing data
     for the specified image reference ID.
 
-    Parameters:
-    crsr (cursor): The database cursor used to execute SQL queries.
-    values (AnnotationValues): An object containing the details of the annotations to be
-        saved, including the image reference ID, file name, tile edge, enable status,
-        and CNN annotation values.
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        values: Object containing the details of the annotations to be saved, including
+            image reference ID, file name, tile edge, enable status and CNN annotation
+            values.
 
-    Returns:
-    int: The ID of the saved image reference.
-
-    Raises:
-    Exception: May raise exceptions related to database operations (e.g., SQL errors or
-               constraints violations).
+    Returns: ID of the saved image reference.
     """
     # Check if image reference ID exists in DB
     exists = False
@@ -274,8 +263,7 @@ def save_annotations_to_db(
 def save_predictions_to_db(
     crsr: psycopg2.extensions.cursor, values: PredictionValues
 ) -> None:
-    """
-    Saves prediction data to the database associated with a specific image reference.
+    """Save prediction data to the database for a single image.
 
     This function first checks if the provided image reference ID exists in the
     database.
@@ -284,21 +272,12 @@ def save_predictions_to_db(
     existing data for the specified image reference ID before inserting the new
     predictions.
 
-    Parameters:
-    crsr (cursor): The database cursor used to execute SQL queries.
-    values (PredictionValues): An object containing the details of the predictions to be
-        saved, including the image reference ID, file name, tile edge, colonisation
-        type, and CNN prediction values.
-
-    Returns:
-    None: This function does not return any value but modifies the database
-          according to the provided predictions.
-
-    Raises:
-    Exception: May raise exceptions related to database operations (e.g., SQL errors or
-               constraint violations).
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        values: Object containing the details of the predictions to be saved, including
+            image reference ID, file name, tile edge, colonisation type and CNN
+            prediction values.
     """
-
     # Check if image reference ID exists in DB
     exists = False
     if values.imageReferenceId is not None:
@@ -400,34 +379,32 @@ def save_predictions_to_db(
 
 
 def get_images(crsr: psycopg2.extensions.cursor) -> list[tuple[str]]:
+    """Get all image IDs from the database.
+
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+
+    Returns: List of singleton tuples containing file name references of all images.
+    """
     get_all_images = "SELECT DISTINCT FileNameReference FROM imagereference"
     crsr.execute(get_all_images)
-    images = cast(list[tuple[str]], crsr.fetchall())  # since FileNameReference is text
-
-    return images
+    return cast(list[tuple[str]], crsr.fetchall())  # since FileNameReference is text
 
 
 def get_most_recent_timestamp(
     crsr: psycopg2.extensions.cursor, image_name: str
 ) -> int | None:
-    """
-    Retrieves the ID of the most recently uploaded image based on the specified image
-    name.
+    """Retrieve ID of most recently uploaded image with the specified name.
 
     This function queries the database for records in the `ImageReference` table that
     match the provided `image_name`. It sorts the results by upload timestamp and
     returns the ID of the most recent entry. If no images are found, it returns None.
 
-    Parameters:
-    crsr (cursor): The database cursor used to execute SQL queries.
-    image_name (str): The name of the image for which to retrieve the most recent
-        timestamp.
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        image_name: Name of the image for which to retrieve the most recent timestamp.
 
-    Returns:
-    int or None: The ID of the most recently uploaded image if found; otherwise, None.
-
-    Raises:
-    Exception: May raise exceptions related to database operations (e.g., SQL errors).
+    Returns: ID of the most recently uploaded image if found; otherwise, None.
     """
     fetch_images = (
         "SELECT Id, UploadTimestamp FROM ImageReference WHERE FileNameReference=%s"
@@ -437,14 +414,11 @@ def get_most_recent_timestamp(
     sorted_values = sorted(images, key=lambda x: x[1])
     if len(sorted_values) > 0:
         return cast(int, sorted_values[-1][0])  # since ID is integer
-    else:
-        return None
+    return None
 
 
 def get_enabled(crsr: psycopg2.extensions.cursor, image_name: str) -> int | None:
-    """
-    Retrieves the ID of an enabled image from the database based on the specified image
-    name.
+    """Get the ID of an enabled image, or the most recent image.
 
     This function queries the `ImageReference` table to check if there is an entry
     with the provided `image_name` that is marked as enabled. If an enabled image is
@@ -452,17 +426,12 @@ def get_enabled(crsr: psycopg2.extensions.cursor, image_name: str) -> int | None
     function retrieves the ID of the most recently uploaded image and sets that image to
     enabled before returning its ID.
 
-    Parameters:
-    crsr (cursor): The database cursor used to execute SQL queries.
-    image_name (str): The name of the image for which to check for enabled status.
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        image_name: Name of the image for which to check for enabled status.
 
-    Returns:
-    int: The ID of the enabled image if found; otherwise, the ID of the most recent
+    Returns: ID of the enabled image if found; otherwise, the ID of the most recent
         image.
-
-    Raises:
-    Exception: May raise exceptions related to database operations (e.g., SQL errors or
-               constraints violations) if images cannot be fetched or processed.
     """
     fetch_images = (
         "SELECT Id FROM ImageReference WHERE (FileNameReference=%s AND Enabled=true)"
@@ -472,19 +441,26 @@ def get_enabled(crsr: psycopg2.extensions.cursor, image_name: str) -> int | None
     if len(images) > 0:
         logger.info(f"Image ID {images[0][0]} is enabled for image name {image_name}")
         return cast(int, images[0][0])  # since ID is int in database
-    else:
-        # If no annotations enabled, get most recent timestamp and set this to enabled
-        logger.info(
-            f"No enabled annotations for image {image_name}, return image with most "
-            f"recent timestamp instead."
-        )
-        id_ = get_most_recent_timestamp(crsr, image_name)
-        if id_ is not None:
-            set_to_enabled_in_db(crsr, id_)
-        return id_
+    # If no annotations enabled, get most recent timestamp and set this to enabled
+    logger.info(
+        f"No enabled annotations for image {image_name}, return image with most "
+        f"recent timestamp instead."
+    )
+    id_ = get_most_recent_timestamp(crsr, image_name)
+    if id_ is not None:
+        set_to_enabled_in_db(crsr, id_)
+    return id_
 
 
 def get_tile_edge(crsr: psycopg2.extensions.cursor, id_: int) -> tuple[int]:
+    """Return tile edge length for a given image ID.
+
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        id_: ID of the image for which to retrieve the tile edge length.
+
+    Returns: Singleton tuple containing the tile edge length.
+    """
     fetch_images = "SELECT TileEdge FROM ImageReference WHERE Id=%s"
     crsr.execute(fetch_images, (id_,))
     return cast(tuple[int], crsr.fetchone())  # since TileEdge is integer
@@ -493,6 +469,16 @@ def get_tile_edge(crsr: psycopg2.extensions.cursor, id_: int) -> tuple[int]:
 def check_entries_for_image(
     crsr: psycopg2.extensions.cursor, image_name: str, colonisation_type: str
 ) -> dict[int, dict[str, Any]]:
+    """Get all existing image IDs and properties for a given image name.
+
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        image_name: Name of the image for which to check entries.
+        colonisation_type: "am" or "erm" (case insensitive).
+
+    Returns: Nested dictionary where keys are image IDs and values are dictionaries of
+        properties for those IDs.
+    """
     fetch_images = (
         "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt "
         "FROM ImageReference "
@@ -507,6 +493,16 @@ def check_entries_for_image(
 def check_entries_for_id(
     crsr: psycopg2.extensions.cursor, id_: int, colonisation_type: str
 ) -> dict[int, dict[str, Any]]:
+    """Get image properties for a given ID.
+
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        id_: ID of the image for which to check entries.
+        colonisation_type: "am" or "erm" (case insensitive).
+
+    Returns: Nested dictionary where outer key is image ID and value is dictionary of
+        properties for that ID.
+    """
     fetch_images = (
         "SELECT Id, UploadTimestamp, Enabled, TileEdge, UpdatedAt "
         "FROM ImageReference "
@@ -523,6 +519,19 @@ def _get_existing_entries_for_image(
     colonisation_type: str,
     images: list[tuple[int, datetime, bool, int, datetime]],
 ) -> dict[int, dict[str, Any]]:
+    """Get image properties for a set of images.
+
+    Spefiically, check if CNN1 predictions or annotations exist for each image.
+
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        colonisation_type: "am" or "erm" (case insensitive).
+        images: List of tuples containing known image properties: ID, upload timestamp,
+            enabled flag, tile edge length, modified timestamp.
+
+    Returns: Nested dictionary where outer key is image ID and value is dictionary of
+        properties for that ID, including whether CNN1 predictions or annotations exist.
+    """
     output: dict[int, dict[str, Any]] = {}
 
     for value in images:
@@ -568,6 +577,16 @@ def _get_existing_entries_for_image(
 def download_entries_as_csv(
     crsr: psycopg2.extensions.cursor, id_: int, type_: str, colonisation_type: str
 ) -> str:
+    """Return annotations or predictions for a given image as a CSV string.
+
+    Args:
+        crsr: Database cursor used to execute SQL queries.
+        id_: Image ID.
+        type_: "predictions" or "annotations" (case insensitive).
+        colonisation_type: "am" or "erm" (case insensitive).
+
+    Returns: CSV string of the annotations or predictions for the given image ID.
+    """
     output = io.StringIO()
 
     fetch_values_query = (
@@ -662,13 +681,22 @@ def download_entries_as_csv(
 
 
 def delete_image(crsr: psycopg2, id_: int) -> None:
+    """Delete a single image from the database based on its ID.
+
+    Args:
+        crsr: Database cursor.
+        id_: ID of the image to delete.
+    """
     delete_query = "DELETE FROM ImageReference WHERE Id=%s"
     crsr.execute(delete_query, (id_,))
 
 
 def zip_files_for_transit(images: dict[str, bytes]) -> Response:
-    zip_filename = "image-tiles.zip"
+    """Zip a batch of image tiles to be passed to the frontend.
 
+    Args:
+        images: dict with key `{row}.{col}` and value being
+    """
     s = io.BytesIO()
     zf = ZipFile(s, "w")
 
@@ -681,41 +709,61 @@ def zip_files_for_transit(images: dict[str, bytes]) -> Response:
 
     # Grab ZIP file from in-memory, make response with correct MIME-type
     # application/x-zip-compressed another option
-    resp = Response(
+    zip_filename = "image-tiles.zip"
+    return Response(
         s.getvalue(),
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment;filename={zip_filename}"},
     )
 
-    return resp
-
 
 def _parse_setting(value: str, value_type: str) -> Any:
+    """Convert a value from string to its appropriate type.
+
+    Args:
+        value: The value as a string.
+        value_type: The type of the value ("integer", "boolean", "float", or "string").
+
+    Returns: The value converted to its appropriate type.
+    """
     if value_type == "integer":
         return int(value)
-    elif value_type == "boolean":
+    if value_type == "boolean":
         return value.lower() == "true"
-    elif value_type == "float":
+    if value_type == "float":
         return float(value)
     return value
 
 
 def get_all_settings_from_db(crsr: psycopg2.extensions.cursor) -> dict[str, Any]:
+    """Retrieve all settings from the database.
+
+    Args:
+        crsr: Database cursor.
+
+    Returns: Dictionary of settings.
+    """
     query = "SELECT key, value, value_type FROM settings"
     crsr.execute(query)
     out = crsr.fetchall()
 
     settings = {}
-
     for value in out:
         settings[value[0]] = _parse_setting(value[1], value[2])
-
     return settings
 
 
 def change_setting_to_default_in_db(
     crsr: psycopg2.extensions.cursor, key: str
 ) -> dict[str, Any] | int:
+    """Change a single setting in the database to its default value.
+
+    Args:
+        crsr: Database cursor.
+        key: Setting key to change.
+
+    Returns: Dict with key and new value, or 500 if key not found.
+    """
     query = "SELECT default_value, value_type FROM settings WHERE key=%s"
     crsr.execute(query, (key,))
     out = crsr.fetchall()
@@ -729,13 +777,18 @@ def change_setting_to_default_in_db(
         crsr.execute(set_query, (default_value, key))
 
         return {"key": key, "value": _parse_setting(default_value, value_type)}
-    else:
-        return 500
+    return 500
 
 
 def update_setting_in_db(
     crsr: psycopg2.extensions.cursor, key: str, value: str
 ) -> None:
-    set_query = "UPDATE settings SET value=%s WHERE key=%s"
+    """Update a single setting in the database.
 
+    Args:
+        crsr: Database cursor.
+        key: Setting key to update.
+        value: New value.
+    """
+    set_query = "UPDATE settings SET value=%s WHERE key=%s"
     crsr.execute(set_query, (value, key))

@@ -1,13 +1,11 @@
-# Credits to https://github.com/BlackHC/BatchBALD
-__all__ = [
-    "JointEntropy",
-    "ExactJointEntropy",
-    "batch_multi_choices",
-    "gather_expand",
-    "SampledJointEntropy",
-    "DynamicJointEntropy",
-]
+"""Functions for estimating joint entropy of multiple discrete variables.
 
+This is relevant for active learning with BatchBALD.
+
+Adapted from https://github.com/BlackHC/BatchBALD.
+"""
+
+from abc import ABC, abstractmethod
 from typing import cast
 
 import torch
@@ -15,59 +13,94 @@ from toma import toma
 from tqdm.auto import tqdm
 
 
-class JointEntropy:
-    """Random variables (all with the same # of categories $C$) can be added via
-    JointEntropy.add_variables`.
+class JointEntropy(ABC):
+    """Joint entropy base class.
 
-    `JointEntropy.compute` computes the joint entropy.
+    Defines the interface that specific joint entropy implementations must follow.
+    """
 
-    `JointEntropy.compute_batch` computes the joint entropy of the added variables with
-    each of the variables in the provided batch probabilities in turn."""
-
+    @abstractmethod
     def compute(self) -> torch.Tensor:
-        """Computes the entropy of this joint entropy."""
-        raise NotImplementedError()
+        """Compute entropy."""
+        pass
 
     # TODO solve the mypy override errors properly
     # - overrides should not have a different signature
+    @abstractmethod
     def add_variables(self, log_probs_N_K_C: torch.Tensor) -> "JointEntropy":
-        """Expands the joint entropy to include more terms."""
-        raise NotImplementedError()
+        """Expand the joint entropy to include more terms."""
+        pass
 
+    @abstractmethod
     def compute_batch(  # type: ignore[no-untyped-def]
         self, log_probs_B_K_C: torch.Tensor, output_entropies_B=None
     ) -> torch.Tensor:
-        """Computes the joint entropy of the added variables together with the batch
-        (one by one)."""
-        raise NotImplementedError()
+        """Compute the joint entropy of the added variables together with the batch.
+
+        Computes the joint entropy of the added variables with each of the variables in
+        the provided batch probabilities in turn.
+        """
+        pass
 
 
 class ExactJointEntropy(JointEntropy):
+    """Exact joint entropy implementation.
+
+    Uses exact computation to calculate the joint entropy of multiple discrete
+    variables.
+    """
+
     joint_probs_M_K: torch.Tensor
 
     def __init__(self, joint_probs_M_K: torch.Tensor):
+        """Initialise exact joint entropy with given joint probabilities.
+
+        Args:
+            joint_probs_M_K: Joint probabilities of M joint configurations over K
+                samples.
+        """
         self.joint_probs_M_K = joint_probs_M_K
 
     @staticmethod
     def empty(
         K: int, device: torch.device | None = None, dtype: torch.dtype | None = None
     ) -> "ExactJointEntropy":
+        """Create empty ExactJointEntropy for K samples.
+
+        Initialised with only one configuration, with probability 1 for all samples.
+
+        Args:
+            K: Number of samples.
+            device: Torch device.
+            dtype: Torch data type.
+
+        Returns: New empty ExactJointEntropy instance.
+        """
         return ExactJointEntropy(torch.ones((1, K), device=device, dtype=dtype))
 
     def compute(self) -> torch.Tensor:
+        """Compute and return joint entropy."""
         probs_M = torch.mean(self.joint_probs_M_K, dim=1, keepdim=False)
         nats_M = -torch.log(probs_M) * probs_M
-        entropy = torch.sum(nats_M)
-        return entropy
+        return torch.sum(nats_M)
 
     def add_variables(self, log_probs_N_K_C: torch.Tensor) -> "ExactJointEntropy":
+        """Add more variables to the joint entropy.
+
+        Args:
+            log_probs_N_K_C: Log probabilities of the new variables to add. Shape
+                (N, K, C) where N is the number of new variables, K is the number of
+                samples, and C is the number of classes.
+
+        Returns: Self, with updated joint probabilities.
+        """
         if self.joint_probs_M_K.shape[1] != log_probs_N_K_C.shape[1]:
             raise ValueError(
                 f"Cannot add variables with K={log_probs_N_K_C.shape[1]} to "
                 f"ExactJointEntropy with K={self.joint_probs_M_K.shape[1]}."
             )
 
-        N, K, C = log_probs_N_K_C.shape
+        N, K, _ = log_probs_N_K_C.shape
         joint_probs_K_M_1 = self.joint_probs_M_K.t()[:, :, None]
 
         probs_N_K_C = log_probs_N_K_C.exp()
@@ -88,6 +121,20 @@ class ExactJointEntropy(JointEntropy):
         log_probs_B_K_C: torch.Tensor,
         output_entropies_B: torch.Tensor | None = None,
     ) -> torch.Tensor:
+        """Compute joint entropy of added variables with the batch.
+
+        Computes the joint entropy of the added variables with each of the variables in
+        the provided batch probabilities in turn.
+
+        Args:
+            log_probs_B_K_C: Log probabilities of the batch variables. Shape
+                (B, K, C) where B is the batch size, K is the number of samples, and C
+                is the number of classes.
+            output_entropies_B: Optional preallocated tensor to store the output
+                entropies. If None, a new tensor will be created.
+
+        Returns: Tensor of shape (B,) containing the joint entropies.
+        """
         if self.joint_probs_M_K.shape[1] != log_probs_B_K_C.shape[1]:
             raise ValueError(
                 f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for "
@@ -137,22 +184,45 @@ class ExactJointEntropy(JointEntropy):
 
 
 def batch_multi_choices(probs_b_C: torch.Tensor, M: int) -> torch.Tensor:
-    """
-    probs_b_C: Ni... x C
+    """Sample M choices from categorical distributions defined by probs_b_C.
 
-    Returns:
-        choices: Ni... x M
+    Args:
+        probs_b_C: Batch of categorical distributions. Shape: (..., C) where ...
+            represents any number of batch dimensions and C is the number of classes.
+        M: Number of samples to draw from each categorical distribution.
+
+    Returns: Sampled category indices. Shape: (..., M) where ... matches
+            the batch dimensions of probs_b_C, and M is the number of samples.
+            Each value is an integer in [0, C) representing a sampled category.
     """
     probs_B_C = probs_b_C.reshape((-1, probs_b_C.shape[-1]))
 
     # samples: Ni... x draw_per_xx
     choices = torch.multinomial(probs_B_C, num_samples=M, replacement=True)
 
-    return cast(torch.Tensor, choices.reshape(list(probs_b_C.shape[:-1]) + [M]))
+    return cast(torch.Tensor, choices.reshape(*probs_b_C.shape[:-1], M))
 
 
 def gather_expand(data: torch.Tensor, dim: int, index: torch.Tensor) -> torch.Tensor:
-    max_shape = [max(dr, ir) for dr, ir in zip(data.shape, index.shape)]
+    """Select values from data using indices, with automatic broadcasting.
+
+    Selects elements from the `tensor` corresponding to indices in `index` along the
+    specified dimension `dim`. Extends torch.gather by automatically broadcasting data
+    and index tensors to compatible shapes.
+
+    Args:
+        data: Source tensor to select values from. Shape: (..., D_dim, ...)
+        dim: Dimension along which to index into data.
+        index: Indices specifying which elements to select along dim.
+            Shape: (..., I_dim, ...) where each dimension (except dim) must be
+            either 1, equal to data's corresponding dimension, or larger (in which
+            case data is expanded). Values must be integers in [0, D_dim).
+
+    Returns: Selected values with shape (..., I_dim, ...) where each dimension
+        (except dim) has size max(data.shape[d], index.shape[d]), and the
+        dimension at dim has size index.shape[dim].
+    """
+    max_shape = [max(dr, ir) for dr, ir in zip(data.shape, index.shape, strict=True)]
     new_data_shape = list(max_shape)
     new_data_shape[dim] = data.shape[dim]
 
@@ -166,27 +236,50 @@ def gather_expand(data: torch.Tensor, dim: int, index: torch.Tensor) -> torch.Te
 
 
 class SampledJointEntropy(JointEntropy):
-    """Random variables (all with the same # of categories $C$) can be added via
-    `SampledJointEntropy.add_variables`.
+    """Sampled joint entropy implementation.
 
-    `SampledJointEntropy.compute` computes the joint entropy.
-
-    `SampledJointEntropy.compute_batch` computes the joint entropy of the added
-    variables with each of the variables in the provided batch probabilities in turn."""
+    Uses random sampling to estimate the joint entropy of multiple discrete variables.
+    """
 
     sampled_joint_probs_M_K: torch.Tensor
 
     def __init__(self, sampled_joint_probs_M_K: torch.Tensor):
+        """Construct SampledJointEntropy with given sampled joint probabilities.
+
+        Args:
+            sampled_joint_probs_M_K: Sampled joint probabilities of M joint
+                configurations over K samples.
+        """
         self.sampled_joint_probs_M_K = sampled_joint_probs_M_K
 
     @staticmethod
     def empty(
         K: int, device: torch.device | None = None, dtype: torch.dtype | None = None
     ) -> "SampledJointEntropy":
+        """Construct empty SampledJointEntropy for K samples.
+
+        Initialised with only one configuration, with probability 1 for all samples.
+
+        Args:
+            K: Number of samples.
+            device: Torch device.
+            dtype: Torch data type.
+        """
         return SampledJointEntropy(torch.ones((1, K), device=device, dtype=dtype))
 
     @staticmethod
     def sample(probs_N_K_C: torch.Tensor, M: int) -> "SampledJointEntropy":
+        """Sample joint probabilities from given categorical distributions.
+
+        Args:
+            probs_N_K_C: Probabilities of the categorical distributions to sample
+                from. Shape: (N, K, C) where N is the number of variables, K is the
+                number of samples, and C is the number of classes.
+            M: Number of joint samples to draw.
+
+        Returns: SampledJointEntropy instance with sampled joint probabilities of
+            shape (M, K).
+        """
         K = probs_N_K_C.shape[1]
 
         # S: num of samples per w
@@ -210,16 +303,26 @@ class SampledJointEntropy(JointEntropy):
         return SampledJointEntropy(samples_M_K)
 
     def compute(self) -> torch.Tensor:
+        """Compute and return joint entropy."""
         sampled_joint_probs_M = torch.mean(
             self.sampled_joint_probs_M_K, dim=1, keepdim=False
         )
         nats_M = -torch.log(sampled_joint_probs_M)
-        entropy = torch.mean(nats_M)
-        return entropy
+        return torch.mean(nats_M)
 
     def add_variables(  # type: ignore[override]
         self, log_probs_N_K_C: torch.Tensor, M2: int
     ) -> "SampledJointEntropy":
+        """Add more variables to the joint entropy.
+
+        Args:
+            log_probs_N_K_C: Log probabilities of the new variables to add. Shape
+                (N, K, C) where N is the number of new variables, K is the number of
+                samples, and C is the number of classes.
+            M2: Number of joint samples to draw for the new variables.
+
+        Returns: Self, with updated sampled joint probabilities.
+        """
         K = self.sampled_joint_probs_M_K.shape[1]
         if K != log_probs_N_K_C.shape[1]:
             raise ValueError(
@@ -244,6 +347,20 @@ class SampledJointEntropy(JointEntropy):
         log_probs_B_K_C: torch.Tensor,
         output_entropies_B: torch.Tensor | None = None,
     ) -> torch.Tensor:
+        """Compute joint entropy of added variables with the batch.
+
+        Computes the joint entropy of the added variables with each of the variables in
+        the provided batch probabilities in turn.
+
+        Args:
+            log_probs_B_K_C: Log probabilities of the batch variables. Shape
+                (B, K, C) where B is the batch size, K is the number of samples, and C
+                is the number of classes.
+            output_entropies_B: Optional preallocated tensor to store the output
+                entropies. If None, a new tensor will be created.
+
+        Returns: Tensor of shape (B,) containing the joint entropies.
+        """
         if self.sampled_joint_probs_M_K.shape[1] != log_probs_B_K_C.shape[1]:
             raise ValueError(
                 f"Cannot compute batch with K={log_probs_B_K_C.shape[1]} for "
@@ -297,6 +414,19 @@ class SampledJointEntropy(JointEntropy):
 
 
 class DynamicJointEntropy(JointEntropy):
+    """Dynamic joint entropy implementation.
+
+    Dynamic joint entropy is a measure of uncertainty across multiple predictions that
+    grows incrementally as new data points are added. Unlike static joint entropy which
+    is computed over a fixed set of items, dynamic joint entropy allows you to add items
+    one at a time and efficiently update the entropy calculation without recomputing
+    from scratch.
+
+    This is useful in active learning scenarios where you want to measure the joint
+    uncertainty of a growing batch of candidate samples to select the most informative
+    subset.
+    """
+
     inner: JointEntropy
     log_probs_max_N_K_C: torch.Tensor
     N: int
@@ -311,6 +441,18 @@ class DynamicJointEntropy(JointEntropy):
         dtype: torch.dtype | None = None,
         device: torch.device | None = None,
     ) -> None:
+        """Initialise DynamicJointEntropy.
+
+        Args:
+            M: Number of samples drawn from each categorical distribution (for Monte
+                Carlo estimation of entropy).
+            max_N: Maximum number of data points that can be added dynamically.
+                Pre-allocates storage for efficiency.
+            K: Number of models or ensemble members making predictions.
+            C: Number of classes in the classification task.
+            dtype: Torch data type.
+            device: Torch device.
+        """
         self.M = M
         self.N = 0
         self.max_N = max_N
@@ -321,6 +463,15 @@ class DynamicJointEntropy(JointEntropy):
         )
 
     def add_variables(self, log_probs_N_K_C: torch.Tensor) -> "DynamicJointEntropy":
+        """Add more variables to the joint entropy calculation.
+
+        Args:
+            log_probs_N_K_C: Log probabilities of the new variables to add. Shape
+                (N, K, C) where N is the number of new variables, K is the number of
+                samples, and C is the number of classes.
+
+        Returns: Self, with updated joint entropy calculation.
+        """
         C = self.log_probs_max_N_K_C.shape[2]
         add_N = log_probs_N_K_C.shape[0]
 
@@ -349,6 +500,7 @@ class DynamicJointEntropy(JointEntropy):
         return self
 
     def compute(self) -> torch.Tensor:
+        """Compute and return joint entropy."""
         return self.inner.compute()
 
     def compute_batch(
@@ -356,6 +508,18 @@ class DynamicJointEntropy(JointEntropy):
         log_probs_B_K_C: torch.Tensor,
         output_entropies_B: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """Computes the joint entropy of the added variables together with the batch
-        (one by one)."""
+        """Compute joint entropy of added variables with the batch.
+
+        Computes the joint entropy of the added variables with each of the variables in
+        the provided batch probabilities in turn.
+
+        Args:
+            log_probs_B_K_C: Log probabilities of the batch variables. Shape
+                (B, K, C) where B is the batch size, K is the number of samples, and C
+                is the number of classes.
+            output_entropies_B: Optional preallocated tensor to store the output
+                entropies. If None, a new tensor will be created.
+
+        Returns: Tensor of shape (B,) containing the joint entropies.
+        """
         return self.inner.compute_batch(log_probs_B_K_C, output_entropies_B)

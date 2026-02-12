@@ -16,10 +16,22 @@ exclude = ["notebooks"]
 [tool.ruff.lint]
 extend-select = [
     "A",    # overwriting builtins
+    "B",    # flake8 bugbears
     "ARG",  # unused arguments
+    "D",    # docstrings
     "E501", # line too long
+    "FAST", # FastAPI rules
     "I",    # import sorting
-    "S101"  # no assert statements
+    "RET",  # checking return statments
+    "RUF",  # ruff custom rules
+    "S101", # no assert statements
+    "UP"    # use up-to-date syntax
+]
+ignore = [
+    "D203", # 1 blank line required before class docstring
+    "D213", # multi-line docstring summary should start at the second line
+    "D407", # mandate dashed lines in docstrings
+    "D413"  # add blank line at end of docstring
 ]
 unfixable = [
     "F401" # don't remove unused imports, but still flag them

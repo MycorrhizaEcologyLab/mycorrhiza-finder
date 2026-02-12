@@ -1,37 +1,4 @@
-# AMFinder - amfinder_plot.py
-#
-# MIT License
-# Copyright (c) 2021 Edouard Evangelisti, Carl Turner
-#               2024-2025 Royal Botanic Gardens, Kew
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to
-# deal in the Software without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-# sell copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-# IN THE SOFTWARE.
-
-"""
-Plots accuracy and loss after training.
-
-Functions
------------
-
-:function initialize: Defines plot style.
-:function draw: draws a loss/accuracy plot.
-
-"""
+"""Training history plotting functionality."""
 
 import io
 
@@ -40,14 +7,13 @@ import numpy as np
 from numpy.typing import NDArray
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as pyplot
+import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 
 def initialize() -> None:
-    """Defines graph style."""
-
-    pyplot.style.use("classic")
+    """Define graph style."""
+    plt.style.use("classic")
 
 
 def draw(
@@ -58,39 +24,50 @@ def draw(
     t_name: str,
     v_name: str,
 ) -> io.BytesIO:
-    """ """
+    """Plot a particular quantity for the training and validation sets.
 
-    pyplot.clf()
+    Args:
+        history: Dictionary of training history containing entries under `t_name` for
+            training and `v_name` for validation.
+        title: Plot title.
+        epochs: Number of epochs, used only for setting x-axis limits.
+        x_range: Range of x values (epochs) that history covers.
+        t_name: Name of the training set entry in `history`.
+        v_name: Name of the validation set entry in `history`.
 
-    pyplot.grid(True)
+    Returns: In-memory PNG image of the plot.
+    """
+    plt.clf()
+
+    plt.grid(True)
 
     t_values = history[t_name]
     v_values = history[v_name]
-    pyplot.plot(x_range, t_values, "b-o", label="Training set")
-    pyplot.plot(x_range, v_values, "g-s", label="Validation set")
+    plt.plot(x_range, t_values, "b-o", label="Training set")
+    plt.plot(x_range, v_values, "g-s", label="Validation set")
 
-    pyplot.xlabel("Epoch")
-    pyplot.ylabel("Value")
-    pyplot.title(title)
+    plt.xlabel("Epoch")
+    plt.ylabel("Value")
+    plt.title(title)
 
     padding = 0.1
     legend_pos = "upper right"
 
     if title[0:4] == "Loss":
-        pyplot.xlim(-padding, epochs + padding)
+        plt.xlim(-padding, epochs + padding)
 
     else:
         legend_pos = "lower right"
-        pyplot.axis([-padding, epochs + padding, 0, 1])
+        plt.axis([-padding, epochs + padding, 0, 1])
 
-    axes = pyplot.gca()
+    axes = plt.gca()
     axes.autoscale(enable=True, axis="x", tight=False)
     axes.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-    pyplot.legend(loc=legend_pos)
-    pyplot.draw()
+    plt.legend(loc=legend_pos)
+    plt.draw()
 
     plot_data = io.BytesIO()
-    pyplot.savefig(plot_data, format="png")
+    plt.savefig(plot_data, format="png")
 
     return plot_data

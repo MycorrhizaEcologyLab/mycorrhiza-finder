@@ -1,3 +1,5 @@
+"""Functionality for connecting to and configuring the database."""
+
 import os
 import sys
 from configparser import ConfigParser
@@ -14,9 +16,19 @@ else:  # i.e. dev
     )
 
 
-# This uses the local database.ini file, which has dummy credentials in.
-# Please update to your local postgres credentials
 def config(filename: str = db_ini_path, section: str = "database") -> dict[str, str]:
+    """Read database configuration.
+
+    This uses the local database.ini file, which has dummy credentials in.
+    Please update to your local postgres credentials.
+
+
+    Args:
+        filename: Path to database configuration file.
+        section: Section of database configuration file to read.
+
+    Returns: Dictionary of database config parameters.
+    """
     parser = ConfigParser()
     parser.read(filename)
     db = {}
@@ -25,15 +37,21 @@ def config(filename: str = db_ini_path, section: str = "database") -> dict[str, 
         for param in params:
             db[param[0]] = param[1]
     else:
-        raise Exception(
-            "Section {0} is not found in the {1} file.".format(section, filename)
-        )
+        raise Exception(f"Section {section} is not found in the {filename} file.")
     return db
 
 
 def connect(
     db_name: str, password: str | None = None
 ) -> psycopg2.extensions.connection:
+    """Connect to PostgreSQL database.
+
+    Args:
+        db_name: Database name.
+        password: Optional password to override the one in config file.
+
+    Returns: Database connection object.
+    """
     connection = None
     try:
         params = config()
@@ -53,6 +71,13 @@ def connect(
 
 
 def create_database_if_not_exists(db_name: str, user: str, password: str) -> None:
+    """Create the database if it does not already exist.
+
+    Args:
+        db_name: Database name.
+        user: Database user name.
+        password: Database user password.
+    """
     connection = connect(
         "postgres", password
     )  # Get a new connection for this operation

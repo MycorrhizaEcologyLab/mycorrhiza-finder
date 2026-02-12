@@ -1,15 +1,22 @@
-# Credits to https://github.com/BlackHC/BatchBALD
+"""BatchBALD acquisition function implementation.
+
+Credits to https://github.com/BlackHC/BatchBALD.
+"""
+
+"""BatchBALD acquisition function implementation.
+
+Credits to https://github.com/BlackHC/BatchBALD.
+"""
+
 __all__ = [
-    "compute_conditional_entropy",
-    "compute_entropy",
     "CandidateBatch",
+    "CandidateBatch",
+    "compute_conditional_entropy",
     "get_batchbald_batch",
 ]
 
 
-import math
 from dataclasses import dataclass
-from typing import List
 
 import torch
 from toma import toma
@@ -19,7 +26,16 @@ import amf.helper.joint_entropy
 
 
 def compute_conditional_entropy(log_probs_N_K_C: torch.Tensor) -> torch.Tensor:
-    N, K, C = log_probs_N_K_C.shape
+    """Return the conditional entropy for each sample.
+
+    Args:
+        log_probs_N_K_C: Log class probabilities with shape (N, K, C) where N is the
+            number of samples, K is the number of MC Dropout samples, and C is the
+            number of classes.
+
+    Returns: Conditional entropy for each sample, shape (N,).
+    """
+    N, K, _ = log_probs_N_K_C.shape
 
     entropies_N = torch.empty(N, dtype=torch.double)
 
@@ -37,33 +53,12 @@ def compute_conditional_entropy(log_probs_N_K_C: torch.Tensor) -> torch.Tensor:
     return entropies_N
 
 
-def compute_entropy(log_probs_N_K_C: torch.Tensor) -> torch.Tensor:
-    N, K, C = log_probs_N_K_C.shape
-
-    entropies_N = torch.empty(N, dtype=torch.double)
-
-    pbar = tqdm(total=N, desc="Entropy", leave=False)
-
-    @toma.execute.chunked(log_probs_N_K_C, 1024)  # type: ignore[untyped-decorator]
-    def compute(log_probs_n_K_C: torch.Tensor, start: int, end: int) -> None:
-        mean_log_probs_n_C = torch.logsumexp(log_probs_n_K_C, dim=1) - math.log(K)
-        mean_log_probs_n_C = torch.logsumexp(log_probs_n_K_C, dim=1) - torch.log(
-            torch.tensor(K)
-        )
-        nats_n_C = mean_log_probs_n_C * torch.exp(mean_log_probs_n_C)
-
-        entropies_N[start:end].copy_(-torch.sum(nats_n_C, dim=1))
-        pbar.update(end - start)
-
-    pbar.close()
-
-    return entropies_N
-
-
 @dataclass
 class CandidateBatch:
-    scores: List[float]
-    indices: List[int]
+    """A batch to be labelled in BatchBALD."""
+
+    scores: list[float]
+    indices: list[int]
 
 
 def get_batchbald_batch(
@@ -73,6 +68,19 @@ def get_batchbald_batch(
     dtype: torch.dtype | None = None,
     device: torch.device | None = None,
 ) -> CandidateBatch:
+    """Return a batch of the most uncertain samples using BatchBALD.
+
+    Args:
+        log_probs_N_K_C: Log class probabilities with shape (N, K, C) where N is the
+            number of samples, K is the number of MC Dropout samples, and C is the
+            number of classes.
+        batch_size: Number of samples to select for labelling.
+        num_samples: Number of MC Dropout samples.
+        dtype: Desired data type of computations.
+        device: Desired device of computations.
+
+    Returns: Selected batch of samples to be labelled.
+    """
     N, K, C = log_probs_N_K_C.shape
 
     batch_size = min(batch_size, N)

@@ -23,8 +23,7 @@
 # IN THE SOFTWARE.
 
 
-"""
-Neural network training.
+"""Neural network training.
 
 Trains a convolutional neural network with a set of ink-stained root
 images associated with tile annotations which label colonised root
@@ -76,9 +75,7 @@ def class_weights(
     beta: float = 0.9999,
     epsilon: float = 1e-6,
 ) -> tuple[dict[int, torch.Tensor], torch.Tensor]:
-    """
-    Computes weights to counteract class imbalance and
-    display statistics.
+    """Compute weights to counteract class imbalance and display statistics.
 
     :param one_hot_labels: Hot labels encoding tile annotations.
     :return: Dictionary of class weights.
@@ -92,7 +89,6 @@ def class_weights(
     - beta (float): Smoothing parameter for effective number of samples (default 0.99).
     - epsilon (float): Small constant to avoid division by zero (default 1e-6).
     """
-
     logger.debug("Class weights")
 
     # Sum along axis 0 to count class occurrences (shape: (C,))
@@ -203,8 +199,7 @@ class ReduceLROnPlateau:
 
 
 def run(input_files: list[str], flag: bool, train_active_learning: bool = False) -> int:
-    """
-    Creates or loads a convolutional neural network, and trains it
+    """Creates or loads a convolutional neural network, and trains it
     with the annotated tiles extracted from input images.
 
     :param input_files: List of input images to train with.

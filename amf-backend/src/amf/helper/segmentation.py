@@ -1,41 +1,4 @@
-# AMFinder - segmentation.py
-#
-# MIT License
-# Copyright (c) 2021 Edouard Evangelisti, Carl Turner
-#               2024-2025 Royal Botanic Gardens, Kew
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to
-# deal in the Software without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-# sell copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-# IN THE SOFTWARE.
-
-"""
-Image Segmentation.
-
-Crop tiles (squares) and apply diverse image modifications.
-
-Constants
------------
-INTERPOLATION - Interpolation mode for image resizing.
-
-Functions
-------------
-:function tile: Extracts a tile from a large image.
-:function preprocess: Convert a tile list to NumPy array and normalise pixels.
-"""
+"""Image segmentation (tiling) functionality."""
 
 import numpy as np
 from numpy.typing import NDArray
@@ -49,8 +12,12 @@ np.random.seed(42)
 
 
 def load(image_path: str) -> Image.Image:
-    """
-    Loads an image using the Pillow library.
+    """Load image into memory.
+
+    Args:
+        image_path: Path to the image file.
+
+    Returns: PIL image object.
     """
     return Image.open(image_path)
 
@@ -61,22 +28,22 @@ def get_contextual_tiles(
     c: int,
     edge: int | None = None,
     overlap: float = 0.75,
-    overlap_method: str = "diagonal",  # TODO replace with enum
+    overlap_method: str = "diagonal",  # TODO replace with enum?
 ) -> list[NDArray[np.uint8] | None]:
-    """
-    Extracts context tiles around a central tile from a large image.
+    """Extract context tiles around a central tile from a large image.
+
     Returns None for any surrounding tile that extends beyond the image boundaries.
 
-    :param image: The source image used to extract tiles.
-    :param r: The row index of the central tile.
-    :param c: The column index of the central tile.
-    :param edge: The size of each tile edge. Defaults to configuration if None.
-    :param overlap: The fraction of overlap between central and surrounding tiles (0-1).
-    :param overlap_method: Method to extract tiles - 'cardinal'
-                           (top, bottom, left, right)
-                           or 'diagonal'
-                           (top-left, top-right, bottom-left, bottom-right).
-    :return: List of tiles based on overlap_method, each as a NumPy array or None.
+    Args:
+        image: Source image from which to extract tiles.
+        r: Row index of the central tile.
+        c: Column index of the central tile.
+        edge: Tile edge length. If None, uses default from configuration.
+        overlap: Fraction of overlap between central and surrounding tiles (0-1).
+        overlap_method: Method to extract tiles - 'cardinal' (top, bottom, left, right)
+            or 'diagonal' (top-left, top-right, bottom-left, bottom-right).
+
+    Returns: List of tiles based on overlap_method, each as a NumPy array or None.
     """
     # Validate overlap parameter
     if overlap < 0 or overlap > 1:
@@ -123,7 +90,7 @@ def get_contextual_tiles(
 
         return [top_tile, bottom_tile, left_tile, right_tile]
 
-    elif overlap_method == "diagonal":
+    if overlap_method == "diagonal":
         # Top-left tile
         x_tl = x_center - offset
         y_tl = y_center - offset
@@ -152,18 +119,16 @@ def get_contextual_tiles(
 def tile(
     image: Image.Image, r: int, c: int, edge: int | None = None
 ) -> NDArray[np.uint8]:
-    """
-    Extracts a tile from a large image, resizes it to
-    the required CNN input image size, and applies
-    data augmentation (if active).
+    """Extract a single tile from an image.
 
-    :param image: The source image used to extract tiles.
-    :param r: The row index of the tile to extract.
-    :param c: The column index of the tile to extract.
-    :return: Set of tile, converted to numpy arrays.
-    :rtype: list
+    Args:
+        image: Source image from which to extract the tile.
+        r: Row index of the tile to extract.
+        c: Column index of the tile to extract.
+        edge: Tile edge length. If None, uses default from configuration.
+
+    Returns: Extracted tile as raw RGB array, shape (3, edge, edge).
     """
-    # TODO check on hhow this edge is fetched
     edge = edge if edge is not None else AmfConfig.get("tile_edge")
 
     # Crop the tile from the image
@@ -183,12 +148,18 @@ def tile(
 
 
 def preprocess(tile_list: list[NDArray[np.uint8]]) -> NDArray[np.float32]:
-    """
+    """Return a single array containing all tile pixels normalised between 0 and 1.
+
+    Args:
+        tile_list: List of unnormalised tiles as numpy arrays.
+
+    Returns: A single array where the first axis is the tile index, with pixel values
+        normalised to run from 0 to 1.
+
     Preprocess a list of tiles.
 
     :param tile_list: list of tiles extracted using the function above.
     :return: a numpy array containing normalised pixel values for several tiles.
     :rtype: numpy.ndarray
     """
-
     return np.array(tile_list, np.float32) / 255.0

@@ -1,3 +1,5 @@
+"""Functionality for loading and tiling images and importing annotations."""
+
 import io
 import json
 import os
@@ -29,41 +31,32 @@ from amf.helper.api_utils import (
 from amf.helper.db_config import connect
 
 
-# Defining class for Datasetloader
 class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
-    """
-    Manages dataset loading and normalizes image data to the range [0, 1].
-    This is intended to be used by DataLoaders primarily for efficient memory handling.
-
-    Expected Inputs:
-    x: Iterable of image data (e.g., list of tiles as NumPy arrays or as simple list).
-    y: Iterable of labels corresponding to the image data (e.g., list of NumPy arrays or
-        lists representing the labels).
-
-    Methods:
-    __init__(self, x, y): Initializes the dataset, storing provided data as NumPy
-        arrays.
-    __len__(self): Returns the number of samples in the dataset.
-    __getitem__(self, index): Returns a tuple of image and label at the given index as
-        PyTorch tensors, with the image normalized to the range [0, 1].
-
-    Expected Outputs:
-    Returns normalized data as PyTorch tensors with on-demand data conversion.
-    x_tensor are the image tiles which are normalised and converted into torch tensors
-        whenever __getitem__() is invoked.
-    y_tensor are one_hot_encoded labels which are converted into torch tensors whenever
-        __getitem__() is invoked.
-    """
+    """Dataset that normalises images to [0, 1] on access."""
 
     def __init__(self, x: ArrayLike, y: ArrayLike):
+        """Initialise dataset with data.
+
+        Args:
+            x: Input features (image tiles).
+            y: Corresponding labels (one-hot encoded).
+        """
         # Store data as NumPy arrays or lists
         self.x = np.array(x) if not isinstance(x, np.ndarray) else x
         self.y = np.array(y) if not isinstance(y, np.ndarray) else y
 
     def __len__(self) -> int:
+        """Return number of samples in dataset."""
         return len(self.x)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return item (x, y) at given index, normalising x to [0, 1].
+
+        Args:
+            index: Index of the sample to retrieve.
+
+        Returns: Tuple of normalised image tensor and label tensor.
+        """
         # Convert to torch tensors only when accessed
         x_tensor = cast(
             torch.Tensor, torch.tensor(self.x[index], dtype=torch.float32) / 255.0
@@ -73,75 +66,7 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 
 
 class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
-    """
-    Handles loading of training tile sets and annotations, with optional data
-    augmentation and dataset balancing.
-
-    Expected Inputs:
-    input_files: List of file paths to the images used for training.
-    use_augmentation: Boolean indicating whether to apply data augmentation.
-    balance_factor: Float multiplier for balancing datasets based on class sizes and
-        oriented on Colonised classes.
-    calculate_distribution: Boolean flag to calculate class distribution statistics.
-
-    Methods and Workflow:
-    __init__(self, input_files, use_augmentation=False, balance_factor=1.0,
-             calculate_distribution=False):
-    Initializes the class with input images, configurations, and optional parameters for
-    augmentation and balancing.
-    Calls _prepare_dataset to load and augment data if necessary. Optionally computes
-    class distribution statistics via _prepare_stats.
-
-    _prepare_dataset(input_files, use_augmentation):
-    Iterates through each input file, extracting image tiles and annotations. Normalizes
-    image tiles by scaling pixel values to [0, 1].
-    Optionally applies data augmentation using specified transformations.
-
-        if use_augmentation is set to true:
-        Utilizes a set of transformations (random flips, color jitter, etc.) to augment
-        specified classes multiple times.
-        For these operations tiles and labels are temporarilty converted to torch
-        tensors. Balanced representation is ensured through
-        class_augmentations, inidicating the number of augmentation loops per given
-        class in a dictionary.
-
-    _balance_dataset(self, x, y, factor=1.0):
-    Balances classes by clipping larger clases to the number of tiles obtained from
-    smaller classes. Smaller classes are retrained fully.
-
-    factor (float): The factor to determine the clipping size for classes larger than
-                    class 0.
-    - If factor = 1.0, classes are clipped to match class 0's size.
-    - If factor > 1.0, classes are clipped to `factor` times class 0's size.
-
-    Notes:
-    - Class 0 (AM Colonised) is treated as the reference class.
-    - Classes smaller than class 0 are fully retained.
-    - Classes larger than class 0 are clipped to `factor` times class 0's size, but not
-        exceeding the class size.
-
-    _prepare_stats(self):
-    Calculates and prints class distribution statistics, as a check and overview that
-    all classes are present within a given dataset.
-
-    __len__(self):
-    Returns the number of samples in the dataset.
-
-    __getitem__(self, idx):
-    Retrieves data samples and their labels from the dataset, ensuring that images are
-    appropriately scaled.
-
-    Expected Outputs
-    dataset = List of tuples containing pairs of image tiles and labels.
-
-    The loader facilitates the generation of a dataset from input images and
-    annotations, outputting:
-    Tile Images: Image tiles processed with optional augmentations and balacing,
-        converted into uint8 numpy arrays and stored in a list.
-    Labels: Corresponding one-hot encoded labels for each tile, converted into uint8
-        numpy arrays and stored in an according list.
-
-    """
+    """Dataset with data augmentation and balancing functionality."""
 
     def __init__(
         self,
@@ -150,6 +75,16 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
         balance_factor: float = 1.0,
         calculate_distribution: bool = False,
     ):
+        """Initialise dataset.
+
+        Args:
+            input_files: List of input image file paths.
+            use_augmentation: Whether to apply data augmentation.
+            balance_factor: Factor to balance classes in the dataset. This is the
+               multiple of the size of the anchor class to clip other classes to.
+            calculate_distribution: Whether to calculate and print class distribution
+               statistics.
+        """
         self.use_augmentation = use_augmentation
         self.balance_factor = balance_factor
         self.dataset = self._prepare_dataset(input_files, self.use_augmentation)
@@ -164,6 +99,14 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
     def _prepare_dataset(
         self, input_files: list[str], use_augmentation: bool
     ) -> list[tuple[NDArray[np.uint8], NDArray[np.uint8]]]:
+        """Prepare dataset, including applying augmentation and balancing.
+
+        Args:
+            input_files: List of input image file paths.
+            use_augmentation: Whether to apply data augmentation.
+
+        Returns: Prepared dataset as a list of (tile, label) tuples.
+        """
         all_tiles = []
         all_labels = []
         # Integration of augmentation
@@ -273,14 +216,14 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
                 f"Balance factor set to: {self.balance_factor}. "
                 f"Generating balanced dataset."
             )
-            dataset = list(zip(balanced_tiles, balanced_labels))
+            dataset = list(zip(balanced_tiles, balanced_labels, strict=True))
         elif self.balance_factor == 0.0:
             # Create unbalanced dataset
             logger.info(
                 f"Balance factor set to: {self.balance_factor}. "
                 f"Generating unbalanced dataset."
             )
-            dataset = list(zip(all_tiles, all_labels))
+            dataset = list(zip(all_tiles, all_labels, strict=True))
 
         return dataset
 
@@ -289,21 +232,30 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
         x: list[NDArray[np.uint8]],
         y: list[NDArray[np.uint8]],
         factor: float = 1.0,
-    ) -> tuple[
-        list[NDArray[np.uint8]], list[NDArray[np.uint8]]
-    ]:  # factor is a hyperparameter
+    ) -> tuple[list[NDArray[np.uint8]], list[NDArray[np.uint8]]]:
+        """Balance dataset based on specified factor.
+
+        This works by multiplying the size of the anchor class by the balancing factor
+        and limiting all other classes to this size.
+
+        Args:
+            x: List of input features (image tiles).
+            y: List of corresponding labels (one-hot encoded).
+            factor: Balancing factor to determine class sizes.
+
+        Returns: Balanced dataset as lists of (tiles, labels).
+        """
         # Count the number of samples in class 0 (assumes one-hot encoding)
         class_0_samples = sum(array[0] for array in y)
 
-        # Initialize a list to keep track of indices to retain
+        # Initialise a list to keep track of indices to retain
         indices_to_keep: list[int] = []
 
         # Convert the one-hot encoded labels to class indices
         y_indices = np.argmax(y, axis=1)
 
-        colonisation_type = AmfConfig.get("colonisation_type")
-
         # Retrieve the number of classes based on configuration
+        colonisation_type = AmfConfig.get("colonisation_type")
         num_classes = len(AmfConfig.get("class_names")[colonisation_type])
 
         for class_id in range(num_classes):
@@ -347,6 +299,7 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
         return x, y
 
     def _prepare_stats(self) -> None:
+        """Display class distribution statistics."""
         # Collect labels for statistics
         samples = np.stack([self.dataset[i][1] for i in range(len(self.dataset))])
         y = torch.from_numpy(samples)
@@ -373,61 +326,21 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
             sys.exit(10)
 
     def __len__(self) -> int:
+        """Return the number of samples in the dataset."""
         return len(self.dataset)
 
     def __getitem__(self, idx: int) -> tuple[NDArray[np.uint8], NDArray[np.uint8]]:
+        """Return the tile and label at the specified index."""
         tile, label = self.dataset[idx]
         return tile, label
 
 
 class StratifiedDatasetSplitter:
-    """
-    Designed to split a dataset into training and validation sets while maintaining the
-    distribution of class labels.
-    This is particularly useful in imbalanced datasets where ensuring the proportional
-    representation of classes in both training and validation sets improves model
-    evaluation and training performance.
-    Efficient data handling using lists and NumPy ensures that the class can manage
-    datasets of varying size and complexity without significant performance degradation.
+    """Dataset splitter that maintains class distribution in train/val sets.
 
-    Expected Inputs:
-    x: Iterable of image data (e.g., list of tiles as NumPy arrays or as simple list).
-    y: Iterable of labels corresponding to the image data (e.g., list of NumPy arrays or
-        lists representing the labels).
-    val_size (float): Fraction of the dataset to allocate to the validation set. By
-        default, this is set to 0.2 (20% validation).
-    random_state (int): Seed used for random number generation to ensure reproducibility
-        of data splits. Default is 42.
-
-    Methods and Workflow:
-    __init__(self, x, y, val_size=0.2, random_state=42):
-    Takes input features and labels, along with parameters for validation size and
-    random state.
-    Calls _split_data to perform the stratified split.
-
-    _split_data(self, val_size, random_state):
-    Converts one-hot encoded labels to single integer indices using NumPy operations for
-    efficient computation, including unique labels.
-    Subsequently, organises indices of samples into a dictionary keyed by class labels,
-    creating a mapping of data sample locations.
-    For each class label:
-    - Collects all indices associated with that class.
-    - Determines the split index based on the specified val_size.
-    - Shuffles indices within each class to ensure randomness in split selection.
-    - Accumulates indices for training and validation splits based on this shuffled
-        order.
-
-    _get_dataset(self, dataset_type="train"):
-    Provides access to data splits by returning features and labels for either the
-    training or validation set, based on the input parameter.
-    IMPORTANT: The datasets are returned in their original format, i. e. lists of numpy
-    arrays respectively. Torch tensors are not used.
-
-    Expected Outputs:
-    x_train, y_train: Lists of image tiles and one-hot-encoded labels for training,
-        stratified to mirror overall class distribution.
-    x_val, y_val: Lists of image tiles and one-hot-encoded labels for validation,
-        stratified to mirror overall class distribution.
+    Useful in imbalanced datasets where ensuring the proportional representation of
+    classes in both training and validation sets improves model evaluation and training
+    performance.
     """
 
     def __init__(
@@ -437,6 +350,14 @@ class StratifiedDatasetSplitter:
         val_size: float = 0.2,
         random_state: int = 42,
     ):
+        """Initialise stratified dataset splitter with data.
+
+        Args:
+            x: List of input features (image tiles).
+            y: List of corresponding labels (one-hot encoded).
+            val_size: Fraction of dataset for validation set.
+            random_state: Seed for random number generator.
+        """
         self.x = x  # Ensure x is a numpy array
         self.y = y  # Ensure y is a numpy array
 
@@ -444,6 +365,12 @@ class StratifiedDatasetSplitter:
         self._split_data(val_size, random_state)
 
     def _split_data(self, val_size: float, random_state: int) -> None:
+        """Apply training/validation split while maintaining class distribution.
+
+        Args:
+            val_size: Fraction of dataset for validation set.
+            random_state: Seed for random number generator.
+        """
         # Set random seed for reproducibility
         random.seed(random_state)
 
@@ -483,20 +410,25 @@ class StratifiedDatasetSplitter:
         self.val_indices = val_indices
 
     def _get_dataset(
-        self, dataset_type: str = "train"
-    ) -> tuple[
-        list[NDArray[np.uint8]], list[NDArray[np.uint8]]
-    ]:  # TODO should use an enum
+        self,
+        dataset_type: str = "train",  # TODO use enum?
+    ) -> tuple[list[NDArray[np.uint8]], list[NDArray[np.uint8]]]:
+        """Return the specified dataset split.
+
+        Args:
+            dataset_type: Type of dataset to return ("train" or "val").
+
+        Returns: Tuple of (x, y) for the specified dataset split.
+        """
         if dataset_type == "train":
             x_train = [self.x[i] for i in self.train_indices]
             y_train = [self.y[i] for i in self.train_indices]
             return x_train, y_train
-        elif dataset_type == "val":
+        if dataset_type == "val":
             x_val = [self.x[i] for i in self.val_indices]
             y_val = [self.y[i] for i in self.val_indices]
             return x_val, y_val
-        else:
-            raise ValueError("Invalid dataset type. Choose 'train' or 'val'.")
+        raise ValueError("Invalid dataset type. Choose 'train' or 'val'.")
 
 
 class TileFilesandData(
@@ -510,44 +442,17 @@ class TileFilesandData(
         ]
     ]
 ):
-    """
-    Responsible for loading image tiles and their associated annotations from a dataset.
-    This class effectively handles the extraction and preparation of data needed for
-    machine learning tasks, specifically image-based analysis, by organizing and
-    managing the annotations and image data efficiently.
-
-    Expected Inputs:
-    input_files: List of file paths to the images used for training. These images should
-        ideally have corresponding annotation files or data.
-
-    Methods and Workflow:
-    __init__(self, input_files):
-    Uses input_files as input and calls _load_and_process_data method to aggregate image
-    tiles, annotations, and related metadata, filtering out entries without annotations.
-
-    _load_and_process_data(self):
-    Loads annotations and settings for each provided image file unsing
-    import_annotations and import_settings. Filters the image files to ensure only those
-    with annotations are processed.
-    Calls _process_dataset to process each image and extract tiles and metadata.
-
-    _process_dataset(self, dataset):
-    Iterates through a filtered datasetimage file, accessing configurations and
-    annotations. Tiles are extracted based on annotations.
-    Collects tile data, labels, file names, and their row/column position data into
-    lists and compiles them into a tuple containing tiles, labels, filenames,
-    row indices, and column indices.
-
-    Expected Outputs:
-    x (torch.FloatTensor): Normalized tiles as a PyTorch tensor, with pixel values
-        scaled to [0, 1].
-    y (torch.FloatTensor): One-hot encoded annotations corresponding to the tiles.
-    file_names (list): List of file names for each processed tile.
-    rows (list): Row indices for each extracted tile.
-    cols (list): Column indices for each extracted tile.
-    """
+    """Class to handle loading and tiling of images and annotations."""
 
     def __init__(self, input_files: list[str], is_bald_folder: bool = False):
+        """Initialise dataset with data from input files.
+
+        Loads and processes data by extracting tiles and their annotations.
+
+        Args:
+            input_files: List of input image file paths
+            is_bald_folder: Whether the data is from a BALD folder
+        """
         self.input_files = input_files
         self.x, self.y, self.file_names, self.rows, self.cols = (
             self._load_and_process_data(is_bald_folder)  # type: ignore[misc] # TODO fix better
@@ -583,6 +488,31 @@ class TileFilesandData(
             list[int],
         ]
     ):
+        """Load and process image data, extracting tiles with or without labels.
+
+        Loads images from the configured input files, imports their settings and
+        annotations, and extracts tiles. The processing behavior varies based on whether
+        unlabelled data is requested and whether annotations are available.
+
+        Args:
+            is_bald_folder: Whether data is from a BALD folder.
+            is_unlabelled: Whether to extract only unlabelled tiles (True) or only
+                labelled tiles (False).
+
+        Returns:
+            If is_unlabelled is True:
+                tiles: List of image tile data
+                file_names: List of source file paths for each tile
+                rows: List of row indices for each tile
+                cols: List of column indices for each tile
+
+            If is_unlabelled is False:
+                tiles: List of image tile data
+                labels: List of label arrays for each tile
+                file_names: List of source file paths for each tile
+                rows: List of row indices for each tile
+                cols: List of column indices for each tile
+        """
         logger.info("Tile extraction.")
 
         # Load image settings and annotations.
@@ -591,7 +521,7 @@ class TileFilesandData(
         ]
         settings = [import_settings(path) for path in self.input_files]
 
-        dataset = zip(self.input_files, settings, annotations)
+        dataset = zip(self.input_files, settings, annotations, strict=True)
 
         if is_unlabelled:
             dataset_list = list(dataset)
@@ -602,22 +532,21 @@ class TileFilesandData(
 
             return x, file_names, rows, cols
 
-        else:
-            filtered_dataset = [x for x in dataset if x[2] is not None]
-            if len(filtered_dataset) == 0 and not is_bald_folder:
-                logger.error(
-                    "Input images do not contain tile annotations. "
-                    "Use amfbrowser to annotate tiles before training."
-                )
-                # ERR_NO_DATA = 10
-                sys.exit(10)
+        filtered_dataset = [x for x in dataset if x[2] is not None]
+        if len(filtered_dataset) == 0 and not is_bald_folder:
+            logger.error(
+                "Input images do not contain tile annotations. "
+                "Use amfbrowser to annotate tiles before training."
+            )
+            # ERR_NO_DATA = 10
+            sys.exit(10)
 
             logger.info(f"{len(filtered_dataset)} images in filtered dataset.")
 
-            # Process and normalize dataset
-            x, y, file_names, rows, cols = self._process_dataset(filtered_dataset)
+        # Process and normalize dataset
+        x, y, file_names, rows, cols = self._process_dataset(filtered_dataset)
 
-            return x, y, file_names, rows, cols
+        return x, y, file_names, rows, cols
 
     def _process_dataset(
         self, dataset: list[tuple[str, dict[str, int], pd.DataFrame]]
@@ -628,6 +557,23 @@ class TileFilesandData(
         list[int],
         list[int],
     ]:
+        """Extract labelled tiles and their labels from the dataset.
+
+        Args:
+            dataset: List of tuples, each containing:
+                - path: File path to the image
+                - config: Config dictionary with 'tile_edge' key specifying tile size in
+                    pixels
+                - annots: Annotations DataFrame where each row contains row index,
+                    column index and one-hot annotations
+
+        Returns:
+            tiles: List of image tiles
+            hot_labels: List of label arrays extracted from annotation columns
+            file_names: List of source file paths for each tile
+            rows: List of row indices
+            cols: List of column indices
+        """
         tiles = []
         hot_labels = []
         file_names = []
@@ -667,6 +613,22 @@ class TileFilesandData(
         list[int],
         list[int],
     ]:
+        """Extract unlabelled tiles from dataset.
+
+        Args:
+            dataset: A list of tuples, each containing:
+                - path: File path to the image
+                - config: Config dictionary with 'tile_edge' key specifying tile size
+                    in pixels
+                - annots: Annotations DataFrame with 'row' and 'col' columns indicating
+                    labelled tile coordinates, or None if no tiles are labelled
+
+        Returns:
+            tiles: List of image tiles
+            file_names: List of source image file paths
+            rows: List of row indices
+            cols: List of column indices
+        """
         tiles = []
         file_names = []
         rows = []
@@ -690,7 +652,7 @@ class TileFilesandData(
                         file_names.append(path)
 
             else:
-                labelled_coords = set(zip(annots.row, annots.col))
+                labelled_coords = set(zip(annots.row, annots.col, strict=True))
                 for r in range(nrows):
                     for c in range(ncols):
                         if (r, c) not in labelled_coords:
@@ -719,13 +681,28 @@ class TileFilesandData(
         list[int],
         list[int],
     ]:
-        """Returns all processed data from the dataset."""
+        """Return all data from the dataset.
+
+        Returns:
+            x: List of image tile data.
+            y: List of label arrays for each tile.
+            file_names: List of source file paths for each tile.
+            rows: List of row indices for each tile.
+            cols: List of column indices for each tile.
+        """
         return self.x, self.y, self.file_names, self.rows, self.cols
 
     def get_all_unlabelled_data(
         self,
     ) -> tuple[list[NDArray[np.uint8]], list[str], list[int], list[int]]:
-        """Returns all unlabelled data from the dataset."""
+        """Return all unlabelled data from the dataset.
+
+        Returns:
+            x_unlabelled: List of unlabelled image tiles.
+            file_names_unlabelled: List of file names for each unlabelled tile.
+            rows_unlabelled: List of row indices for each unlabelled tile.
+            cols_unlabelled: List of column indices for each unlabelled tile.
+        """
         return (
             self.x_unlabelled,
             self.file_names_unlabelled,
@@ -734,6 +711,7 @@ class TileFilesandData(
         )
 
     def __len__(self) -> int:
+        """Return the number of samples in the dataset."""
         return len(self.x)
 
     def __getitem__(
@@ -745,6 +723,18 @@ class TileFilesandData(
         int,
         int,
     ]:
+        """Get a specific tile by its index.
+
+        Args:
+            idx: Index of tile in dataset.
+
+        Returns:
+            tile: Image tile.
+            label: One-hot encoded label for the tile.
+            file_name: Name of the file the tile was extracted from.
+            row: Row index of the tile in the original image.
+            col: Column index of the tile in the original image.
+        """
         # Validate index
         if idx >= len(self.x) or idx < 0:
             raise IndexError("Index out of bounds")
@@ -761,13 +751,15 @@ class TileFilesandData(
 
 
 def import_settings(path: str) -> dict[str, int]:
-    """
-    Imports image settings stored in the auxiliary ZIP archive
-    associated with the given image.
+    """Determine tile edge length in pixels for a given image.
 
-    :param path: Path to an input image.
-    :return: Dictionary containing image settings
-    :rtype: dict
+    Attempts to read value from the database or from a JSON settings file, or otherwise
+    falls back to the configured default.
+
+    Args:
+        path: Image path.
+
+    Returns: Dictionary containing tile edge length under `tile_edge` key.
     """
     image_name = os.path.splitext(os.path.basename(path))[0]
     try:
@@ -792,20 +784,23 @@ def import_settings(path: str) -> dict[str, int]:
 
         # Default to value in settings
         return {"tile_edge": AmfConfig.get("tile_edge")}
-    except AssertionError as e:
+    except ValueError as e:
         logger.warning(f"Failed to import settings for {image_name}: {e}")
         # Default to value in settings
         return {"tile_edge": AmfConfig.get("tile_edge")}
 
 
 def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame | None:
-    """
-    Imports tile annotations from the auxiliary ZIP archive
-    associated with the given input image.
+    """Load annotations from the database or CSV file (most recent annotations).
 
-    :param path: Path to an input image.
-    :return: Pandas dataframe containing annotations
-    :rtype: pd.DataFrame
+    In the case of the database, the enabled annotations are used. For CSV annotations,
+    the most recent annotations are used.
+
+    Args:
+        path: Path to input image.
+        is_bald_folder: Whether the data is from a BALD folder.
+
+    Returns: DataFrame containing selected annotations, or None if no annotations exist.
     """
     try:
         image_name = os.path.splitext(os.path.basename(path))[0]
@@ -878,11 +873,10 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
             if len(matching_annotations) != 1:
                 if is_bald_folder:
                     return None
-                else:
-                    raise ValueError(
-                        "Expected exactly one annotation file, found: "
-                        "{len(matching_annotations)}"
-                    )
+                raise ValueError(
+                    "Expected exactly one annotation file, found: "
+                    "{len(matching_annotations)}"
+                )
 
             output = pd.read_csv(os.path.join(directory, matching_annotations[0]))
 
@@ -911,6 +905,17 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
 
 
 def categorise_path(paths: list[str]) -> dict[str, list[str]]:
+    """Group paths into `train`, `test` and `BALD` categories based on directory names.
+
+    For each path, traverses the directory structure backwards until it finds one of the
+    target directory names. If not, the path is ignored.
+
+    Args:
+        paths: List of file paths to categorise.
+
+    Returns: Dictionary with keys `train`, `test` and `BALD`, each containing a list of
+        corresponding paths.
+    """
     categories = ["train", "test", "BALD"]
     categorised_paths: dict[str, list[str]] = {"train": [], "test": [], "BALD": []}
     for path in paths:

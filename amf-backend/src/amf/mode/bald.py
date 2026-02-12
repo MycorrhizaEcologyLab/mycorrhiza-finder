@@ -1,3 +1,8 @@
+"""`bald` mode for active learning acquisition.
+
+This can be used to select the optimal samples for labelling using BALD or BatchBALD.
+"""
+
 from collections import defaultdict
 
 import numpy as np
@@ -24,21 +29,22 @@ def bald_acquisition(
     mc_samples: int = 50,
     batch_size: int = 32,
 ) -> list[int]:
-    """
+    """Return the indices of the most uncertain samples using BALD.
+
     Implements BALD acquisition function using MC Dropout for uncertainty estimation.
 
-    Parameters:
-        model (torch.nn.Module): The Neural Network (BNN) with dropout.
-        device (torch.device): The device (CPU/GPU) to run the model on.
-        X (list or np.array): The unlabeled data points for selection.
-        num_samples_for_labelling (int): Number of most uncertain samples to return.
-        mc_samples (int): Number of stochastic forward passes.
-        batch_size (int): Batch size for efficient memory management.
+    Args:
+        model: Neural network model.
+        device: The device (CPU/GPU) to run the model on.
+        x_unlabelled: Unlabelled data points for selection.
+        num_samples_for_labelling: Number of most uncertain samples to return.
+        num_classes: Number of output classes.
+        mc_samples: Number of stochastic forward passes.
+        batch_size: Batch size for efficient memory management.
 
     Returns:
         List of indices of the num_samples_for_labelling most uncertain samples.
     """
-
     model.train()  # Set model to evaluation mode
     model.to(device)
     num_samples_for_labelling = min(num_samples_for_labelling, len(x_unlabelled))
@@ -54,7 +60,7 @@ def bald_acquisition(
     with torch.no_grad():
         for i in tqdm(range(mc_samples)):
             batch_probs = []
-            for batch_x, batch_y in dataloader:
+            for batch_x, _ in dataloader:
                 batch_x = batch_x.to(device)
                 logits = model(batch_x)  # Forward pass
                 probs = (
@@ -94,7 +100,24 @@ def batch_bald_acquisition(
     mc_samples: int = 10,
     batch_size: int = 32,
 ) -> list[int]:
-    model.train()  # Set model to evaluation mode
+    """Return the indices of the most uncertain samples using BatchBALD.
+
+    Implements BatchBALD acquisition function using MC Dropout for uncertainty
+    estimation.
+
+    Args:
+        model: Neural network model, which must contain random dropout layers.
+        device: The device (CPU/GPU) to run the model on.
+        x_unlabelled: Unlabelled data points for selection.
+        num_samples_for_labelling: Number of most uncertain samples to return.
+        num_classes: Number of output classes.
+        mc_samples: Number of stochastic forward passes.
+        batch_size: Batch size for efficient memory management.
+
+    Returns:
+        List of indices of the num_samples_for_labelling most uncertain samples.
+    """
+    model.train()  # Set model to train mode to activate dropout
     model.to(device)
     num_samples_for_labelling = min(num_samples_for_labelling, len(x_unlabelled))
 
@@ -109,7 +132,7 @@ def batch_bald_acquisition(
     with torch.no_grad():
         for i in tqdm(range(mc_samples)):
             batch_probs = []
-            for batch_x, batch_y in dataloader:
+            for batch_x, _ in dataloader:
                 batch_x = batch_x.to(device)
                 logits = model(batch_x)  # Forward pass
                 probs = (
@@ -123,13 +146,17 @@ def batch_bald_acquisition(
 
     all_probs = np.stack(all_probs, axis=1)  # Shape: (N, mc_samples, num_classes)
     all_probs = torch.tensor(np.log(all_probs + 1e-8))
-    bald_batch_indices = get_batchbald_batch(
-        all_probs, num_samples_for_labelling, mc_samples
-    ).indices
-    return bald_batch_indices
+    return get_batchbald_batch(all_probs, num_samples_for_labelling, mc_samples).indices
 
 
 def run(input_files: list[str]) -> int:
+    """Run active learning acquisition to select optimal tiles for labelling.
+
+    Args:
+        input_files: List of input file paths containing unlabelled data.
+
+    Returns: Exit code.
+    """
     model = AmfModel.load()
 
     device = AmfConfig.get("device")
@@ -158,7 +185,7 @@ def run(input_files: list[str]) -> int:
 
     # Iterate over the dataset and group by file_name
     for file_name, file_x, file_rows, file_cols in zip(
-        file_names, x_unlabelled, rows, cols
+        file_names, x_unlabelled, rows, cols, strict=True
     ):
         # Append the values to their respective lists in the tuple
         grouped_data[file_name][0].append(file_x)  # x_unlabelled
@@ -203,7 +230,7 @@ def run(input_files: list[str]) -> int:
     output_data = []
 
     for file_name, (rows_chosen, cols_chosen) in output_dict.items():
-        for r, c in zip(rows_chosen, cols_chosen):
+        for r, c in zip(rows_chosen, cols_chosen, strict=True):
             output_data.append({"file_name": file_name, "row": r, "col": c})
 
     # Create a pandas DataFrame

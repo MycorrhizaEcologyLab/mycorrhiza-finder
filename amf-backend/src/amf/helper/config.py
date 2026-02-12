@@ -1,56 +1,11 @@
-# AMFinder - config.py
-#
-# MIT License
-# Copyright (c) 2021 Edouard Evangelisti, Carl Turner
-#               2024-2025 Royal Botanic Gardens, Kew
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to
-# deal in the Software without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-# sell copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-# IN THE SOFTWARE.
-
-
-"""
-AMFinder configuration module.
-Read command-line arguments and store user settings.
-
-Variables
-------------
-:HEADERS: Table headers for the different models.
-:PAR: User settings.
-
-Functions
-------------
-:function human_redable_header: Human-readable annotation class labels.
-:function get: Retrieve the value associated with the given parameter ID.
-:function set: Assign a new value to the given parameter ID.
-:function training_subparser: Define the command-line parser used in training mode.
-:function prediction_subparser: Define the command-line parser used in prediction mode.
-:function test_subparser: Define the command-line parser used in test mode.
-:function build_arg_parser: Build the full command-line parser.
-:function import_settings: Read tile size from `settings.json`.
-:function get_input_files: Return the list of vaid input images (based on MIME type).
-:function initialize: Read command-line arguments and store user-defined values.
-"""
+"""Functionality relating to user configuration."""
 
 import datetime
 import glob
 import mimetypes
 import os
 from argparse import ArgumentParser, RawTextHelpFormatter
+from itertools import chain
 from typing import Any, cast
 
 import torch
@@ -71,8 +26,11 @@ RESULTS_FOLDER_NAME = "amfinder"
 
 
 def get_default_output_dir() -> str | None:
-    # Returns the path to the user home directory, Documents if it exists,
-    # based on what exists and is writeable
+    """Get the default output directory.
+
+    Returns the path to the user home directory, Documents if it exists,
+    based on what exists and is writeable.
+    """
     home = os.path.expanduser(USER_HOME_LOC)
     docs_path = os.path.join(home, "Documents")
     if os.path.exists(docs_path) and os.access(docs_path, os.W_OK | os.X_OK):
@@ -85,7 +43,13 @@ def get_default_output_dir() -> str | None:
 
 
 def create_results_dir(label: str = "") -> str:
-    # Create timestamped folder for results
+    """Create timestamped folder for results.
+
+    Args:
+        label: Optional label to append to folder name.
+
+    Returns: Path to the created results directory.
+    """
     default_output_loc = get_default_output_dir()
     if default_output_loc is None:
         raise Exception(
@@ -151,7 +115,7 @@ DESCRIPTIONS = {
     ],
 }
 
-PAR = {
+PAR = {  # All configurable parameters and defaults
     # Use local DB
     "use_db": True,
     # Set main run mode
@@ -187,7 +151,7 @@ PAR = {
     "balance_factor": 1.24895925434138,
     # Num of epochs for training
     "epochs": 50,
-    # NUm epochs after active learning
+    # Num epochs after active learning
     "epochs_active_learning": 5,
     # Proportion of training set to use for validation
     "vfrac": 0.2,
@@ -242,33 +206,29 @@ MODEL_DIR = os.path.join(
 
 
 def get_model_dir() -> str:
-    """Returns the trained models directory."""
-
+    """Return the path to the trained models directory."""
     return MODEL_DIR
 
 
-def invite() -> str:
-    """
-    Command-line invite
-    """
+def invite() -> str:  # TODO replace with loguru
+    """Return the command-line invite: timestamp."""
     return datetime.datetime.now().strftime("%H:%M:%S")
 
 
 def human_readable_header() -> list[str]:
-    """
-    Return the human-readable header of the current model.
-    """
+    """Return the human-readable header, listing the class names."""
     colonisation_type = cast(str, PAR["colonisation_type"])
     return HUMAN_HEADERS[colonisation_type]
 
 
 def get(id_: str) -> Any:
-    """
-    Retrieve application settings.
+    """Retrieve value of a given config parameter.
 
-    :param id: Unique identifier.
-    """
+    Args:
+        id_: Setting key.
 
+    Returns: Setting value.
+    """
     id_ = id_.lower()
 
     if id_ in PAR:
@@ -284,19 +244,28 @@ def get(id_: str) -> Any:
 
             return path
 
-        else:
-            return PAR[id_]
+        return PAR[id_]
 
-    elif id_ in PAR["monitors"]:  # type: ignore[operator] # TODO typed parameters
+    if id_ in PAR["monitors"]:  # type: ignore[operator] # TODO typed parameters
         monitors: dict[str, Any] = PAR["monitors"]  # type: ignore[assignment]
         return monitors[id_]
 
-    else:
-        logger.warning(f"Unknown parameter {id_}")
-        return None
+    logger.warning(f"Unknown parameter {id_}")
+    return None
 
 
 def find_files_in_directory(directory: str, convert_tiff: bool = False) -> list[str]:
+    """Return paths to all image files within the specified directory.
+
+    By default the matched file extensions are .jpg, .jpeg and .png. If convert_tiff is
+    True, .tif and .tiff are also matched.
+
+    Args:
+        directory: Directory to search for image files.
+        convert_tiff: Whether to include TIFF files in the search.
+
+    Returns: List of image file paths.
+    """
     # Search for .jpg, .jpeg & .png files
     search_patterns = [
         os.path.join(directory, "**", "*.jpg"),
@@ -320,43 +289,40 @@ def find_files_in_directory(directory: str, convert_tiff: bool = False) -> list[
 
 
 def set_(id_: str, value: Any, create: bool = False, use_none: bool = False) -> None:
-    """
-    Updates application settings.
+    """Update application settings.
 
-    :param id: unique identifier.
-    :param value: value to store.
-    :param create: create id if it does not exist (optional).
+    Args:
+        id_: Setting key.
+        value: Setting value.
+        create: Whether to create the setting if it does not exist.
     """
-
     if value is None and not use_none:
         return
 
+    id_ = id_.lower()
+
+    if id_ in PAR:
+        PAR[id_] = value
+
+        if id_ == "colonisation_type":
+            PAR["header"] = HEADERS[value]
+
+    elif id_ in PAR["monitors"]:  # type: ignore[operator] # TODO typed parameters
+        PAR["monitors"][id_] = value  # type: ignore[index, call-overload]
+
+    elif create:
+        PAR[id_] = value
+
     else:
-        id_ = id_.lower()
-
-        if id_ in PAR:
-            PAR[id_] = value
-
-            if id_ == "colonisation_type":
-                PAR["header"] = HEADERS[value]
-
-        elif id_ in PAR["monitors"]:  # type: ignore[operator] # TODO typed parameters
-            PAR["monitors"][id_] = value  # type: ignore[index, call-overload]
-
-        elif create:
-            PAR[id_] = value
-
-        else:
-            logger.warning(f"Unknown parameter {id_}")
+        logger.warning(f"Unknown parameter {id_}")
 
 
 def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
-    """
-    Defines arguments used in training mode.
+    """Add a new subparser for train mode.
 
-    :param subparsers: subparser generator.
+    Args:
+        subparsers: subparsers object returned by ArgumentParser.add_subparsers().
     """
-
     parser = subparsers.add_parser(
         "train",
         help="learns how to identify AMF structures.",
@@ -412,8 +378,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         dest="active_learning_method",
         type=str,
         default=x,
-        help="Active learning method to use (bald, batchbald)."
-        "\ndefault value: {}".format(x),
+        help=f"Active learning method to use (bald, batchbald).\ndefault value: {x}",
     )
 
     x = PAR["num_samples_for_labelling"]
@@ -424,8 +389,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         dest="num_samples_for_labelling",
         type=int,
         default=x,
-        help="Number of samples to select per file for labeling."
-        "\ndefault value: {}".format(x),
+        help=f"Number of samples to select per file for labeling.\ndefault value: {x}",
     )
 
     x = PAR["mc_samples"]
@@ -437,7 +401,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Number of Monte Carlo samples for uncertainty estimation."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["dropout_rate"]
@@ -449,7 +413,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=float,
         default=x,
         help="Dropout rate to use in the model for uncertainty-based acquisition."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["mlflow_flag"]
@@ -471,7 +435,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=int,
         default=x,
-        help="training batch size.\ndefault value: {}".format(x),
+        help=f"training batch size.\ndefault value: {x}",
     )
 
     x = PAR["data_augm"]
@@ -503,8 +467,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         action="store",
         dest="outdir",
         default=x,
-        help="folder where to save trained model and CNN architecture."
-        "\ndefault: {}".format(x),
+        help=f"folder where to save trained model and CNN architecture.\ndefault: {x}",
     )
 
     x = PAR["epochs"]
@@ -516,7 +479,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=int,
         default=x,
-        help="number of epochs to run.\ndefault value: {}".format(x),
+        help=f"number of epochs to run.\ndefault value: {x}",
     )
 
     x = PAR["epochs_active_learning"]
@@ -528,9 +491,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=int,
         default=x,
-        help="number of epochs to run after active learning.\ndefault value: {}".format(
-            x
-        ),
+        help=f"number of epochs to run after active learning.\ndefault value: {x}",
     )
 
     x = PAR["patience_e"]
@@ -543,7 +504,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="number of epochs to wait before early stopping is triggered."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["patience_r"]
@@ -556,7 +517,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="number of epochs to wait before learning rate reduction is triggered."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["learning_rate"]
@@ -568,7 +529,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=float,
         default=x,
-        help="learning rate used by the Adam optimizer.\ndefault value: {}".format(x),
+        help=f"learning rate used by the Adam optimizer.\ndefault value: {x}",
     )
 
     x = PAR["learning_rate_active_learning"]
@@ -581,7 +542,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=float,
         default=x,
         help="learning rate used by the Adam optimizer after active learning."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["adam_beta1"]
@@ -593,7 +554,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=float,
         default=x,
-        help="Beta 1 Hyperparameter for Adam optimiser\ndefault value: {}".format(x),
+        help=f"Beta 1 Hyperparameter for Adam optimiser\ndefault value: {x}",
     )
 
     x = PAR["adam_beta2"]
@@ -605,7 +566,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=float,
         default=x,
-        help="Beta 2 Hyperparameter for Adam optimiser\ndefault value: {}".format(x),
+        help=f"Beta 2 Hyperparameter for Adam optimiser\ndefault value: {x}",
     )
 
     x = PAR["balance_factor"]
@@ -619,7 +580,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         default=x,
         help=(
             "multiplier for balancing datasets based on class sizes and oriented on "
-            "Colonised classes.\ndefault value: {}".format(x)
+            f"Colonised classes.\ndefault value: {x}"
         ),
     )
 
@@ -632,7 +593,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="N",
         type=int,
         default=x,
-        help="Proportion of tiles used for validation.\ndefault value: {}%%".format(x),
+        help=f"Proportion of tiles used for validation.\ndefault value: {x}%%",
     )
 
     x = None  # by default, do not fine-tune
@@ -645,7 +606,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the pre-trained network to use as a basis for training for AM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = None  # by default, do not fine-tune
@@ -658,7 +619,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the pre-trained network to use as a basis for training for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_type"]
@@ -672,7 +633,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         default=x,
         help=(
             "Choice for new model intialisation: cnn1, resnet, resnext, efficientnet, "
-            "efficientnetv2.\ndefault value: {}".format(x)
+            f"efficientnetv2.\ndefault value: {x}"
         ),
     )
 
@@ -715,19 +676,16 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
-
-    return
 
 
 def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
-    """
-    Defines arguments used in test  mode.
+    """Add a new subparser for test mode.
 
-    :param subparsers: subparser generator.
+    Args:
+        subparsers: subparsers object returned by ArgumentParser.add_subparsers().
     """
-
     parser = subparsers.add_parser(
         "test",
         help="Runs AMFinder in test mode.",
@@ -762,7 +720,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for AM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_erm"]
@@ -775,7 +733,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["outdir"]
@@ -785,8 +743,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         action="store",
         dest="outdir",
         default=x,
-        help="folder where to save trained model and CNN architecture."
-        "\ndefault: {}".format(x),
+        help=f"folder where to save trained model and CNN architecture.\ndefault: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -809,7 +766,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     x = PAR["temperature_factor_path"]
@@ -821,7 +778,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the file that contains the temperature factor for the AM model."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["use_contextual_confidence"]
@@ -844,7 +801,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=float,
         default=x,
         help="Threshold below which max voting with surrounding tiles will be applied."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["temperature_factor_path_erm"]
@@ -856,19 +813,18 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the file that contains the temperature factor for the ErM model."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     return
 
 
 def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
-    """
-    Defines arguments used in colonisation mode.
+    """Add a new subparser for colonisation mode.
 
-    :param subparsers: subparser generator.
+    Args:
+        subparsers: subparsers object returned by ArgumentParser.add_subparsers().
     """
-
     parser = subparsers.add_parser(
         "colonisation",
         help="Runs AMFinder in colonisation mode.",
@@ -903,7 +859,7 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for AM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_erm"]
@@ -916,7 +872,7 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["outdir"]
@@ -926,8 +882,7 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         action="store",
         dest="outdir",
         default=x,
-        help="folder where to save trained model and CNN architecture."
-        "\ndefault: {}".format(x),
+        help=f"folder where to save trained model and CNN architecture.\ndefault: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -950,19 +905,18 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     return
 
 
 def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
-    """
-    Defines arguments used in prediction mode.
+    """Add a new subparser for predict mode.
 
-    :param subparsers: subparser generator.
+    Args:
+        subparsers: subparsers object returned by ArgumentParser.add_subparsers().
     """
-
     parser = subparsers.add_parser(
         "predict",
         help="Runs AMFinder in prediction mode.",
@@ -996,7 +950,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     x = PAR["model"]
@@ -1009,7 +963,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for AM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_erm"]
@@ -1022,7 +976,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     parser.add_argument(
@@ -1055,7 +1009,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         default=x,
         help="name of the file that contains the temperature factor for the AM model."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["temperature_factor_path_erm"]
@@ -1067,7 +1021,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         default=x,
         help="name of the file that contains the temperature factor for the ErM model."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["use_contextual_confidence"]
@@ -1090,13 +1044,18 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=float,
         default=x,
         help="Threshold below which max voting with surrounding tiles will be applied."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     return
 
 
 def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
+    """Add a new subparser for convert mode.
+
+    Args:
+        subparsers: subparsers object returned by ArgumentParser.add_subparsers().
+    """
     parser = subparsers.add_parser(
         "convert",
         help="Runs AMFinder in conversion mode.",
@@ -1121,7 +1080,7 @@ def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         metavar="N",
         type=float,
         default=x,
-        help="threshold for conversion: {}".format(x),
+        help=f"threshold for conversion: {x}",
     )
 
     x = PAR["input_files"]
@@ -1131,7 +1090,7 @@ def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         action="store",
         default=x,
-        help="plant root image to process.\ndefault value: {}".format(x),
+        help=f"plant root image to process.\ndefault value: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -1163,7 +1122,7 @@ def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     x = PAR["use_contextual_confidence"]
@@ -1180,6 +1139,11 @@ def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
 
 
 def add_tif_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
+    """Add a new subparser for tifconversion mode.
+
+    Args:
+        subparsers: subparsers object returned by ArgumentParser.add_subparsers().
+    """
     parser = subparsers.add_parser(
         "tifconversion",
         help="Runs AMFinder in TIF conversion mode.",
@@ -1202,7 +1166,7 @@ def add_tif_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped
         type=str,
         action="store",
         default=x,
-        help="plant root image to process.\ndefault value: {}".format(x),
+        help=f"plant root image to process.\ndefault value: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -1236,19 +1200,16 @@ def add_tif_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
-
-    return
 
 
 def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
-    """
-    Defines arguments used in calibration mode.
+    """Add a new subparser for calibrate mode.
 
-    :param subparsers: subparser generator.
+    Args:
+        subparsers: subparsers object returned by ArgumentParser.add_subparsers().
     """
-
     parser = subparsers.add_parser(
         "calibrate",
         help="Runs calibration for AMFinder",
@@ -1273,8 +1234,7 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="H5",
         type=str,
         default=x,
-        help="name of the model which shall be calibrated for AM."
-        "\ndefault value: {}".format(x),
+        help=f"name of the model which shall be calibrated for AM.\ndefault value: {x}",
     )
 
     x = PAR["model_erm"]
@@ -1287,7 +1247,7 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the model which shall be calibrated for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["input_files"]
@@ -1307,8 +1267,7 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         action="store",
         dest="outdir",
         default=x,
-        help="folder where to save trained model and CNN architecture."
-        "\ndefault: {}".format(x),
+        help=f"folder where to save trained model and CNN architecture.\ndefault: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -1331,17 +1290,12 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
-
-    return
 
 
 def build_arg_parser() -> ArgumentParser:
-    """
-    Builds AMFinder command-line parser.
-    """
-
+    """Build and return command line argument parser."""
     main = ArgumentParser(
         description="AMFinder command-line arguments.",
         allow_abbrev=False,
@@ -1364,20 +1318,24 @@ def build_arg_parser() -> ArgumentParser:
 
 
 def abspath(files: list[str]) -> list[str]:
-    """
-    Returns absolute paths to input files.
+    """Return a list of absolute paths matching the given list of wildcards.
 
-    :param files: Raw list of input file names (can contain wildcards).
+    Args:
+        files: Raw list of input file names (can contain wildcards).
+
+    Returns: List of absolute paths to given file names, with wildcards expanded.
     """
-    files = sum([glob.glob(x) for x in files], [])
-    return [os.path.abspath(x) for x in files]
+    file_iter = chain.from_iterable(glob.glob(p) for p in files)
+    return [os.path.abspath(x) for x in file_iter]
 
 
 def get_input_files() -> list[str]:
-    """
-    Filter input file list and keep valid JPEG or TIFF images.
-    """
+    """Filter input file list based on guessed MIME type.
 
+    JPEG, TIFF and PNG images are retained.
+
+    Returns: Filtered list of input image file paths.
+    """
     raw_list = abspath(get("input_files"))
 
     valid_types = ["image/jpeg", "image/tiff", "image/png"]
@@ -1387,31 +1345,26 @@ def get_input_files() -> list[str]:
 
 
 def clean_path(path: str) -> str:
-    """
-    Remove wildcards etc from the path and just return
-    the directory
+    """Return the directory name from a path.
 
     Args:
-        path (str): path to clean
+        path: Path to process.
 
-    Returns:
-        str: clean path to directory
+    Returns: Path of containing directory, or the path itself if it is a directory.
     """
     if os.path.isdir(path):
         return path
-    else:
-        return os.path.dirname(path)
+    return os.path.dirname(path)
 
 
 def set_train_config(trainConfig: TrainConfig) -> None:
-    """
-    Set configuration for the training run.
+    """Set configuration for train mode.
+
+    Sets various parameters such as input files, model details, batch size, number of
+    epochs, and output directory for the training process.
 
     Args:
         trainConfig (TrainConfig): Configuration object containing training parameters.
-
-    Sets various parameters such as input files, model details, batch size,
-    number of epochs, and output directory for the training process.
     """
     set_("run_mode", "train")
     set_device(cast(str, trainConfig.device))
@@ -1463,15 +1416,13 @@ def set_train_config(trainConfig: TrainConfig) -> None:
 
 
 def set_predict_config(predictionConfig: PredictionConfig) -> None:
-    """
-    Set configuration for the prediction run.
+    """Set configuration for predict mode.
+
+    Sets parameters required for making predictions, such as input files, model and
+    output directory.
 
     Args:
-        predictionConfig (PredictionConfig): Configuration object containing prediction
-            parameters.
-
-    This function sets parameters required for making predictions, such as
-    input files, model, and output directory.
+        predictionConfig: Configuration object containing prediction parameters.
     """
     set_("run_mode", "predict")
     set_device(cast(str, predictionConfig.device))
@@ -1498,14 +1449,13 @@ def set_predict_config(predictionConfig: PredictionConfig) -> None:
 
 
 def set_test_config(testConfig: TestConfig) -> None:
-    """
-    Set configuration for the testing run.
+    """Set configuration for test mode.
+
+    Configures the settings needed for the testing procedure, including input files,
+    model and output directory for results.
 
     Args:
-        testConfig (TestConfig): Configuration object containing testing parameters.
-
-    This function configures the settings needed for the testing procedure,
-    including input files, model, and output directory for results.
+        testConfig: Configuration object containing testing parameters.
     """
     set_("run_mode", "test")
     set_device(cast(str, testConfig.device))
@@ -1530,14 +1480,13 @@ def set_test_config(testConfig: TestConfig) -> None:
 
 
 def set_colonisation_config(colonisationConfig: BaseConfig) -> None:
-    """
-    Set configuration for the testing run.
+    """Set configuration for colonisation mode.
+
+    This function configures the settings needed for the testing procedure, including
+    input files, model, and output directory for results.
 
     Args:
-        testConfig (TestConfig): Configuration object containing testing parameters.
-
-    This function configures the settings needed for the testing procedure,
-    including input files, model, and output directory for results.
+        colonisationConfig: Configuration object containing colonisation parameters.
     """
     set_("run_mode", "colonisation")
     set_device(cast(str, colonisationConfig.device))
@@ -1556,15 +1505,13 @@ def set_colonisation_config(colonisationConfig: BaseConfig) -> None:
 
 
 def set_convert_config(convertConfig: ConvertConfig) -> None:
-    """
-    Set configuration for the conversion run.
+    """Set configuration for convert mode.
+
+    This function defines the necessary settings for annotations conversion, including
+    input files, colonisation type, threshold and output directory.
 
     Args:
-        convertConfig (ConvertConfig): Configuration object containing conversion
-            parameters.
-
-    This function defines the necessary settings for annotations conversion,
-    including input files, colonisation type, threshold, and output directory.
+        convertConfig: Configuration object containing conversion parameters.
     """
     set_("run_mode", "convert")
     set_device(cast(str, convertConfig.device))
@@ -1584,14 +1531,12 @@ def set_convert_config(convertConfig: ConvertConfig) -> None:
 
 
 def set_tif_conversion_config(tifConversionConfig: TifConversionConfig) -> None:
-    """
-    Set configuration for the tif conversion.
+    """Set configuration for tifconversion.
+
+    Defines the necessary settings for tif file conversion.
 
     Args:
-        tifConversionConfig (TifConversionConfig): Configuration object containing TIF
-            conversion parameters.
-
-    This function defines the necessary settings for tif file conversion.
+        tifConversionConfig: Configuration object containing TIF conversion parameters.
     """
     set_("run_mode", "tifconversion")
     set_device(cast(str, tifConversionConfig.device))
@@ -1609,15 +1554,13 @@ def set_tif_conversion_config(tifConversionConfig: TifConversionConfig) -> None:
 
 
 def set_calibrate_config(calibrateConfig: CalibrateConfig) -> None:
-    """
-    Set configuration for the calibration.
+    """Set configuration for calibration mode.
+
+    Sets parameters necessary for calibration models, including input files, model
+    and output directory for results.
 
     Args:
-        calibrateConfig (CalibrateConfig): Configuration object containing calibration
-        parameters.
-
-    This function sets parameters necessary for calibration models, including
-    input files, model, and output directory for results.
+        calibrateConfig: Configuration object containing calibration parameters.
     """
     set_("run_mode", "calibration")
     set_device(cast(str, calibrateConfig.device))
@@ -1637,7 +1580,13 @@ def set_calibrate_config(calibrateConfig: CalibrateConfig) -> None:
 
 
 def set_device(device: str) -> None:
-    # Get the device setting
+    """Set PyTorch device configuration.
+
+    "automatic" mode selects GPU if available, otherwise CPU.
+
+    Args:
+        device: Device to use: "cpu", "cuda:0", or "automatic".
+    """
     if device == "automatic":
         if torch.cuda.is_available():
             set_("device", "cuda:0")
@@ -1665,10 +1614,7 @@ def set_device(device: str) -> None:
 
 
 def initialize() -> None:
-    """
-    Read command line and store user settings.
-    """
-
+    """Parse command line arguments and store user settings."""
     parser = build_arg_parser()
     par = parser.parse_known_args()[0]
 
