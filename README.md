@@ -1,5 +1,10 @@
 # MycorrhizaFinder development repository
 
+## DOI
+
+PLEASE NOTE THAT THIS SOURCE CODE SHOULD BE CONSIDERED IN ASSOCIATION WITH DOI:
+https://doi.org/10.64898/2026.03.04.709422 - **MycorrhizaFinder: an efficient machine learning tool to quantify endomycorrhizal colonisation of real-world roots**
+
 ## Note to users
 
 This repository, and this README, are aimed at development of the source code, and not users of the MycorrhizaFinder tool. To download the tool and to see full user documentation, see https://doi.org/10.5281/zenodo.17485909.
