@@ -3,7 +3,8 @@
 ## DOI
 
 PLEASE NOTE THAT THIS SOURCE CODE SHOULD BE CONSIDERED IN ASSOCIATION WITH DOI:
-https://doi.org/10.64898/2026.03.04.709422 - **MycorrhizaFinder: an efficient machine learning tool to quantify endomycorrhizal colonisation of real-world roots**
+https://doi.org/10.64898/2026.03.04.709422
+**MycorrhizaFinder: an efficient machine learning tool to quantify endomycorrhizal colonisation of real-world roots**
 
 ## Note to users
 
