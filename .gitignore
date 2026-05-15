@@ -28,3 +28,6 @@ amfbrowser-react/build
 
 # Training/Test data
 **/data/**
+
+# Shell scripts
+**/*.sh
