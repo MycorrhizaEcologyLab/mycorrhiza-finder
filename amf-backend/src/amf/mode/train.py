@@ -202,7 +202,12 @@ class ReduceLROnPlateau:
             self.counter = 0
 
 
-def run(input_files: list[str], flag: bool, train_active_learning: bool = False) -> int:
+def run(
+    input_files: list[str],
+    flag: bool,
+    train_active_learning: bool = False,
+    filter_background: bool = False,
+) -> int:
     """
     Creates or loads a convolutional neural network, and trains it
     with the annotated tiles extracted from input images.
@@ -242,6 +247,42 @@ def run(input_files: list[str], flag: bool, train_active_learning: bool = False)
     # Extracting tiles and labels using list logic, to omit getitem() method.
     x = [x for x, y in full_dataset.dataset]
     y = [y for x, y in full_dataset.dataset]
+
+    if filter_background:
+        # Filter out mostly white tiles (background)
+        empty_threshold = 0.99  # Mean pixel intensity threshold for white background
+        empty_proportion = 0.1  # Keep percentage (e.g. 10%) of background tiles
+        empty_indices = []
+        root_indices = []
+
+        # Auto-filter out background tiles based on mean pixel intensity above the given
+        # threshold (mostly white and black tiles)
+        for idx, tile in enumerate(x):
+            mean_intensity = np.mean(tile) / 255.0  # Normalise to [0, 1]
+            if mean_intensity >= empty_threshold or mean_intensity <= 0.01:
+                empty_indices.append(idx)
+            else:
+                root_indices.append(idx)
+
+        # Sample background tiles to keep
+        num_to_keep = max(1, int(len(empty_indices) * empty_proportion))
+        empty_indices_to_keep = np.random.choice(
+            empty_indices, size=num_to_keep, replace=False
+        )
+
+        # Combine root tiles with sampled background tiles
+        all_kept_indices = np.concatenate([root_indices, empty_indices_to_keep])
+        all_kept_indices = np.sort(all_kept_indices)
+
+        # Filter x and y to maintain alignment
+        x = [x[i] for i in all_kept_indices]
+        y = [y[i] for i in all_kept_indices]
+
+        logger.info(
+            f"Dataset filtering: {len(root_indices)} root tiles, {len(empty_indices)} "
+            f"background tiles, {num_to_keep} background tiles kept "
+            f"({num_to_keep}/{len(empty_indices)}), Total training tiles: {len(x)}"
+        )
 
     # x and y should be numpy arrays before passing them to the class
     val_size = AmfConfig.get("vfrac")

@@ -5,6 +5,7 @@ amfenv
 *.egg-info
 *.pyc
 *.spec
+*.python-version
 
 # Log/debug files
 *.log
@@ -24,3 +25,9 @@ amf-backend/build/**
 !amf-backend/build/amfbrowser.ico
 amf-backend/_internal
 amfbrowser-react/build
+
+# Training/Test data
+**/data/**
+
+# Shell scripts
+**/*.sh
