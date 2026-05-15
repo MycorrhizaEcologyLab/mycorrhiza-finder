@@ -168,6 +168,8 @@ PAR = {
     "pre_trained": True,
     # Enable BALD/BatchBALD training mode
     "train_active_learning": False,
+    # Whether to filter background tiles during training
+    "filter_background": False,
     # Use BALD to provide labels
     "get_tiles_for_labelling_using_active_learning": False,
     # Specify tile edge to use
@@ -392,6 +394,16 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
             "Enables training with different default learning rate and num epochs "
             "after active learning samples have been acquired."
         ),
+    )
+
+    x = PAR["filter_background"]
+    parser.add_argument(
+        "-fb",
+        "--filter-background",
+        action="store_const",
+        dest="filter_background",
+        const=True,
+        help=("Enables filtering of background tiles during training."),
     )
 
     x = PAR["get_tiles_for_labelling_using_active_learning"]
@@ -1417,6 +1429,7 @@ def set_train_config(trainConfig: TrainConfig) -> None:
     set_device(cast(str, trainConfig.device))
 
     set_("train_active_learning", trainConfig.trainActiveLearning)
+    set_("filter_background", trainConfig.filterBackground)
     set_(
         "get_tiles_for_labelling_using_active_learning",
         trainConfig.getTilesForLabellingUsingActiveLearning,
