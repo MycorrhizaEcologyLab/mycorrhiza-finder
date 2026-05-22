@@ -55,8 +55,10 @@ import amf.helper.config as AmfConfig
 MODEL_DICT = {
     "resnet": "resnet50.a1_in1k",
     "resnext": "resnext50_32x4d.a1h_in1k",
-    "efficientnet": "tf_efficientnet_b5.in1k",
-    "efficientnetv2": "tf_efficientnetv2_m.in1k",
+    "efficientnet": "efficientnet_b5.sw_in12k_ft_in1k ",
+    "efficientnetv2": "tf_efficientnetv2_m.in21k_ft_in1k",
+    "convnext": "convnext_base.fb_in22k_ft_in1k",
+    # "deit3": "deit3_base_patch16_224.fb_in22k_ft_in1k",
 }
 
 
