@@ -235,6 +235,8 @@ PAR = {
     "num_workers": 0,
     "use_contextual_confidence": True,  # Enable contextual confidence refinement
     "contextual_confidence_threshold": 1,  # Threshold for applying max voting
+    "dynamic_loading": False,  # Whether to load tile images dynamically during training
+    "pretiled_dir": None,  # Directory containing pre-tiled images for training
 }
 
 
@@ -728,6 +730,30 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         default=x,
         help="Tile size (in pixels) used for image segmentation."
         "\ndefault value: {} pixels".format(x),
+    )
+
+    x = PAR["dynamic_loading"]
+    parser.add_argument(
+        "-dl",
+        "--dynamic-loading",
+        action="store_true",
+        default=x,
+        dest="dynamic_loading",
+        help=(
+            "Enables dynamic loading of tile images during training, "
+            "reducing memory usage."
+        ),
+    )
+
+    x = PAR["pretiled_dir"]
+    parser.add_argument(
+        "-ptd",
+        "--pretiled-dir",
+        action="store",
+        dest="pretiled_dir",
+        type=str,
+        default=x,
+        help=("Directory containing pre-tiled images for training."),
     )
 
     return
@@ -1467,6 +1493,7 @@ def set_train_config(trainConfig: TrainConfig) -> None:
     set_("patience_e", trainConfig.patienceE)
     set_("patience_r", trainConfig.patienceR)
     set_("tile_edge", trainConfig.tileEdge)
+    set_("dynamic_loading", trainConfig.dynamicLoading)
 
     if trainConfig.outdir is None or trainConfig.outdir == "":
         results_dir = create_results_dir("train")
@@ -1735,6 +1762,8 @@ def initialize() -> None:
         set_("mc_samples", par.mc_samples)
         set_("dropout_rate", par.dropout_rate)
         set_("tile_edge", par.edge)
+        set_("dynamic_loading", par.dynamic_loading)
+        set_("pretiled_dir", par.pretiled_dir)
 
     elif par.run_mode == "predict":
         set_("tile_edge", par.edge)

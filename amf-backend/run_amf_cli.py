@@ -90,7 +90,14 @@ def main() -> None:
         else:
             train_active_learning = AmfConfig.get("train_active_learning")
             filter_background = AmfConfig.get("filter_background")
-            AmfTrain.run(input_files, flag, train_active_learning, filter_background)
+            dynamic_loading = AmfConfig.get("dynamic_loading")
+            AmfTrain.run(
+                input_files,
+                flag,
+                train_active_learning,
+                filter_background,
+                dynamic_loading,
+            )
 
     elif run_mode == "predict":
         input_files = AmfConfig.get_input_files()

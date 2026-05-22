@@ -207,6 +207,7 @@ def run(
     flag: bool,
     train_active_learning: bool = False,
     filter_background: bool = False,
+    dynamic_loading: bool = False,
 ) -> int:
     """
     Creates or loads a convolutional neural network, and trains it
@@ -237,19 +238,47 @@ def run(
         # ERR_NO_DATA = 10
         sys.exit(10)
 
-    full_dataset = AmfLoad.TileDatasetLoader(
-        full_list,
-        use_augmentation=AmfConfig.get("data_augm"),
-        balance_factor=AmfConfig.get("balance_factor"),
-        calculate_distribution=True,
-    )
+    if dynamic_loading:
+        logger.info(
+            "Dynamic loading enabled. Training with data loaded in batches from disk."
+        )
+        pretiled_dir = AmfConfig.get("pretiled_dir")
+        if pretiled_dir is None:
+            logger.error(
+                "Pre-tiled directory not specified in config for dynamic loading."
+            )
+            sys.exit(11)
+        AmfLoad.preprocess_to_tiles(input_files, pretiled_dir)
+        # TODO: This is currently hardcoded to the pre-tiled directory, but should come
+        # from the config.
+        full_dataset = AmfLoad.PreTiledDatasetLoader(
+            pretiled_dir,
+            use_augmentation=AmfConfig.get("data_augm"),
+            balance_factor=AmfConfig.get("balance_factor"),
+            calculate_distribution=True,
+        )
+        # Extract paths and labels from the index
+        x = [path for path, label in full_dataset.sample_index]
+        y = [label for path, label in full_dataset.sample_index]
+    else:
+        logger.info(
+            "Loading entire dataset into memory. Ensure sufficient RAM is available or "
+            "enable dynamic loading."
+        )
+        full_dataset = AmfLoad.TileDatasetLoader(
+            full_list,
+            use_augmentation=AmfConfig.get("data_augm"),
+            balance_factor=AmfConfig.get("balance_factor"),
+            calculate_distribution=True,
+        )
+        # Extracting tiles and labels using list logic, to omit getitem() method.
+        x = [x for x, y in full_dataset.dataset]
+        y = [y for x, y in full_dataset.dataset]
 
-    # Extracting tiles and labels using list logic, to omit getitem() method.
-    x = [x for x, y in full_dataset.dataset]
-    y = [y for x, y in full_dataset.dataset]
-
-    if filter_background:
+    if filter_background and not dynamic_loading:
         # Filter out mostly white tiles (background)
+        # TODO: The threshold and proportion parameters could be managed through
+        # the config.
         empty_threshold = 0.99  # Mean pixel intensity threshold for white background
         empty_proportion = 0.1  # Keep percentage (e.g. 10%) of background tiles
         empty_indices = []
@@ -284,7 +313,8 @@ def run(
             f"({num_to_keep}/{len(empty_indices)}), Total training tiles: {len(x)}"
         )
 
-    # x and y should be numpy arrays before passing them to the class
+    # x and y should be numpy arrays (x is paths using dynamic loading) before passing
+    # them to the class
     val_size = AmfConfig.get("vfrac")
     splitter = AmfLoad.StratifiedDatasetSplitter(
         x, y, val_size=val_size, random_state=42
@@ -295,8 +325,14 @@ def run(
     x_val, y_val = splitter._get_dataset("val")
 
     # Convert to CustomDataset
-    train_dataset = AmfLoad.CustomNormalisedDataset(x_train, y_train)
-    val_dataset = AmfLoad.CustomNormalisedDataset(x_val, y_val)
+    train_dataset = AmfLoad.CustomNormalisedDataset(
+        x_train, y_train, dynamic_loading=dynamic_loading
+    )
+    val_dataset = AmfLoad.CustomNormalisedDataset(
+        x_val, y_val, dynamic_loading=dynamic_loading
+    )
+
+    logger.debug("Successfully loaded training and validation datasets.")
 
     # Initialise variables to prepare training and validation datasets
     labels = np.stack([full_dataset.labels[i] for i in range(len(full_dataset.labels))])

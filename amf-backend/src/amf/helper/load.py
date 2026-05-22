@@ -14,6 +14,7 @@ import pandas as pd
 import torch
 from loguru import logger
 from numpy.typing import ArrayLike, NDArray
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
@@ -36,13 +37,13 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     This is intended to be used by DataLoaders primarily for efficient memory handling.
 
     Expected Inputs:
-    x: Iterable of image data (e.g., list of tiles as NumPy arrays or as simple list).
+    x: Iterable of image data (e.g., list of tiles as NumPy arrays or as simple list),
+        or list of file paths to tile images if dynamic loading is enabled.
     y: Iterable of labels corresponding to the image data (e.g., list of NumPy arrays or
         lists representing the labels).
 
     Methods:
-    __init__(self, x, y): Initializes the dataset, storing provided data as NumPy
-        arrays.
+    __init__(self, x, y, dynamic_loading, transform): Initializes the dataset.
     __len__(self): Returns the number of samples in the dataset.
     __getitem__(self, index): Returns a tuple of image and label at the given index as
         PyTorch tensors, with the image normalized to the range [0, 1].
@@ -55,9 +56,46 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         __getitem__() is invoked.
     """
 
-    def __init__(self, x: ArrayLike, y: ArrayLike):
+    def __init__(
+        self, x: ArrayLike, y: ArrayLike, dynamic_loading: bool = False, transform=None
+    ):
         # Store data as NumPy arrays or lists
-        self.x = np.array(x) if not isinstance(x, np.ndarray) else x
+        self.dynamic_loading = dynamic_loading
+        if transform is not None:
+            self.transform = transforms.Compose(
+                [
+                    transforms.ToPILImage(),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomVerticalFlip(),
+                    transforms.ColorJitter(
+                        brightness=(0.75, 1.25), saturation=(0.75, 1.25)
+                    ),
+                    transforms.RandomApply(
+                        [
+                            transforms.RandomResizedCrop(
+                                (
+                                    AmfConfig.get("tile_edge"),
+                                    AmfConfig.get("tile_edge"),
+                                ),
+                                scale=(0.9, 0.9),
+                                ratio=(1.0, 1.0),
+                                interpolation=InterpolationMode.BILINEAR,
+                            ),
+                            transforms.Resize(
+                                (AmfConfig.get("tile_edge"), AmfConfig.get("tile_edge"))
+                            ),
+                        ],
+                        p=0.3,
+                    ),
+                    transforms.ToTensor(),
+                ]
+            )
+        else:
+            self.transform = None
+        if self.dynamic_loading:
+            self.x = x
+        else:
+            self.x = np.array(x) if not isinstance(x, np.ndarray) else x
         self.y = np.array(y) if not isinstance(y, np.ndarray) else y
 
     def __len__(self) -> int:
@@ -65,9 +103,19 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         # Convert to torch tensors only when accessed
-        x_tensor = cast(
-            torch.Tensor, torch.tensor(self.x[index], dtype=torch.float32) / 255.0
-        )  # Normalisation to [0, 1]
+        if self.dynamic_loading:
+            # Load tile image from the path
+            tile = np.array(Image.open(self.x[index]), dtype=np.uint8)
+            tile = np.transpose(tile.astype(np.uint8), (2, 0, 1))  # Convert to CxHxW
+            x_tensor = cast(
+                torch.Tensor, torch.tensor(tile, dtype=torch.float32) / 255.0
+            )  # Normalisation to [0, 1]
+            if self.transform:
+                x_tensor = self.transform(x_tensor)
+        else:
+            x_tensor = cast(
+                torch.Tensor, torch.tensor(self.x[index], dtype=torch.float32) / 255.0
+            )  # Normalisation to [0, 1]
         y_tensor = torch.tensor(self.y[index], dtype=torch.float32)
         return x_tensor, y_tensor
 
@@ -378,6 +426,157 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
     def __getitem__(self, idx: int) -> tuple[NDArray[np.uint8], NDArray[np.uint8]]:
         tile, label = self.dataset[idx]
         return tile, label
+
+
+class PreTiledDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
+    def __init__(
+        self,
+        tile_dir: str,
+        use_augmentation: bool = False,
+        balance_factor: float = 1.0,
+        calculate_distribution: bool = False,
+    ):
+        self.use_augmentation = use_augmentation
+        colonisation_type = AmfConfig.get("colonisation_type")
+        self.class_names = AmfConfig.get("class_names")[colonisation_type]
+        self.class_to_idx = {name: i for i, name in enumerate(self.class_names)}
+
+        self.sample_index = self._build_index(tile_dir)
+        self.labels = [label for _, label in self.sample_index]
+
+        if balance_factor != 0.0:
+            self.sample_index = self._balance_dataset(
+                self.sample_index, self.labels, balance_factor
+            )
+            self.labels = [label for _, label in self.sample_index]
+            logger.info(
+                f"Balance factor set to: {balance_factor}. Generating balanced dataset."
+            )
+        else:
+            logger.info(
+                f"Balance factor set to: {balance_factor}. "
+                f"Generating unbalanced dataset."
+            )
+
+        if calculate_distribution:
+            logger.info(f"Total tiles after balancing: {len(self.sample_index)}")
+            self._prepare_stats()
+
+        tile_edge = AmfConfig.get("tile_edge")
+        self.transform = transforms.Compose(
+            [
+                transforms.ToPILImage(),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
+                transforms.ColorJitter(
+                    brightness=(0.75, 1.25), saturation=(0.75, 1.25)
+                ),
+                transforms.RandomApply(
+                    [
+                        transforms.RandomResizedCrop(
+                            (tile_edge, tile_edge),
+                            scale=(0.9, 0.9),
+                            ratio=(1.0, 1.0),
+                            interpolation=InterpolationMode.BILINEAR,
+                        ),
+                        transforms.Resize((tile_edge, tile_edge)),
+                    ],
+                    p=0.3,
+                ),
+                transforms.ToTensor(),
+            ]
+        )
+
+    def _build_index(self, tile_dir: str) -> list[tuple[str, NDArray[np.uint8]]]:
+        """
+        Walk class subfolders and build a flat list of (tile_path, one_hot_label).
+        """
+        index = []
+        for class_name in self.class_names:
+            class_dir = os.path.join(tile_dir, class_name)
+            if not os.path.isdir(class_dir):
+                logger.warning(f"No folder found for class '{class_name}', skipping.")
+                continue
+
+            one_hot = np.zeros(len(self.class_names), dtype=np.uint8)
+            one_hot[self.class_to_idx[class_name]] = 1
+
+            for filename in sorted(os.listdir(class_dir)):
+                if filename.endswith(".jpg"):
+                    tile_path = os.path.join(class_dir, filename)
+                    index.append((tile_path, one_hot.copy()))
+
+        if len(index) == 0:
+            logger.error("No tiles found in tile directory, aborting.")
+            sys.exit(32)
+
+        return index
+
+    def _balance_dataset(
+        self,
+        index: list[tuple[str, NDArray[np.uint8]]],
+        labels: list[NDArray[np.uint8]],
+        factor: float = 1.0,
+    ) -> list[tuple[str, NDArray[np.uint8]]]:
+        class_0_samples = sum(1 for arr in labels if arr[0] == 1)
+        y_indices = np.argmax(labels, axis=1)
+        num_classes = len(self.class_names)
+
+        indices_to_keep: list[int] = []
+        for class_id in range(num_classes):
+            idx_class_samples = np.where(y_indices == class_id)[0]
+            num_class_samples = len(idx_class_samples)
+
+            if class_id == 0:
+                indices_to_keep.extend(idx_class_samples)
+            else:
+                if num_class_samples == 0:
+                    continue
+                num_samples_to_select = min(
+                    int(class_0_samples * factor), num_class_samples
+                )
+                if num_samples_to_select < num_class_samples:
+                    indices_to_keep.extend(
+                        random.sample(list(idx_class_samples), num_samples_to_select)
+                    )
+                else:
+                    indices_to_keep.extend(idx_class_samples)
+
+        indices_to_keep = sorted(indices_to_keep)
+        return [index[i] for i in indices_to_keep]
+
+    def _prepare_stats(self) -> None:
+        samples = np.stack([label for _, label in self.sample_index])
+        y = torch.from_numpy(samples).float()
+        class_counts = y.sum(dim=0)
+        total_samples = y.size(0)
+        percentages = (class_counts / total_samples) * 100
+
+        logger.debug("Class distribution after balancing:")
+        for i, (name, count) in enumerate(zip(self.class_names, class_counts)):
+            logger.debug(f"  {name}: {int(count)} samples ({percentages[i]:.2f}%)")
+
+        unique_present = (class_counts > 0).nonzero(as_tuple=True)[0].numpy()
+        if not np.array_equal(unique_present, np.arange(len(class_counts))):
+            logger.error(
+                "Training data does not represent all classes. Please reconsider "
+                "training dataset curation."
+            )
+            sys.exit(10)
+
+    def __getitem__(self, idx: int) -> tuple[NDArray[np.uint8], NDArray[np.uint8]]:
+        tile_path, label = self.sample_index[idx]
+        tile = np.array(Image.open(tile_path), dtype=np.uint8)
+
+        if self.use_augmentation:
+            tile_tensor = torch.tensor(tile, dtype=torch.float32) / 255.0
+            tile_tensor = cast(torch.Tensor, self.transform(tile_tensor))
+            tile = np.clip((tile_tensor.numpy() * 255).round(), 0, 255).astype(np.uint8)
+
+        return tile, label
+
+    def __len__(self) -> int:
+        return len(self.sample_index)
 
 
 class StratifiedDatasetSplitter:
@@ -843,14 +1042,14 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
 
                 # Drop question marks from the CSV
                 if "Question" in output.columns:
-                    logger.info(f"Dropping questions from annotations for {image_name}")
+                    # logger.info(f"Dropping questions from annotations for {image_name}")
                     output.drop("Question", axis=1, inplace=True, errors="ignore")
 
                 # Drop question comments from the CSV
                 if "QuestionComment" in output.columns:
-                    logger.info(
-                        f"Dropping question comments from annotations for {image_name}"
-                    )
+                    # logger.info(
+                    #     f"Dropping question comments from annotations for {image_name}"
+                    # )
                     output.drop(
                         "QuestionComment", axis=1, inplace=True, errors="ignore"
                     )
@@ -889,14 +1088,14 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
             # If question does not exist then do not error when dropping
             # (for legacy CSVs)
             if "Question" in output.columns:
-                logger.info(f"Dropping questions from annotations for {image_name}")
+                # logger.info(f"Dropping questions from annotations for {image_name}")
                 output.drop("Question", axis=1, inplace=True, errors="ignore")
 
             # Drop question comments from the CSV
             if "QuestionComment" in output.columns:
-                logger.info(
-                    f"Dropping question comments from annotations for {image_name}"
-                )
+                # logger.info(
+                #     f"Dropping question comments from annotations for {image_name}"
+                # )
                 output.drop("QuestionComment", axis=1, inplace=True, errors="ignore")
 
             # Further check that csv is not empty
@@ -924,3 +1123,89 @@ def categorise_path(paths: list[str]) -> dict[str, list[str]]:
                 break  # Stop searching once a match is found
 
     return categorised_paths
+
+
+def is_blank(tile: NDArray[np.uint8]) -> bool:
+    """Returns True if the tile is entirely black or entirely white."""
+    return bool(np.all(tile == 0) or np.all(tile == 255))
+
+
+def is_already_processed(
+    source_name: str, output_dir: str, class_names: list[str]
+) -> bool:
+    """
+    Check whether any tiles from this source image exist in any class subfolder.
+    Presence of even one tile indicates the image was previously processed.
+    """
+    for class_name in class_names:
+        class_dir = os.path.join(output_dir, class_name)
+        if not os.path.isdir(class_dir):
+            continue
+        for filename in os.listdir(class_dir):
+            if filename.startswith(source_name):
+                return True
+    return False
+
+
+def preprocess_to_tiles(input_files: list[str], output_dir: str) -> None:
+    colonisation_type = AmfConfig.get("colonisation_type")
+    class_names = AmfConfig.get("class_names")[colonisation_type]
+
+    for class_name in class_names:
+        os.makedirs(os.path.join(output_dir, class_name), exist_ok=True)
+
+    # Source images whose blank tiles should always be fully retained
+    special_cases = {"high_res_black_image_AM", "high_res_white_image_AM"}
+    print(f"Number of input files: {len(input_files)}")
+
+    for path in input_files:
+        annotations = import_annotations(path)
+        settings = import_settings(path)
+
+        # Extract the stem of the source filename e.g. "Image_1"
+        source_name = os.path.splitext(os.path.basename(path))[0]
+        # Per-image counter so numbering restarts cleanly for each source file
+        image_tile_counter = 0
+
+        if annotations is None:
+            logger.info(f"Skipping {source_name}, no annotations found.")
+            continue
+        elif is_already_processed(source_name, output_dir, class_names):
+            continue
+        else:
+            logger.info(
+                f"Processing {source_name} with {len(annotations)} annotated tiles."
+            )
+
+        image = AmfSegm.load(path)
+        for annot in annotations.itertuples():
+            tile = AmfSegm.tile(image, annot.row, annot.col, settings["tile_edge"])
+            label = np.array(annot[3:], dtype=np.uint8)
+            tile = np.transpose(tile.astype(np.uint8), (1, 2, 0))
+            if source_name not in special_cases and is_blank(tile):
+                print(
+                    f"Skipping blank tile at row {annot.row}, col {annot.col} from {source_name}"
+                )
+                continue  # Skip blank tiles for non-special cases
+
+            class_idx = int(np.argmax(label))
+            class_name = class_names[class_idx]
+
+            tile_filename = f"{source_name}_tile_{image_tile_counter:06d}.jpg"
+            tile_path = os.path.join(output_dir, class_name, tile_filename)
+            Image.fromarray(tile).save(tile_path, quality=95)
+
+            image_tile_counter += 1
+            print(f"Saved tile {tile_path} with label {class_name}")
+
+        total_tiles = len(annotations)
+        print(
+            f"Finished processing {source_name}, extracted {image_tile_counter} tiles from {total_tiles} total tiles."
+        )
+        del image
+
+    logger.info("Tile extraction complete. Class distribution:")
+    for class_name in class_names:
+        class_dir = os.path.join(output_dir, class_name)
+        count = len([f for f in os.listdir(class_dir) if f.endswith(".jpg")])
+        logger.info(f"  {class_name}: {count} tiles")
