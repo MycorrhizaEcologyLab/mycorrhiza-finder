@@ -448,8 +448,14 @@ def load(name: str | None = None) -> torch.nn.Module:
                     model = create_cnn1()
             elif AmfConfig.get("model_type") in MODEL_DICT:
                 model_id = MODEL_DICT[AmfConfig.get("model_type")]
+                checkpoint_path = (
+                    AmfConfig.get("checkpoint_path") if not pt_flag else None
+                )
                 model = timm.create_model(
-                    model_id, pretrained=pt_flag, num_classes=num_classes
+                    model_id,
+                    pretrained=pt_flag,
+                    num_classes=num_classes,
+                    checkpoint_path=checkpoint_path,
                 )
             # -----> Old implementation using torchvision models, delete after testing <--------
             # elif AmfConfig.get("model_type") == "resnet":

@@ -237,6 +237,7 @@ PAR = {
     "contextual_confidence_threshold": 1,  # Threshold for applying max voting
     "dynamic_loading": False,  # Whether to load tile images dynamically during training
     "pretiled_dir": None,  # Directory containing pre-tiled images for training
+    "checkpoint_path": None,  # Path to checkpoint for loading model weights during training
 }
 
 
@@ -754,6 +755,21 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help=("Directory containing pre-tiled images for training."),
+    )
+
+    x = PAR["checkpoint_path"]
+    parser.add_argument(
+        "-ckpt",
+        "--checkpoint-path",
+        action="store",
+        dest="checkpoint_path",
+        type=str,
+        default=x,
+        help=(
+            "Path to checkpoint for loading timm model weights during training. If not "
+            "set, model weights will be initialized based on the --model and --pretrain"
+            " arguments."
+        ),
     )
 
     return
@@ -1764,6 +1780,7 @@ def initialize() -> None:
         set_("tile_edge", par.edge)
         set_("dynamic_loading", par.dynamic_loading)
         set_("pretiled_dir", par.pretiled_dir)
+        set_("checkpoint_path", par.checkpoint_path)
 
     elif par.run_mode == "predict":
         set_("tile_edge", par.edge)

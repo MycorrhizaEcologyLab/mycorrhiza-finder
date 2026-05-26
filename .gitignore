@@ -15,6 +15,9 @@ amfenv
 **/trained_networks/**
 !**/trained_networks/README.txt
 
+# Output files
+**/output/**
+
 # Frontend dependencies
 **/node_modules/**
 
