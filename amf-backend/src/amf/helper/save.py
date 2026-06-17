@@ -34,6 +34,7 @@ Functions
 :function prediction_table: Saves or append predictions to an archive.
 """
 
+import csv
 import datetime
 import json
 import os
@@ -66,6 +67,31 @@ def now() -> str:
     return datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
+def save_history(history: dict[str, list[float]], output_dir: str) -> None:
+    """
+    Saves training history to a file.
+    """
+    filepath = os.path.join(output_dir, "train_history.csv")
+
+    rows = list(
+        zip(range(1, len(history["loss"]) + 1), history["loss"], history["val_loss"])
+    )
+
+    with open(filepath, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["epoch", "loss", "val_loss"])
+        writer.writerows(rows)
+
+        # Summary row
+        best_epoch = min(
+            range(len(history["val_loss"])), key=lambda i: history["val_loss"][i]
+        )
+        writer.writerow([])
+        writer.writerow(["best_epoch", best_epoch + 1, history["val_loss"][best_epoch]])
+
+    return history["val_loss"][best_epoch]  # return best val loss for reuse
+
+
 def save_training_data(
     history: dict[str, list[float]], model: torch.nn.Module, save_path: str
 ) -> None:
@@ -76,60 +102,50 @@ def save_training_data(
     :param model: The trained model.
     :param save_path: The directory to save the training data.
     """
-    zipf = now() + "_training.zip"
-    zipf = os.path.join(AmfConfig.get("outdir"), zipf)
+    ## TODO: An additional model load class (loading the state dict seperately to
+    # the architecture) would be required in the case of HDF5
 
-    with ZipFile(zipf, "w") as z:
-        # Save the training history
-        data = pickle.dumps(history, protocol=pickle.HIGHEST_PROTOCOL)
-        z.writestr("history.bin", data)
+    best_val_loss = save_history(
+        history, save_path
+    )  # Save history and get best val loss
+    # Save best val loss to a text file for easy access
+    with open(os.path.join(save_path, "val_loss.txt"), "w") as f:
+        f.write(f"{best_val_loss:.6f}\n")
 
-        # Option 1: Save the model state_dict as h5
-        model_path = os.path.join(save_path, "model.h5")
-        with h5py.File(model_path, "w") as h5file:
-            # Create group to store model information
-            group = h5file.create_group("model")
+    # Save the model state_dict as pth
+    model_path = os.path.join(save_path, "model.pth")
+    torch.save(model, model_path)
 
-            # Save parameter (weights and biases)
-            for name, param in model.named_parameters():
-                group.create_dataset(
-                    name, data=param.data.cpu().numpy()
-                )  # Numpy array conversion
+    # Optionally, save additional plots or metrics here
+    # In the original AMFinder version, the accuracy was tracked throughout the
+    # training process.
+    # As this metric is not used any longer, it is not included in the PyTorch
+    # version of the code.´
 
-        z.writestr("model.h5", open(model_path, "rb").read())
-        ## TODO: An additional model load class (loading the state dict seperately to
-        # the architecture) would be required in the case of HDF5
+    early = AmfConfig.get("early_stopping")
+    if early is not None and early.early_stop:
+        epochs = AmfConfig.get("early_break_epoch")
+    else:
+        train_active_learning = AmfConfig.get("train_active_learning")
+        epochs = (
+            AmfConfig.get("epochs")
+            if not train_active_learning
+            else AmfConfig.get("epochs_active_learning")
+        )
 
-        # Option 2: Save the model state_dict as pth
-        model_path = os.path.join(save_path, "model.pth")
-        torch.save(model, model_path)
-        z.writestr("model.pth", open(model_path, "rb").read())
+    x_range = np.arange(0, epochs)
 
-        # Optionally, save additional plots or metrics here
-        # In the original AMFinder version, the accuracy was tracked throughout the
-        # training process.
-        # As this metric is not used any longer, it is not included in the PyTorch
-        # version of the code.´
-
-        # TODO: Integrate save mechanism when Early Stopping is triggered.
-        # With early stopping implemented
-        early = AmfConfig.get("early_stopping")
-        if early is not None and early.early_stop:
-            break_epoch = AmfConfig.get("early_break_epoch")
-            x_range = np.arange(0, break_epoch)
-
-        else:
-            train_active_learning = AmfConfig.get("train_active_learning")
-            epochs = (
-                AmfConfig.get("epochs")
-                if not train_active_learning
-                else AmfConfig.get("epochs_active_learning")
-            )
-            x_range = np.arange(0, epochs)
-
-        AmfPlot.initialize()
-        plot_data = AmfPlot.draw(history, epochs, "Loss", x_range, "loss", "val_loss")
-        z.writestr("loss.png", plot_data.getvalue())
+    AmfPlot.initialize()
+    AmfPlot.draw(
+        history,
+        epochs,
+        "Loss",
+        x_range,
+        "loss",
+        "val_loss",
+        fname="loss.png",
+        dir=save_path,
+    )
 
     logger.info(f"Saved model output to {save_path}")
 
@@ -212,6 +228,9 @@ def save_metrics(metrics_collector: MetricsCollector, path: str) -> None:
             )
             generic_metrics_csv = generic_metrics_df.to_csv(index=False)
             generic_metrics_file_name = "generic_metrics.csv"
+            generic_metrics_df.to_csv(
+                os.path.join(path, "generic_metrics.csv"), index=False
+            )
             z.writestr(generic_metrics_file_name, generic_metrics_csv)
 
         for image_name, image in metrics_collector.images.items():
