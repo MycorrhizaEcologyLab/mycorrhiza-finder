@@ -422,7 +422,8 @@ def run(input_images: list[str]) -> int:
     :param save: indicate whether results should be saved or returned.
     """
 
-    model = AmfModel.load()
+    model_path = AmfConfig.get("model_path")
+    model = AmfModel.load(name=model_path)
 
     # Assign correct device, depending on cpu or gpu
     device = AmfConfig.get("device")

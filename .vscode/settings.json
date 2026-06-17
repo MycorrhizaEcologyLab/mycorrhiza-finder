@@ -16,4 +16,5 @@
         "amf-backend/run_amf_api.py",
         "amf-backend/run_amf_cli.py"
     ],
+    "python-envs.defaultEnvManager": "ms-python.python:system",
 }
