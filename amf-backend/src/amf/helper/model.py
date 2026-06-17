@@ -58,8 +58,10 @@ MODEL_DICT = {
     "efficientnet": "efficientnet_b5.sw_in12k_ft_in1k",
     "efficientnetv2": "tf_efficientnetv2_m.in21k_ft_in1k",
     "convnext": "convnext_base.fb_in22k_ft_in1k",
-    # "deit3": "deit3_base_patch16_224.fb_in22k_ft_in1k",
+    "deit3": "deit3_base_patch16_224.fb_in22k_ft_in1k",
 }
+
+torch.serialization.add_safe_globals([timm.models.efficientnet.EfficientNet])
 
 
 class ConvolutionalBlocks(nn.Module):
@@ -388,6 +390,10 @@ def load(name: str | None = None) -> torch.nn.Module:
         if not os.path.isfile(path):
             path = name
 
+        if not os.path.isfile(path):
+            logger.error(f"Model not found at path: {path}")
+            sys.exit(20)
+
     else:
         path = (
             AmfConfig.get("model")
@@ -399,23 +405,30 @@ def load(name: str | None = None) -> torch.nn.Module:
         # This will currently only work for pth models.
 
         logger.info(f"Model for {colonisation_type} colonisation: {path}")
-        model = torch.load(path, map_location=torch.device(AmfConfig.get("device")))
+        # TODO:
+        # Remove weights_only=False and modify to load timm models cleanly
+        model = torch.load(
+            path, map_location=torch.device(AmfConfig.get("device")), weights_only=False
+        )
         logger.debug("Model load successful")
 
+        # TODO: Add check which incorporates timm models, temporarily disabled
         # Check model name
         if isinstance(model, torch.nn.Module):
             model_name = model.__class__.__name__  # Get class name of loaded model
+            logger.info(f"Loaded model class name: {model_name}")
+            return model
 
             # TODO: ResNeXt has the same model.__class__.__name__ as ResNet.
             # Change to map correctly.
-            if model_name in ["CNN1", "ResNet", "ResNeXt", "EfficientNet"]:
-                logger.debug(f"Model type: {model_name}")
-                return model
-            else:
-                raise ValueError(
-                    "Not a valid model. Valid models are CNN1, ResNet, ResNeXt, "
-                    "EfficientNet"
-                )
+            # if model_name in ["CNN1", "ResNet", "ResNeXt", "EfficientNet"]:
+            #     logger.debug(f"Model type: {model_name}")
+            #     return model
+            # else:
+            #     raise ValueError(
+            #         "Not a valid model. Valid models are CNN1, ResNet, ResNeXt, "
+            #         "EfficientNet"
+            #     )
 
         else:
             logger.error("The provided model is not a torch.nn.Module instance")
@@ -448,14 +461,14 @@ def load(name: str | None = None) -> torch.nn.Module:
                     model = create_cnn1()
             elif AmfConfig.get("model_type") in MODEL_DICT:
                 model_id = MODEL_DICT[AmfConfig.get("model_type")]
-                checkpoint_path = (
-                    AmfConfig.get("checkpoint_path") if not pt_flag else None
-                )
+                checkpoint_path = AmfConfig.get("checkpoint_path")
                 model = timm.create_model(
                     model_id,
                     pretrained=pt_flag,
                     num_classes=num_classes,
-                    checkpoint_path=checkpoint_path,
+                    drop_rate=AmfConfig.get("dropout_rate"),
+                    drop_path_rate=AmfConfig.get("drop_path_rate"),
+                    pretrained_cfg_overlay=dict(file=checkpoint_path),
                 )
             # -----> Old implementation using torchvision models, delete after testing <--------
             # elif AmfConfig.get("model_type") == "resnet":
