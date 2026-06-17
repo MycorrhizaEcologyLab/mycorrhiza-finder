@@ -57,6 +57,8 @@ def draw(
     x_range: NDArray[np.int_],
     t_name: str,
     v_name: str,
+    fname: str = None,
+    dir: str = None,
 ) -> io.BytesIO:
     """ """
 
@@ -91,6 +93,9 @@ def draw(
     pyplot.draw()
 
     plot_data = io.BytesIO()
-    pyplot.savefig(plot_data, format="png")
+    if fname is not None and dir is not None:
+        pyplot.savefig(f"{dir}/{fname}", format="png")
+    else:
+        pyplot.savefig(plot_data, format="png")
 
     return plot_data
