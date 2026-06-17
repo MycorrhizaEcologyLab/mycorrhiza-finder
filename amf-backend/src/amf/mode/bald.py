@@ -130,7 +130,8 @@ def batch_bald_acquisition(
 
 
 def run(input_files: list[str]) -> int:
-    model = AmfModel.load()
+    model_path = AmfConfig.get("model_path")
+    model = AmfModel.load(name=model_path)
 
     device = AmfConfig.get("device")
     num_classes = len(AmfConfig.get("class_names")[AmfConfig.get("colonisation_type")])

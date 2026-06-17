@@ -344,8 +344,9 @@ def run(input_files: list[str]) -> int:
 
     :param input_files: List of input images to train with.
     """
+    model_path = AmfConfig.get("model_path")
     # Trained model
-    model = AmfModel.load()
+    model = AmfModel.load(name=model_path)
 
     # Assign correct device, depending on cpu or gpu
     device = AmfConfig.get("device")
