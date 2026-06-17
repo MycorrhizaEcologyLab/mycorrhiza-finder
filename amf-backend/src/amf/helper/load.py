@@ -56,11 +56,9 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         __getitem__() is invoked.
     """
 
-    def __init__(
-        self, x: ArrayLike, y: ArrayLike, dynamic_loading: bool = False, transform=None
-    ):
+    def __init__(self, x: ArrayLike, y: ArrayLike, transform=None):
         # Store data as NumPy arrays or lists
-        self.dynamic_loading = dynamic_loading
+        self.dynamic_loading = AmfConfig.get("dynamic_loading")
         if transform is not None:
             self.transform = transforms.Compose(
                 [
@@ -112,10 +110,20 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
             )  # Normalisation to [0, 1]
             if self.transform:
                 x_tensor = self.transform(x_tensor)
+            elif AmfConfig.get("resize_dim") is not None:
+                resize_transform = transforms.Resize(
+                    (AmfConfig.get("resize_dim"), AmfConfig.get("resize_dim"))
+                )
+                x_tensor = resize_transform(x_tensor)
         else:
             x_tensor = cast(
                 torch.Tensor, torch.tensor(self.x[index], dtype=torch.float32) / 255.0
             )  # Normalisation to [0, 1]
+            if AmfConfig.get("resize_dim") is not None:
+                resize_transform = transforms.Resize(
+                    (AmfConfig.get("resize_dim"), AmfConfig.get("resize_dim"))
+                )
+                x_tensor = resize_transform(x_tensor)
         y_tensor = torch.tensor(self.y[index], dtype=torch.float32)
         return x_tensor, y_tensor
 
@@ -287,6 +295,15 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
                         augment_count = class_augmentations.get(label_class, 0)
                         for _ in range(augment_count):
                             augmented_tile = transform(tile)
+                            # Resize again if specified in config, as some augmentations may change the tile size
+                            if AmfConfig.get("resize_dim") is not None:
+                                resize_transform = transforms.Resize(
+                                    (
+                                        AmfConfig.get("resize_dim"),
+                                        AmfConfig.get("resize_dim"),
+                                    )
+                                )
+                                tile = resize_transform(tile)
                             # Convert back to uint8 to stay memory efficient
                             augmented_tile = np.clip(
                                 (augmented_tile.numpy() * 255).round(), 0, 255
@@ -302,6 +319,15 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
 
                         label = label.numpy().astype(np.uint8)
 
+                    # Also resize original tile if specified in config, to ensure consistency with augmented tiles
+                    if AmfConfig.get("resize_dim") is not None:
+                        resize_transform = transforms.Resize(
+                            (
+                                AmfConfig.get("resize_dim"),
+                                AmfConfig.get("resize_dim"),
+                            )
+                        )
+                        tile = resize_transform(tile)
                     all_tiles.append(tile)
                     all_labels.append(label)  # Always add original
                 del image
@@ -468,6 +494,14 @@ class PreTiledDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]
                 transforms.ToPILImage(),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
+                transforms.RandomChoice(
+                    [
+                        transforms.RandomRotation((0, 0)),
+                        transforms.RandomRotation((90, 90)),
+                        transforms.RandomRotation((180, 180)),
+                        transforms.RandomRotation((270, 270)),
+                    ]
+                ),
                 transforms.ColorJitter(
                     brightness=(0.75, 1.25), saturation=(0.75, 1.25)
                 ),
@@ -479,7 +513,6 @@ class PreTiledDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]
                             ratio=(1.0, 1.0),
                             interpolation=InterpolationMode.BILINEAR,
                         ),
-                        transforms.Resize((tile_edge, tile_edge)),
                     ],
                     p=0.3,
                 ),
@@ -748,9 +781,16 @@ class TileFilesandData(
 
     def __init__(self, input_files: list[str], is_bald_folder: bool = False):
         self.input_files = input_files
-        self.x, self.y, self.file_names, self.rows, self.cols = (
-            self._load_and_process_data(is_bald_folder)  # type: ignore[misc] # TODO fix better
-        )
+        if AmfConfig.get("dynamic_loading"):
+            pretiled_dir = AmfConfig.get("pretiled_dir")
+            preprocess_to_tiles(input_files, pretiled_dir)
+            self.x, self.y, self.file_names, self.rows, self.cols = get_tile_metadata(
+                pretiled_dir
+            )
+        else:
+            self.x, self.y, self.file_names, self.rows, self.cols = (
+                self._load_and_process_data(is_bald_folder)  # type: ignore[misc] # TODO fix better
+            )
         if is_bald_folder:
             (
                 self.x_unlabelled,
@@ -839,8 +879,12 @@ class TileFilesandData(
 
             image = AmfSegm.load(path)
             for annot in annots.itertuples():
-                tile = AmfSegm.tile(image, annot.row, annot.col)
-                tile = np.array(tile, dtype=np.uint8)
+                if AmfConfig.get("dynamic_loading"):
+                    # Store file path for dynamic loading
+                    tile = path  # Save path, actual tile will be loaded in __getitem__
+                else:
+                    tile = AmfSegm.tile(image, annot.row, annot.col)
+                    tile = np.array(tile, dtype=np.uint8)
                 label = np.array(annot[3:], dtype=np.uint8)
                 rows.append(annot.row)
                 cols.append(annot.col)
@@ -1191,7 +1235,9 @@ def preprocess_to_tiles(input_files: list[str], output_dir: str) -> None:
             class_idx = int(np.argmax(label))
             class_name = class_names[class_idx]
 
-            tile_filename = f"{source_name}_tile_{image_tile_counter:06d}.jpg"
+            tile_filename = tile_filename = (
+                f"{source_name}_tile_{annot.row}_{annot.col}.jpg"
+            )
             tile_path = os.path.join(output_dir, class_name, tile_filename)
             Image.fromarray(tile).save(tile_path, quality=95)
 
@@ -1209,3 +1255,61 @@ def preprocess_to_tiles(input_files: list[str], output_dir: str) -> None:
         class_dir = os.path.join(output_dir, class_name)
         count = len([f for f in os.listdir(class_dir) if f.endswith(".jpg")])
         logger.info(f"  {class_name}: {count} tiles")
+
+
+def get_tile_metadata(
+    tile_dir: str,
+) -> tuple[list[str], list[NDArray[np.uint8]], list[str], list[int], list[int]]:
+    """
+    Walks the preprocessed tile directory and retrieves metadata for each tile
+    without loading any image data.
+
+    Returns:
+        x: list of full paths to tile images
+        y: list of one-hot encoded labels
+        file_names: list of source image stems
+        rows: list of row positions in the source image
+        cols: list of column positions in the source image
+    """
+    colonisation_type = AmfConfig.get("colonisation_type")
+    class_names = AmfConfig.get("class_names")[colonisation_type]
+    class_to_idx = {name: i for i, name in enumerate(class_names)}
+
+    x = []
+    y = []
+    file_names = []
+    rows = []
+    cols = []
+
+    for class_name in class_names:
+        class_dir = os.path.join(tile_dir, class_name)
+        if not os.path.isdir(class_dir):
+            logger.warning(f"No folder found for class '{class_name}', skipping.")
+            continue
+
+        one_hot = np.zeros(len(class_names), dtype=np.uint8)
+        one_hot[class_to_idx[class_name]] = 1
+
+        for filename in sorted(os.listdir(class_dir)):
+            if not filename.endswith(".jpg"):
+                continue
+
+            tile_path = os.path.join(class_dir, filename)
+
+            # Filename format: {source_name}_tile_{row:04d}_{col:04d}.jpg
+            stem = os.path.splitext(filename)[0]
+            source_name, tile_coords = stem.rsplit("_tile_", 1)
+            row_str, col_str = tile_coords.split("_")
+
+            x.append(tile_path)
+            y.append(one_hot.copy())
+            file_names.append(source_name)
+            rows.append(int(row_str))
+            cols.append(int(col_str))
+
+    if len(x) == 0:
+        logger.error("No tiles found in tile directory.")
+        sys.exit(32)
+
+    logger.info(f"Retrieved metadata for {len(x)} tiles.")
+    return x, y, file_names, rows, cols
