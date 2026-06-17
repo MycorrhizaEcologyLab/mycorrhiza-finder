@@ -227,7 +227,8 @@ PAR = {
     "active_learning_method": "bald",  # Active learning method (bald, batchbald)
     "num_samples_for_labelling": 10,  # Samples to select per file for labeling
     "mc_samples": 50,  # Number of MC dropout samples for uncertainty
-    "dropout_rate": 0.25,  # Dropout probability
+    "dropout_rate": 0.0,  # Dropout probability
+    "drop_path_rate": 0.0,  # Drop path probability
     # This value points towards the temperature value for the model (AM)
     "temperature_factor_path": "am_252_efficientnet_temperature_value.txt",
     # This value points towards the temperature value for the model (ErM)
@@ -238,6 +239,14 @@ PAR = {
     "dynamic_loading": False,  # Whether to load tile images dynamically during training
     "pretiled_dir": None,  # Directory containing pre-tiled images for training
     "checkpoint_path": None,  # Path to checkpoint for loading model weights during training
+    # Path to model to load for prediction, calibration, active learning and test modes.
+    # If not set, will default to the value in the --model argument.
+    "model_path": None,
+    "resize_dim": None,  # Dimension to resize input images for compatibility (e.g. transformers)
+    "weight_decay": 0.0000,  # Weight decay for Adam optimizer
+    "backbone_lr_mult": 1.0,  # Learning rate multiplier for backbone layers during training
+    "freeze_epochs": 0,  # Number of epochs to freeze backbone layers during training
+    "early_break_epoch": None,
 }
 
 
@@ -772,6 +781,76 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         ),
     )
 
+    x = PAR["resize_dim"]
+    parser.add_argument(
+        "-rd",
+        "--resize-dim",
+        action="store",
+        dest="resize_dim",
+        type=int,
+        default=x,
+        help="Dimension to resize input images for compatibility (e.g. transformers)."
+        "\ndefault value: {}".format(x),
+    )
+
+    x = PAR["weight_decay"]
+    parser.add_argument(
+        "-wd",
+        "--weight-decay",
+        action="store",
+        dest="weight_decay",
+        type=float,
+        default=x,
+        help="Weight decay for Adam optimizer.\ndefault value: {}".format(x),
+    )
+
+    x = PAR["backbone_lr_mult"]
+    parser.add_argument(
+        "-blm",
+        "--backbone-lr-mult",
+        action="store",
+        dest="backbone_lr_mult",
+        type=float,
+        default=x,
+        help="Learning rate multiplier for backbone layers during training."
+        "\ndefault value: {}".format(x),
+    )
+
+    x = PAR["freeze_epochs"]
+    parser.add_argument(
+        "-fe",
+        "--freeze-epochs",
+        action="store",
+        dest="freeze_epochs",
+        type=int,
+        default=x,
+        help="Number of epochs to freeze backbone layers during training."
+        "\ndefault value: {}".format(x),
+    )
+
+    x = PAR["drop_path_rate"]
+    parser.add_argument(
+        "-dpr",
+        "--drop-path-rate",
+        action="store",
+        dest="drop_path_rate",
+        type=float,
+        default=x,
+        help="Drop path probability for timm models."
+        "\ndefault value: {}".format(x),
+    )
+
+    x = PAR["early_break_epoch"]
+    parser.add_argument(
+        "-ebe",
+        "--early-break-epoch",
+        action="store",
+        dest="early_break_epoch",
+        type=int,
+        default=x,
+        help="Epoch at which training stopped early due to early stopping."
+    )
+
     return
 
 
@@ -913,6 +992,33 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         "\ndefault value: {}".format(x),
     )
 
+    x = PAR["model_path"]
+    parser.add_argument(
+        "-mp",
+        "--model-path",
+        action="store",
+        dest="model_path",
+        type=str,
+        default=x,
+        help=(
+            "name of the model to load for testing. If not set, will default to the "
+            "value in the --model argument."
+            "\ndefault value: {}".format(x)
+        ),
+    )
+
+    x = PAR["resize_dim"]
+    parser.add_argument(
+        "-rd",
+        "--resize-dim",
+        action="store",
+        dest="resize_dim",
+        type=int,
+        default=x,
+        help="Dimension to resize input images for compatibility (e.g. transformers)."
+        "\ndefault value: {}".format(x),
+    )
+
     return
 
 
@@ -1005,6 +1111,18 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         default=x,
         help="Tile size (in pixels) used for image segmentation."
         "\ndefault value: {} pixels".format(x),
+    )
+
+    x = PAR["resize_dim"]
+    parser.add_argument(
+        "-rd",
+        "--resize-dim",
+        action="store",
+        dest="resize_dim",
+        type=int,
+        default=x,
+        help="Dimension to resize input images for compatibility (e.g. transformers)."
+        "\ndefault value: {}".format(x),
     )
 
     return
@@ -1144,6 +1262,33 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=float,
         default=x,
         help="Threshold below which max voting with surrounding tiles will be applied."
+        "\ndefault value: {}".format(x),
+    )
+
+    x = PAR["model_path"]
+    parser.add_argument(
+        "-mp",
+        "--model-path",
+        action="store",
+        dest="model_path",
+        type=str,
+        default=x,
+        help=(
+            "name of the model to load for prediction. If not set, will default to the "
+            "value in the --model argument."
+            "\ndefault value: {}".format(x)
+        ),
+    )
+
+    x = PAR["resize_dim"]
+    parser.add_argument(
+        "-rd",
+        "--resize-dim",
+        action="store",
+        dest="resize_dim",
+        type=int,
+        default=x,
+        help="Dimension to resize input images for compatibility (e.g. transformers)."
         "\ndefault value: {}".format(x),
     )
 
@@ -1388,6 +1533,57 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         "\ndefault value: {} pixels".format(x),
     )
 
+    x = PAR["dynamic_loading"]
+    parser.add_argument(
+        "-dl",
+        "--dynamic-loading",
+        action="store_true",
+        default=x,
+        dest="dynamic_loading",
+        help=(
+            "Enables dynamic loading of tile images during calibration, "
+            "reducing memory usage."
+        ),
+    )
+
+    x = PAR["pretiled_dir"]
+    parser.add_argument(
+        "-ptd",
+        "--pretiled-dir",
+        action="store",
+        dest="pretiled_dir",
+        type=str,
+        default=x,
+        help=("Directory containing pre-tiled images for calibration."),
+    )
+
+    x = PAR["model_path"]
+    parser.add_argument(
+        "-mp",
+        "--model-path",
+        action="store",
+        dest="model_path",
+        type=str,
+        default=x,
+        help=(
+            "name of the model to load for calibration. If not set, will default to the "
+            "value in the --model argument."
+            "\ndefault value: {}".format(x)
+        ),
+    )
+
+    x = PAR["resize_dim"]
+    parser.add_argument(
+        "-rd",
+        "--resize-dim",
+        action="store",
+        dest="resize_dim",
+        type=int,
+        default=x,
+        help="Dimension to resize input images for compatibility (e.g. transformers)."
+        "\ndefault value: {}".format(x),
+    )
+
     return
 
 
@@ -1510,6 +1706,12 @@ def set_train_config(trainConfig: TrainConfig) -> None:
     set_("patience_r", trainConfig.patienceR)
     set_("tile_edge", trainConfig.tileEdge)
     set_("dynamic_loading", trainConfig.dynamicLoading)
+    set_("resize_dim", trainConfig.resizeDim)
+    set_("weight_decay", trainConfig.weightDecay)
+    set_("backbone_lr_mult", trainConfig.backboneLrMult)
+    set_("freeze_epochs", trainConfig.freezeEpochs)
+    set_("drop_path_rate", trainConfig.dropPathRate)
+    set_("early_break_epoch", trainConfig.earlyBreakEpoch)
 
     if trainConfig.outdir is None or trainConfig.outdir == "":
         results_dir = create_results_dir("train")
@@ -1551,6 +1753,8 @@ def set_predict_config(predictionConfig: PredictionConfig) -> None:
         "contextual_confidence_threshold",
         predictionConfig.contextualConfidenceThreshold,
     )
+    set_("model_path", predictionConfig.modelPath)
+    set_("resize_dim", predictionConfig.resizeDim)
 
 
 def set_test_config(testConfig: TestConfig) -> None:
@@ -1583,6 +1787,8 @@ def set_test_config(testConfig: TestConfig) -> None:
 
     set_("use_contextual_confidence", testConfig.useContextualConfidence)
     set_("contextual_confidence_threshold", testConfig.contextualConfidenceThreshold)
+    set_("model_path", testConfig.modelPath)
+    set_("resize_dim", testConfig.resizeDim)
 
 
 def set_colonisation_config(colonisationConfig: BaseConfig) -> None:
@@ -1609,6 +1815,7 @@ def set_colonisation_config(colonisationConfig: BaseConfig) -> None:
         set_("outdir", results_dir)
     else:
         set_("outdir", colonisationConfig.outdir)
+    set_("resize_dim", colonisationConfig.resizeDim)
 
 
 def set_convert_config(convertConfig: ConvertConfig) -> None:
@@ -1684,6 +1891,9 @@ def set_calibrate_config(calibrateConfig: CalibrateConfig) -> None:
     set_("model", calibrateConfig.model)
     set_("model_erm", calibrateConfig.modelErm)
     set_("tile_edge", calibrateConfig.tileEdge)
+    set_("dynamic_loading", calibrateConfig.dynamicLoading)
+    set_("model_path", calibrateConfig.modelPath)
+    set_("resize_dim", calibrateConfig.resizeDim)
 
     if calibrateConfig.outdir is None or calibrateConfig.outdir == "":
         results_dir = create_results_dir("calibrate")
@@ -1781,6 +1991,12 @@ def initialize() -> None:
         set_("dynamic_loading", par.dynamic_loading)
         set_("pretiled_dir", par.pretiled_dir)
         set_("checkpoint_path", par.checkpoint_path)
+        set_("resize_dim", par.resize_dim)
+        set_("weight_decay", par.weight_decay)
+        set_("backbone_lr_mult", par.backbone_lr_mult)
+        set_("freeze_epochs", par.freeze_epochs)
+        set_("drop_path_rate", par.drop_path_rate)
+        set_("early_break_epoch", par.early_break_epoch)
 
     elif par.run_mode == "predict":
         set_("tile_edge", par.edge)
@@ -1791,7 +2007,8 @@ def initialize() -> None:
         set_("use_contextual_confidence", par.use_contextual_confidence)
         set_("contextual_confidence_threshold", par.contextual_confidence_threshold)
         set_("outdir", par.outdir)
-
+        set_("model_path", par.model_path)
+        set_("resize_dim", par.resize_dim)
         if par.outdir is None:
             set_("outdir", clean_path(par.images))
 
@@ -1804,6 +2021,8 @@ def initialize() -> None:
         set_("temperature_factor_path_erm", par.temperature_factor_path_erm)
         set_("use_contextual_confidence", par.use_contextual_confidence)
         set_("contextual_confidence_threshold", par.contextual_confidence_threshold)
+        set_("model_path", par.model_path)
+        set_("resize_dim", par.resize_dim)
 
         # if an outdir has not been specified, create one in the default loc
         if par.outdir is None:
@@ -1813,6 +2032,7 @@ def initialize() -> None:
     elif par.run_mode == "colonisation":
         set_("outdir", par.outdir)
         set_("tile_edge", par.edge)
+        set_("resize_dim", par.resize_dim)
 
         # if an outdir has not been specified, create one in the default loc
         if par.outdir is None:
@@ -1834,6 +2054,10 @@ def initialize() -> None:
         set_("model_erm", par.model_erm)
         set_("tile_edge", par.edge)
         set_("outdir", par.outdir)
+        set_("dynamic_loading", par.dynamic_loading)
+        set_("pretiled_dir", par.pretiled_dir)
+        set_("model_path", par.model_path)
+        set_("resize_dim", par.resize_dim)
 
         if par.outdir is None:
             results_dir = create_results_dir("calibrate")
