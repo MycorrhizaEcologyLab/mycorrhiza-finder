@@ -44,6 +44,7 @@ Functions
 
 # New total imports log for train_flx
 # Original AMFinder imports.
+import os
 import random
 import sys
 from typing import Any
@@ -125,6 +126,20 @@ def class_weights(
     )  # class wegiths as a dict and array respectively. # TODO why??
 
 
+def split_backbone_head_params(model):
+    """Return (backbone_params, head_params) for any timm model."""
+    head_ids = {id(p) for p in model.get_classifier().parameters()}
+    backbone, head = [], []
+    for p in model.parameters():
+        (head if id(p) in head_ids else backbone).append(p)
+    return backbone, head
+
+
+def set_requires_grad(params, flag):
+    for p in params:
+        p.requires_grad = flag
+
+
 # PyTorch implementation of earlier Keras functionality for early stopping.
 
 
@@ -148,7 +163,7 @@ class EarlyStopping:
             self.counter += 1
 
             if self.verbose:
-                logger.debug(
+                logger.info(
                     f"EarlyStopping counter: {self.counter} out of {self.patience}"
                 )
 
@@ -193,9 +208,7 @@ class ReduceLROnPlateau:
                     new_lr = max(old_lr * self.factor, self.min_lr)
                     param_group["lr"] = new_lr
                     if self.verbose:
-                        logger.debug(
-                            f"Reducing learning rate from {old_lr} to {new_lr}"
-                        )
+                        logger.info(f"Reducing learning rate from {old_lr} to {new_lr}")
 
         else:
             self.best_loss = val_loss
@@ -218,12 +231,36 @@ def run(
     if flag:
         mlflow.start_run()
 
+    model_path = AmfConfig.get("model_path")
     # Input model (either new or pre-trained).
-    model = AmfModel.load()
+    model = AmfModel.load(name=model_path)
 
     # Assign correct device, depending on cpu or gpu
     device = AmfConfig.get("device")
     model = model.to(device)
+
+    backbone_params, head_params = split_backbone_head_params(model)
+
+    lr = (
+        AmfConfig.get("learning_rate")
+        if not train_active_learning
+        else AmfConfig.get("learning_rate_active_learning")
+    )
+    backbone_lr_mult = AmfConfig.get("backbone_lr_mult")
+    freeze_epochs = AmfConfig.get("freeze_epochs")
+
+    optim = torch.optim.Adam(
+        [
+            {"params": backbone_params, "lr": lr * backbone_lr_mult},
+            {"params": head_params, "lr": lr},
+        ],
+        betas=(AmfConfig.get("adam_beta1"), AmfConfig.get("adam_beta2")),
+        weight_decay=AmfConfig.get("weight_decay"),
+    )
+
+    # Phase 1: only the head trains for the first `freeze_epochs` epochs.
+    if freeze_epochs > 0:
+        set_requires_grad(backbone_params, False)
 
     # categorise path
     all_files = AmfLoad.categorise_path(input_files)
@@ -325,12 +362,8 @@ def run(
     x_val, y_val = splitter._get_dataset("val")
 
     # Convert to CustomDataset
-    train_dataset = AmfLoad.CustomNormalisedDataset(
-        x_train, y_train, dynamic_loading=dynamic_loading
-    )
-    val_dataset = AmfLoad.CustomNormalisedDataset(
-        x_val, y_val, dynamic_loading=dynamic_loading
-    )
+    train_dataset = AmfLoad.CustomNormalisedDataset(x_train, y_train)
+    val_dataset = AmfLoad.CustomNormalisedDataset(x_val, y_val)
 
     logger.debug("Successfully loaded training and validation datasets.")
 
@@ -371,15 +404,6 @@ def run(
         if not train_active_learning
         else AmfConfig.get("epochs_active_learning")
     )
-    optim = torch.optim.Adam(
-        model.parameters(),
-        lr=(
-            AmfConfig.get("learning_rate")
-            if not train_active_learning
-            else AmfConfig.get("learning_rate_active_learning")
-        ),
-        betas=(AmfConfig.get("adam_beta1"), AmfConfig.get("adam_beta2")),
-    )
     save_directory = AmfConfig.get("outdir")
     # Optional
     r = ReduceLROnPlateau(
@@ -389,6 +413,8 @@ def run(
         min_lr=1e-9,
         verbose=True,
     )
+
+    early_stopping = EarlyStopping(patience=AmfConfig.get("patience_e"), verbose=True)
 
     # Defining training loop
     # The training loop saves model history and the model itself.
@@ -402,12 +428,18 @@ def run(
         save_path: str,
         early_stopping: EarlyStopping | None = None,
         reduce_lr: ReduceLROnPlateau | None = None,
+        freeze_epochs: int = 0,
     ) -> int:
         history: dict[str, list[float]] = {"loss": [], "val_loss": []}
 
         best_val_loss = float("inf")
 
         for epoch in range(num_epochs):
+            if freeze_epochs > 0 and epoch == freeze_epochs:
+                set_requires_grad(backbone_params, True)
+                reduce_lr.best_loss = float(
+                    "inf"
+                )  # let the scheduler re-baseline post-unfreeze
             model.train()  # Setting training mode
             running_loss = 0.0  # Initialising running loss
 
@@ -456,7 +488,7 @@ def run(
             history["val_loss"].append(avg_val_loss)
 
             # Log losses
-            logger.debug(
+            logger.info(
                 f"Epoch {epoch + 1}/{num_epochs}, "
                 f"Average validation loss: {avg_val_loss:.4f}"
             )
@@ -493,9 +525,11 @@ def run(
 
             # Step the learning rate scheduler
             if reduce_lr is not None:
-                # logger.debug("Reduce LR mechanism active")
+                logger.info("LR reduced due to plateau in validation loss.")
                 reduce_lr.step(avg_val_loss)
                 AmfConfig.set_("reduce_lr_on_plateau", reduce_lr)
+            else:
+                logger.info("LR reduction on plateau not enabled.")
 
         model.load_state_dict(
             best_model_weights
@@ -519,8 +553,9 @@ def run(
         optimiser=optim,
         num_epochs=num_ep,
         save_path=save_directory,
-        early_stopping=None,
+        early_stopping=early_stopping,
         reduce_lr=r,
+        freeze_epochs=freeze_epochs,
     )
 
     # Save model information (layers and graph) upon user request.
