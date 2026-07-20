@@ -47,6 +47,7 @@ import torch.nn.functional as F
 from loguru import logger
 from numpy.typing import NDArray
 from PIL import Image
+from torchvision import transforms
 from tqdm import tqdm
 
 import amf.helper.config as AmfConfig
@@ -82,6 +83,12 @@ def process_batch(
     # Convert to PyTorch tensor
     batch_tensor = torch.tensor(batch, dtype=torch.float32)
     batch_tensor = batch_tensor.to(device)  # Move to the same device as the model
+
+    if AmfConfig.get("resize_dim") is not None:
+        resize_transform = transforms.Resize(
+            (AmfConfig.get("resize_dim"), AmfConfig.get("resize_dim"))
+        )
+        batch_tensor = resize_transform(batch_tensor)
 
     # Predict using the model
     with torch.no_grad():  # No gradient tracking for inference
@@ -167,6 +174,12 @@ def apply_contextual_confidence(
 
         # Convert to PyTorch tensor
         tiles_tensor = torch.tensor(valid_tiles, dtype=torch.float32).to(device)
+
+        if AmfConfig.get("resize_dim") is not None:
+            resize_transform = transforms.Resize(
+                (AmfConfig.get("resize_dim"), AmfConfig.get("resize_dim"))
+            )
+            tiles_tensor = resize_transform(tiles_tensor)
 
         # Make predictions
         with torch.no_grad():
@@ -473,9 +486,9 @@ def predict_level1(
     b_rows = []
     b_cols = []
 
-    # TODO: Replace with logger messages and delete prints
-    # print(f"{len(background_tiles)} background tiles identified and autoclassified.")
-    # print(f"Processing {total_tiles} tiles in batches of {batch_size}...")
+    logger.info(f"{len(background_tiles)} background tiles identified and autoclassified.")
+    logger.info(f"Processing {total_tiles} tiles in batches of {batch_size}...")
+    
 
     # DEBUG: Enable for tracking total execution time of inference over a root image
     # start_time = time.time()
@@ -503,8 +516,8 @@ def predict_level1(
         batch_result = process_batch(model, batch_tiles, temperature_factor)
         results.append(batch_result)
 
-    # TODO: Replace with logger message if needed and delete print
-    # print("--- %s seconds ---" % (time.time() - start_time))
+    # DEBUG: Enable to log execution time
+    # logger.info("--- %s seconds ---" % (time.time() - start_time))
 
     # Concatenate to a single Pandas dataframe
     table = pd.concat(results, ignore_index=True)

@@ -836,8 +836,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         dest="drop_path_rate",
         type=float,
         default=x,
-        help="Drop path probability for timm models."
-        "\ndefault value: {}".format(x),
+        help="Drop path probability for timm models.\ndefault value: {}".format(x),
     )
 
     x = PAR["early_break_epoch"]
@@ -848,7 +847,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         dest="early_break_epoch",
         type=int,
         default=x,
-        help="Epoch at which training stopped early due to early stopping."
+        help="Epoch at which training stopped early due to early stopping.",
     )
 
     return
