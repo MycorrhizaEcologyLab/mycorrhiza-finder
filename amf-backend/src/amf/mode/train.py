@@ -55,9 +55,9 @@ import mlflow
 import mlflow.pytorch
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.optim
 from loguru import logger
+from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -285,18 +285,19 @@ def run(
                 "Pre-tiled directory not specified in config for dynamic loading."
             )
             sys.exit(11)
-        AmfLoad.preprocess_to_tiles(input_files, pretiled_dir)
-        # TODO: This is currently hardcoded to the pre-tiled directory, but should come
-        # from the config.
-        full_dataset = AmfLoad.PreTiledDatasetLoader(
+        AmfLoad.preprocess_to_tiles(
+            input_files,
+            pretiled_dir,
+            h5_name=f"{AmfConfig.get('colonisation_type')}_train.h5",
+        )
+        full_dataset = AmfLoad.PreTiledHDF5Loader(
             pretiled_dir,
             use_augmentation=AmfConfig.get("data_augm"),
             balance_factor=AmfConfig.get("balance_factor"),
             calculate_distribution=True,
         )
-        # Extract paths and labels from the index
-        x = [path for path, label in full_dataset.sample_index]
-        y = [label for path, label in full_dataset.sample_index]
+        # Extract tiles and labels from the index
+        x, y = full_dataset.get_split_arrays()
     else:
         logger.info(
             "Loading entire dataset into memory. Ensure sufficient RAM is available or "
@@ -350,27 +351,33 @@ def run(
             f"({num_to_keep}/{len(empty_indices)}), Total training tiles: {len(x)}"
         )
 
-    # x and y should be numpy arrays (x is paths using dynamic loading) before passing
+    # x and y should be numpy arrays before passing
     # them to the class
     val_size = AmfConfig.get("vfrac")
+    if dynamic_loading:
+        h5_path = full_dataset.h5_path
+    else:
+        h5_path = None  # Not used when dynamic loading is disabled
+
     splitter = AmfLoad.StratifiedDatasetSplitter(
         x, y, val_size=val_size, random_state=42
     )
 
-    # Create datasets as NumPy arrays
     x_train, y_train = splitter._get_dataset("train")
     x_val, y_val = splitter._get_dataset("val")
 
-    # Convert to CustomDataset
-    train_dataset = AmfLoad.CustomNormalisedDataset(x_train, y_train)
-    val_dataset = AmfLoad.CustomNormalisedDataset(x_val, y_val)
+    train_dataset = AmfLoad.CustomNormalisedDataset(x_train, y_train, h5_path=h5_path)
+    val_dataset = AmfLoad.CustomNormalisedDataset(x_val, y_val, h5_path=h5_path)
 
     logger.debug("Successfully loaded training and validation datasets.")
 
     # Initialise variables to prepare training and validation datasets
-    labels = np.stack([full_dataset.labels[i] for i in range(len(full_dataset.labels))])
-    labels = torch.from_numpy(labels)
-    labels = labels.type(torch.float32)
+    if dynamic_loading:
+        labels = torch.from_numpy(full_dataset.labels).type(torch.float32)
+    else:
+        labels = torch.from_numpy(
+            np.stack([full_dataset.labels[i] for i in range(len(full_dataset.labels))])
+        ).type(torch.float32)
     weights = class_weights(labels, "effective_num")
     class_weights_tensor = torch.tensor(weights[1], dtype=torch.float32).to(device)
     logger.debug(f"Weights: {weights}")
@@ -455,7 +462,7 @@ def run(
                 batch_y = torch.argmax(batch_y, dim=1).to(
                     device
                 )  # Conversion to class indices suitable for Pytorch
-                loss = criterion(output, batch_y)  #
+                loss = criterion(output, batch_y)
                 loss.backward()
                 optimiser.step()
 
