@@ -1,3 +1,4 @@
+import glob
 import io
 import json
 import os
@@ -7,6 +8,7 @@ import sys
 from collections import defaultdict
 from typing import cast
 
+import h5py
 import numpy as np
 import pandas as pd
 
@@ -18,6 +20,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
+from tqdm import tqdm
 
 import amf.helper.config as AmfConfig
 import amf.helper.segmentation as AmfSegm
@@ -29,8 +32,9 @@ from amf.helper.api_utils import (
 )
 from amf.helper.db_config import connect
 
+FLUSH_EVERY = 4096  # tiles buffered in RAM before a write (~60 MB at 15 KB/tile)
 
-# Defining class for Datasetloader
+
 class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     """
     Manages dataset loading and normalizes image data to the range [0, 1].
@@ -38,12 +42,14 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 
     Expected Inputs:
     x: Iterable of image data (e.g., list of tiles as NumPy arrays or as simple list),
-        or list of file paths to tile images if dynamic loading is enabled.
+        or row indices into an HDF5 tile file if dynamic loading is enabled.
     y: Iterable of labels corresponding to the image data (e.g., list of NumPy arrays or
         lists representing the labels).
+    h5_path: Path to the HDF5 tile file, or to a directory containing exactly one.
+        Required when dynamic loading is enabled, ignored otherwise.
 
     Methods:
-    __init__(self, x, y, dynamic_loading, transform): Initializes the dataset.
+    __init__(self, x, y, transform, h5_path): Initializes the dataset.
     __len__(self): Returns the number of samples in the dataset.
     __getitem__(self, index): Returns a tuple of image and label at the given index as
         PyTorch tensors, with the image normalized to the range [0, 1].
@@ -56,9 +62,18 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         __getitem__() is invoked.
     """
 
-    def __init__(self, x: ArrayLike, y: ArrayLike, transform=None):
+    def __init__(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        transform=None,
+        h5_path: str | None = None,
+    ):
         # Store data as NumPy arrays or lists
         self.dynamic_loading = AmfConfig.get("dynamic_loading")
+        self.h5: h5py.File | None = None
+        self.pid: int | None = None
+
         if transform is not None:
             self.transform = transforms.Compose(
                 [
@@ -90,11 +105,36 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
             )
         else:
             self.transform = None
+
         if self.dynamic_loading:
-            self.x = x
+            if h5_path is None:
+                logger.error(
+                    "dynamic_loading is enabled but no tile dataset path was provided."
+                )
+                sys.exit(32)
+            self.h5_path = h5_path
+            self.x = np.asarray(x, dtype=np.int64)  # HDF5 row numbers
         else:
+            self.h5_path = None
             self.x = np.array(x) if not isinstance(x, np.ndarray) else x
+
         self.y = np.array(y) if not isinstance(y, np.ndarray) else y
+
+    def _file(self) -> h5py.File:
+        """
+        Return a handle owned by the current process.
+        """
+        pid = os.getpid()
+        if self.h5 is None or self.pid != pid:
+            self.h5 = h5py.File(self.h5_path, "r")
+            self.pid = pid
+        return self.h5
+
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
+        state["h5"] = None
+        state["pid"] = None
+        return state
 
     def __len__(self) -> int:
         return len(self.x)
@@ -102,28 +142,26 @@ class CustomNormalisedDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         # Convert to torch tensors only when accessed
         if self.dynamic_loading:
-            # Load tile image from the path
-            tile = np.array(Image.open(self.x[index]), dtype=np.uint8)
+            # Load tile image from the HDF5 file
+            row = int(self.x[index])
+            raw = self._file()["jpg"][row].tobytes()
+            tile = np.array(Image.open(io.BytesIO(raw)), dtype=np.uint8)
             tile = np.transpose(tile.astype(np.uint8), (2, 0, 1))  # Convert to CxHxW
             x_tensor = cast(
                 torch.Tensor, torch.tensor(tile, dtype=torch.float32) / 255.0
             )  # Normalisation to [0, 1]
-            if self.transform:
-                x_tensor = self.transform(x_tensor)
-            elif AmfConfig.get("resize_dim") is not None:
-                resize_transform = transforms.Resize(
-                    (AmfConfig.get("resize_dim"), AmfConfig.get("resize_dim"))
-                )
-                x_tensor = resize_transform(x_tensor)
         else:
             x_tensor = cast(
                 torch.Tensor, torch.tensor(self.x[index], dtype=torch.float32) / 255.0
             )  # Normalisation to [0, 1]
-            if AmfConfig.get("resize_dim") is not None:
-                resize_transform = transforms.Resize(
-                    (AmfConfig.get("resize_dim"), AmfConfig.get("resize_dim"))
-                )
-                x_tensor = resize_transform(x_tensor)
+
+        if self.transform:
+            x_tensor = self.transform(x_tensor)
+        if AmfConfig.get("resize_dim") is not None:
+            resize_transform = transforms.Resize(
+                (AmfConfig.get("resize_dim"), AmfConfig.get("resize_dim"))
+            )
+            x_tensor = resize_transform(x_tensor)
         y_tensor = torch.tensor(self.y[index], dtype=torch.float32)
         return x_tensor, y_tensor
 
@@ -454,27 +492,76 @@ class TileDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
         return tile, label
 
 
-class PreTiledDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
+class PreTiledHDF5Loader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]):
     def __init__(
         self,
-        tile_dir: str,
+        h5_path: str,
         use_augmentation: bool = False,
         balance_factor: float = 1.0,
         calculate_distribution: bool = False,
     ):
+        self.h5_path = h5_path
         self.use_augmentation = use_augmentation
+        self.h5: h5py.File | None = None  # opened lazily, per worker process
+        self.pid: int | None = None
+
         colonisation_type = AmfConfig.get("colonisation_type")
         self.class_names = AmfConfig.get("class_names")[colonisation_type]
         self.class_to_idx = {name: i for i, name in enumerate(self.class_names)}
+        self.eye = np.eye(len(self.class_names), dtype=np.uint8)
 
-        self.sample_index = self._build_index(tile_dir)
-        self.labels = [label for _, label in self.sample_index]
+        tile_edge = AmfConfig.get("tile_edge")
+
+        if not os.path.isfile(self.h5_path):
+            h5_files = glob.glob(os.path.join(self.h5_path, "*.h5"))
+            if not h5_files:
+                logger.error(f"No image tile dataset file found at '{self.h5_path}'.")
+                sys.exit(32)
+            elif len(h5_files) > 1:
+                logger.error(
+                    f"Multiple HDF5 files found in '{self.h5_path}'. Please specify a single "
+                    f"file path."
+                )
+                sys.exit(32)
+            self.h5_path = h5_files[0]
+
+        with h5py.File(self.h5_path, "r") as f:
+            if "jpg" not in f:
+                logger.error(f"'{self.h5_path}' contains no tile datasets.")
+                sys.exit(32)
+
+            file_classes = [
+                s.decode() if isinstance(s, bytes) else str(s)
+                for s in f.attrs["class_names"]
+            ]
+            if file_classes != list(self.class_names):
+                logger.error(
+                    f"Class mismatch: file has {file_classes}, "
+                    f"config expects {list(self.class_names)}. Aborting."
+                )
+                sys.exit(33)
+
+            file_edge = int(f.attrs["tile_edge"]) if "tile_edge" in f.attrs else None
+
+            # Tiles past the commit point belong to a source image that was only
+            # part-processed before an interrupted run; they are not valid data.
+            n = int(f.attrs["n_committed"])
+            if n == 0:
+                logger.error("No tiles found in HDF5 file, aborting.")
+                sys.exit(32)
+
+            self.cls = f["cls"][:n]
+
+        if file_edge is not None and file_edge != int(tile_edge):
+            logger.warning(
+                f"File was tiled at edge {file_edge}, config says {tile_edge}. "
+                f"Tiles will not match the expected input size."
+            )
+
+        self.sample_index = np.arange(n, dtype=np.int64)
 
         if balance_factor != 0.0:
-            self.sample_index = self._balance_dataset(
-                self.sample_index, self.labels, balance_factor
-            )
-            self.labels = [label for _, label in self.sample_index]
+            self.sample_index = self._balance_dataset(self.sample_index, balance_factor)
             logger.info(
                 f"Balance factor set to: {balance_factor}. Generating balanced dataset."
             )
@@ -484,14 +571,16 @@ class PreTiledDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]
                 f"Generating unbalanced dataset."
             )
 
+        # One-hot labels for the balanced sample set, in dataset order.
+        self.labels = self.eye[self.cls[self.sample_index]]
+
         if calculate_distribution:
             logger.info(f"Total tiles after balancing: {len(self.sample_index)}")
             self._prepare_stats()
 
-        tile_edge = AmfConfig.get("tile_edge")
+        # Pipeline takes a PIL image and returns a CHW float tensor in [0, 1].
         self.transform = transforms.Compose(
             [
-                transforms.ToPILImage(),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
                 transforms.RandomChoice(
@@ -520,96 +609,103 @@ class PreTiledDatasetLoader(Dataset[tuple[NDArray[np.uint8], NDArray[np.uint8]]]
             ]
         )
 
-    def _build_index(self, tile_dir: str) -> list[tuple[str, NDArray[np.uint8]]]:
+    def _file(self) -> h5py.File:
         """
-        Walk class subfolders and build a flat list of (tile_path, one_hot_label).
+        Return a handle owned by the current process.
         """
-        index = []
-        for class_name in self.class_names:
-            class_dir = os.path.join(tile_dir, class_name)
-            if not os.path.isdir(class_dir):
-                logger.warning(f"No folder found for class '{class_name}', skipping.")
-                continue
+        pid = os.getpid()
+        if self.h5 is None or self.pid != pid:
+            self.h5 = h5py.File(self.h5_path, "r")
+            self.pid = pid
+        return self.h5
 
-            one_hot = np.zeros(len(self.class_names), dtype=np.uint8)
-            one_hot[self.class_to_idx[class_name]] = 1
-
-            for filename in sorted(os.listdir(class_dir)):
-                if filename.endswith(".jpg"):
-                    tile_path = os.path.join(class_dir, filename)
-                    index.append((tile_path, one_hot.copy()))
-
-        if len(index) == 0:
-            logger.error("No tiles found in tile directory, aborting.")
-            sys.exit(32)
-
-        return index
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
+        state["h5"] = None
+        state["pid"] = None
+        return state
 
     def _balance_dataset(
-        self,
-        index: list[tuple[str, NDArray[np.uint8]]],
-        labels: list[NDArray[np.uint8]],
-        factor: float = 1.0,
-    ) -> list[tuple[str, NDArray[np.uint8]]]:
-        class_0_samples = sum(1 for arr in labels if arr[0] == 1)
-        y_indices = np.argmax(labels, axis=1)
-        num_classes = len(self.class_names)
+        self, index: NDArray[np.int64], factor: float = 1.0
+    ) -> NDArray[np.int64]:
+        y = self.cls[index]
+        class_0_samples = int((y == 0).sum())
+        keep: list[NDArray[np.int64]] = []
 
-        indices_to_keep: list[int] = []
-        for class_id in range(num_classes):
-            idx_class_samples = np.where(y_indices == class_id)[0]
+        for class_id in range(len(self.class_names)):
+            idx_class_samples = index[y == class_id]
             num_class_samples = len(idx_class_samples)
 
             if class_id == 0:
-                indices_to_keep.extend(idx_class_samples)
-            else:
-                if num_class_samples == 0:
-                    continue
-                num_samples_to_select = min(
-                    int(class_0_samples * factor), num_class_samples
-                )
-                if num_samples_to_select < num_class_samples:
-                    indices_to_keep.extend(
-                        random.sample(list(idx_class_samples), num_samples_to_select)
-                    )
-                else:
-                    indices_to_keep.extend(idx_class_samples)
+                keep.append(idx_class_samples)
+                continue
+            if num_class_samples == 0:
+                continue
 
-        indices_to_keep = sorted(indices_to_keep)
-        return [index[i] for i in indices_to_keep]
+            num_samples_to_select = min(
+                int(class_0_samples * factor), num_class_samples
+            )
+            if num_samples_to_select < num_class_samples:
+                keep.append(
+                    np.random.choice(
+                        idx_class_samples, num_samples_to_select, replace=False
+                    )
+                )
+            else:
+                keep.append(idx_class_samples)
+
+        return np.sort(np.concatenate(keep))
 
     def _prepare_stats(self) -> None:
-        samples = np.stack([label for _, label in self.sample_index])
-        y = torch.from_numpy(samples).float()
-        class_counts = y.sum(dim=0)
-        total_samples = y.size(0)
-        percentages = (class_counts / total_samples) * 100
+        y = self.cls[self.sample_index]
+        counts = np.bincount(y, minlength=len(self.class_names))
+        total = int(counts.sum())
 
         logger.debug("Class distribution after balancing:")
-        for i, (name, count) in enumerate(zip(self.class_names, class_counts)):
-            logger.debug(f"  {name}: {int(count)} samples ({percentages[i]:.2f}%)")
+        for i, name in enumerate(self.class_names):
+            logger.debug(
+                f"  {name}: {int(counts[i])} samples ({counts[i] / total * 100:.2f}%)"
+            )
 
-        unique_present = (class_counts > 0).nonzero(as_tuple=True)[0].numpy()
-        if not np.array_equal(unique_present, np.arange(len(class_counts))):
+        if (counts == 0).any():
             logger.error(
                 "Training data does not represent all classes. Please reconsider "
                 "training dataset curation."
             )
             sys.exit(10)
 
+    def get_split_arrays(self) -> tuple[NDArray[np.int64], NDArray[np.uint8]]:
+        return self.sample_index.copy(), self.labels
+
     def __getitem__(self, idx: int) -> tuple[NDArray[np.uint8], NDArray[np.uint8]]:
-        tile_path, label = self.sample_index[idx]
-        tile = np.array(Image.open(tile_path), dtype=np.uint8)
+        real = int(self.sample_index[idx])
+        f = self._file()
+
+        img = Image.open(io.BytesIO(f["jpg"][real].tobytes()))
+        label = self.eye[self.cls[real]].copy()
 
         if self.use_augmentation:
-            tile_tensor = torch.tensor(tile, dtype=torch.float32) / 255.0
-            tile_tensor = cast(torch.Tensor, self.transform(tile_tensor))
+            # ToTensor() already yields CHW float in [0, 1].
+            tile_tensor = cast(torch.Tensor, self.transform(img))
             tile = np.clip((tile_tensor.numpy() * 255).round(), 0, 255).astype(np.uint8)
+        else:
+            tile = np.transpose(np.array(img, dtype=np.uint8), (2, 0, 1))  # HWC -> CHW
 
         return tile, label
 
     def __len__(self) -> int:
         return len(self.sample_index)
+
+    def get_tile_meta(self, idx: int) -> tuple[str, int, int]:
+        """Source image name, row, col — for mapping predictions back."""
+        real = int(self.sample_index[idx])
+        f = self._file()
+        src = f["source"][real]
+        return (
+            src.decode() if isinstance(src, bytes) else str(src),
+            int(f["row"][real]),
+            int(f["col"][real]),
+        )
 
 
 class StratifiedDatasetSplitter:
@@ -1123,8 +1219,8 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
                     return None
                 else:
                     raise ValueError(
-                        "Expected exactly one annotation file, found: "
-                        "{len(matching_annotations)}"
+                        f"Expected exactly one annotation file, found: "
+                        f"{len(matching_annotations)}"
                     )
 
             output = pd.read_csv(os.path.join(directory, matching_annotations[0]))
@@ -1174,98 +1270,224 @@ def is_blank(tile: NDArray[np.uint8]) -> bool:
     return bool(np.all(tile == 0) or np.all(tile == 255))
 
 
-def is_already_processed(
-    source_name: str, output_dir: str, class_names: list[str]
-) -> bool:
-    """
-    Check whether any tiles from this source image exist in any class subfolder.
-    Presence of even one tile indicates the image was previously processed.
-    """
-    for class_name in class_names:
-        class_dir = os.path.join(output_dir, class_name)
-        if not os.path.isdir(class_dir):
-            continue
-        for filename in os.listdir(class_dir):
-            if filename.startswith(source_name):
-                return True
-    return False
+def init_h5(f: h5py.File, class_names: list[str], colonisation_type: str) -> None:
+    """Create the empty, resizable datasets for a fresh tile file."""
+    vlen = h5py.vlen_dtype(np.uint8)
+    strd = h5py.string_dtype(encoding="utf-8")
+
+    f.create_dataset("jpg", (0,), maxshape=(None,), dtype=vlen, chunks=(256,))
+    f.create_dataset(
+        "cls", (0,), maxshape=(None,), dtype=np.uint8, chunks=(FLUSH_EVERY,)
+    )
+    f.create_dataset(
+        "row", (0,), maxshape=(None,), dtype=np.int32, chunks=(FLUSH_EVERY,)
+    )
+    f.create_dataset(
+        "col", (0,), maxshape=(None,), dtype=np.int32, chunks=(FLUSH_EVERY,)
+    )
+    f.create_dataset(
+        "source", (0,), maxshape=(None,), dtype=strd, chunks=(FLUSH_EVERY,)
+    )
+    f.create_dataset(
+        "completed_sources", (0,), maxshape=(None,), dtype=strd, chunks=(64,)
+    )
+
+    f.attrs["class_names"] = np.array(class_names, dtype=strd)
+    f.attrs["colonisation_type"] = colonisation_type
+    f.attrs["n_committed"] = 0
 
 
-def preprocess_to_tiles(input_files: list[str], output_dir: str) -> None:
+def preprocess_to_tiles(
+    input_files: list[str], output_dir: str, h5_name: str = "tiles.h5"
+) -> None:
     colonisation_type = AmfConfig.get("colonisation_type")
     class_names = AmfConfig.get("class_names")[colonisation_type]
 
-    for class_name in class_names:
-        os.makedirs(os.path.join(output_dir, class_name), exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    h5_path = os.path.join(output_dir, h5_name)
 
     # Source images whose blank tiles should always be fully retained
     special_cases = {"high_res_black_image_AM", "high_res_white_image_AM"}
-    print(f"Number of input files: {len(input_files)}")
+    logger.info(f"Number of input files: {len(input_files)}")
 
-    for path in input_files:
-        annotations = import_annotations(path)
-        settings = import_settings(path)
-
-        # Extract the stem of the source filename e.g. "Image_1"
-        source_name = os.path.splitext(os.path.basename(path))[0]
-        # Per-image counter so numbering restarts cleanly for each source file
-        image_tile_counter = 0
-
-        if annotations is None:
-            logger.info(f"Skipping {source_name}, no annotations found.")
-            continue
-        elif is_already_processed(source_name, output_dir, class_names):
-            continue
+    with h5py.File(h5_path, "a", libver="latest") as f:
+        if "jpg" not in f:
+            init_h5(f, class_names, colonisation_type)
+            logger.info(f"Created new tile file: {h5_path}")
         else:
-            logger.info(
-                f"Processing {source_name} with {len(annotations)} annotated tiles."
-            )
-
-        image = AmfSegm.load(path)
-        for annot in annotations.itertuples():
-            tile = AmfSegm.tile(image, annot.row, annot.col, settings["tile_edge"])
-            label = np.array(annot[3:], dtype=np.uint8)
-            tile = np.transpose(tile.astype(np.uint8), (1, 2, 0))
-            if source_name not in special_cases and is_blank(tile):
-                print(
-                    f"Skipping blank tile at row {annot.row}, col {annot.col} from {source_name}"
+            existing = [
+                s.decode() if isinstance(s, bytes) else str(s)
+                for s in f.attrs["class_names"]
+            ]
+            if existing != list(class_names):
+                logger.error(
+                    f"Existing file uses classes {existing}, config expects "
+                    f"{list(class_names)}. Aborting rather than mixing schemas."
                 )
-                continue  # Skip blank tiles for non-special cases
+                sys.exit(33)
 
-            class_idx = int(np.argmax(label))
-            class_name = class_names[class_idx]
+        d_jpg, d_cls = f["jpg"], f["cls"]
+        d_row, d_col, d_src = f["row"], f["col"], f["source"]
+        d_done = f["completed_sources"]
 
-            tile_filename = tile_filename = (
-                f"{source_name}_tile_{annot.row}_{annot.col}.jpg"
+        # Roll back any tiles written after the last completed source image.
+        n = int(f.attrs["n_committed"])
+        if d_jpg.shape[0] != n:
+            logger.warning(
+                f"Discarding {d_jpg.shape[0] - n} uncommitted tiles from a "
+                f"previous interrupted run."
             )
-            tile_path = os.path.join(output_dir, class_name, tile_filename)
-            Image.fromarray(tile).save(tile_path, quality=95)
+            for d in (d_jpg, d_cls, d_row, d_col, d_src):
+                d.resize((n,))
 
-            image_tile_counter += 1
-            print(f"Saved tile {tile_path} with label {class_name}")
+        completed = {s.decode() if isinstance(s, bytes) else str(s) for s in d_done[:]}
+        if completed:
+            logger.info(
+                f"Resuming: {len(completed)} source images already committed, "
+                f"{n} tiles on disk."
+            )
 
-        total_tiles = len(annotations)
-        print(
-            f"Finished processing {source_name}, extracted {image_tile_counter} tiles from {total_tiles} total tiles."
+        wanted = {os.path.splitext(os.path.basename(p))[0] for p in input_files}
+        missing = wanted - completed
+        if not missing:
+            logger.info(
+                f"All {len(wanted)} source images already tiled "
+                f"({n} tiles in {h5_path}). Skipping tile extraction."
+            )
+            counts = np.bincount(d_cls[:n], minlength=len(class_names))
+            for i, class_name in enumerate(class_names):
+                logger.info(f"  {class_name}: {int(counts[i])} tiles")
+            return
+
+        buf: list[tuple[bytes, int, int, int, str]] = []
+
+        def flush() -> None:
+            nonlocal n, buf
+            if not buf:
+                return
+            m = len(buf)
+            for d in (d_jpg, d_cls, d_row, d_col, d_src):
+                d.resize((n + m,))
+
+            jpgs = np.empty(m, dtype=object)
+            for i, rec in enumerate(buf):
+                jpgs[i] = np.frombuffer(rec[0], dtype=np.uint8)
+
+            try:
+                d_jpg[n : n + m] = jpgs
+            except (TypeError, ValueError):
+                # Every JPEG in this batch is the same byte length (uniform-colour
+                # source image), so numpy collapses the object array into a 2-D
+                # array that h5py cannot map onto a 1-D vlen selection.
+                for i in range(m):
+                    d_jpg[n + i] = jpgs[i]
+            d_cls[n : n + m] = np.fromiter((r[1] for r in buf), np.uint8, m)
+            d_row[n : n + m] = np.fromiter((r[2] for r in buf), np.int32, m)
+            d_col[n : n + m] = np.fromiter((r[3] for r in buf), np.int32, m)
+            d_src[n : n + m] = [r[4] for r in buf]
+
+            n += m
+            buf = []
+
+        pb = tqdm(
+            input_files, total=len(input_files), desc="Processing images", unit="image"
         )
-        del image
 
-    logger.info("Tile extraction complete. Class distribution:")
-    for class_name in class_names:
-        class_dir = os.path.join(output_dir, class_name)
-        count = len([f for f in os.listdir(class_dir) if f.endswith(".jpg")])
-        logger.info(f"  {class_name}: {count} tiles")
+        blank_count = 0
+
+        for path in pb:
+            # Extract the stem of the source filename e.g. "Image_1"
+            source_name = os.path.splitext(os.path.basename(path))[0]
+            if source_name in completed:
+                continue
+
+            annotations = import_annotations(path)
+            settings = import_settings(path)
+
+            # Per-image counter so numbering restarts cleanly for each source file
+            image_tile_counter = 0
+
+            if annotations is None:
+                logger.info(f"Skipping {source_name}, no annotations found.")
+                continue
+            else:
+                logger.info(
+                    f"Processing {source_name} with {len(annotations)} annotated tiles."
+                )
+
+            tile_edge = settings["tile_edge"]
+            if "tile_edge" not in f.attrs:
+                f.attrs["tile_edge"] = int(tile_edge)
+            elif int(f.attrs["tile_edge"]) != int(tile_edge):
+                logger.warning(
+                    f"{source_name} has tile_edge {tile_edge}, file was started "
+                    f"with {int(f.attrs['tile_edge'])}. Tiles would not be uniform, skipping."
+                )
+
+            image = AmfSegm.load(path)
+            for annot in annotations.itertuples():
+                tile = AmfSegm.tile(image, annot.row, annot.col, tile_edge)
+                label = np.array(annot[3:], dtype=np.uint8)
+                tile = np.transpose(tile.astype(np.uint8), (1, 2, 0))
+                if source_name not in special_cases and is_blank(tile):
+                    blank_count += 1
+                    continue  # Skip blank tiles for non-special cases
+
+                class_idx = int(np.argmax(label))
+
+                bio = io.BytesIO()
+                Image.fromarray(tile).save(bio, format="JPEG", quality=95)
+                buf.append(
+                    (
+                        bio.getvalue(),
+                        class_idx,
+                        int(annot.row),
+                        int(annot.col),
+                        source_name,
+                    )
+                )
+
+                image_tile_counter += 1
+                if len(buf) >= FLUSH_EVERY:
+                    flush()
+
+            del image
+
+            # Commit point: everything from this source image is now durable.
+            flush()
+            d_done.resize((d_done.shape[0] + 1,))
+            d_done[-1] = source_name
+            completed.add(source_name)
+            f.attrs["n_committed"] = n
+            f.flush()
+
+            logger.debug(
+                f"Finished {source_name}: kept {image_tile_counter} of "
+                f"{len(annotations)} tiles."
+            )
+            logger.debug(f"Total blank tiles skipped so far: {blank_count}")
+            pb.set_postfix(tiles=n)
+
+        logger.info("Tile extraction complete. Class distribution:")
+        counts = np.bincount(d_cls[:n], minlength=len(class_names))
+        for i, class_name in enumerate(class_names):
+            logger.info(f"  {class_name}: {int(counts[i])} tiles")
+        logger.info(f"  total: {n} tiles -> {h5_path}")
+        logger.info(
+            f"  blank tiles skipped: {blank_count}, total tiles: {n + blank_count}, "
+            f"proportion skipped: {blank_count / (n + blank_count):.2%}"
+        )
 
 
 def get_tile_metadata(
-    tile_dir: str,
-) -> tuple[list[str], list[NDArray[np.uint8]], list[str], list[int], list[int]]:
+    h5_path: str,
+) -> tuple[list[int], list[NDArray[np.uint8]], list[str], list[int], list[int]]:
     """
-    Walks the preprocessed tile directory and retrieves metadata for each tile
-    without loading any image data.
+    Reads per-tile metadata from a preprocessed HDF5 tile file without loading
+    any image data.
 
     Returns:
-        x: list of full paths to tile images
+        x: list of dataset row indices identifying each tile
         y: list of one-hot encoded labels
         file_names: list of source image stems
         rows: list of row positions in the source image
@@ -1273,43 +1495,44 @@ def get_tile_metadata(
     """
     colonisation_type = AmfConfig.get("colonisation_type")
     class_names = AmfConfig.get("class_names")[colonisation_type]
-    class_to_idx = {name: i for i, name in enumerate(class_names)}
 
-    x = []
-    y = []
-    file_names = []
-    rows = []
-    cols = []
-
-    for class_name in class_names:
-        class_dir = os.path.join(tile_dir, class_name)
-        if not os.path.isdir(class_dir):
-            logger.warning(f"No folder found for class '{class_name}', skipping.")
-            continue
-
-        one_hot = np.zeros(len(class_names), dtype=np.uint8)
-        one_hot[class_to_idx[class_name]] = 1
-
-        for filename in sorted(os.listdir(class_dir)):
-            if not filename.endswith(".jpg"):
-                continue
-
-            tile_path = os.path.join(class_dir, filename)
-
-            # Filename format: {source_name}_tile_{row:04d}_{col:04d}.jpg
-            stem = os.path.splitext(filename)[0]
-            source_name, tile_coords = stem.rsplit("_tile_", 1)
-            row_str, col_str = tile_coords.split("_")
-
-            x.append(tile_path)
-            y.append(one_hot.copy())
-            file_names.append(source_name)
-            rows.append(int(row_str))
-            cols.append(int(col_str))
-
-    if len(x) == 0:
-        logger.error("No tiles found in tile directory.")
+    if not os.path.isfile(h5_path):
+        logger.error(f"No image tile dataset file found at '{h5_path}'.")
         sys.exit(32)
 
-    logger.info(f"Retrieved metadata for {len(x)} tiles.")
+    with h5py.File(h5_path, "r") as f:
+        if "jpg" not in f:
+            logger.error(f"'{h5_path}' contains no tile datasets.")
+            sys.exit(32)
+
+        existing = [
+            s.decode() if isinstance(s, bytes) else str(s)
+            for s in f.attrs["class_names"]
+        ]
+        if existing != list(class_names):
+            logger.error(
+                f"Image tile dataset file uses classes {existing}, config expects "
+                f"{list(class_names)}. Aborting."
+            )
+            sys.exit(33)
+
+        n = int(f.attrs["n_committed"])
+        if n == 0:
+            logger.error("No tiles found in image tile dataset file.")
+            sys.exit(32)
+
+        cls = f["cls"][:n]
+        rows_arr = f["row"][:n]
+        cols_arr = f["col"][:n]
+        src_arr = f["source"][:n]
+
+    eye = np.eye(len(class_names), dtype=np.uint8)
+
+    x = list(range(n))
+    y = [eye[c].copy() for c in cls]
+    file_names = [s.decode() if isinstance(s, bytes) else str(s) for s in src_arr]
+    rows = rows_arr.tolist()
+    cols = cols_arr.tolist()
+
+    logger.info(f"Retrieved metadata for {n} tiles.")
     return x, y, file_names, rows, cols
