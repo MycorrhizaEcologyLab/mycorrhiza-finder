@@ -247,6 +247,7 @@ PAR = {
     "backbone_lr_mult": 1.0,  # Learning rate multiplier for backbone layers during training
     "freeze_epochs": 0,  # Number of epochs to freeze backbone layers during training
     "early_break_epoch": None,
+    "ci_method": "analytic",  # Method for calculating confidence intervals (analytic, bootstrap, both)
 }
 
 
@@ -1278,6 +1279,18 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         f"\ndefault value: {x}",
     )
 
+    x = PAR["ci_method"]
+    parser.add_argument(
+        "-ci",
+        "--ci-method",
+        action="store",
+        dest="ci_method",
+        type=str,
+        default=x,
+        help="Choice of confidence interval method: 'analytic', 'bootstrap' or 'both'."
+        f"\ndefault value: {x}",
+    )
+
 
 def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
     parser = subparsers.add_parser(
@@ -1731,6 +1744,7 @@ def set_predict_config(predictionConfig: PredictionConfig) -> None:
     )
     set_("model_path", predictionConfig.modelPath)
     set_("resize_dim", predictionConfig.resizeDim)
+    set_("ci_method", predictionConfig.ciMethod)
 
 
 def set_test_config(testConfig: TestConfig) -> None:
@@ -1985,6 +1999,7 @@ def initialize() -> None:
         set_("outdir", par.outdir)
         set_("model_path", par.model_path)
         set_("resize_dim", par.resize_dim)
+        set_("ci_method", par.ci_method)
         if par.outdir is None:
             set_("outdir", clean_path(par.images))
 

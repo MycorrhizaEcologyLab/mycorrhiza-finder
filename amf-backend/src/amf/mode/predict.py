@@ -651,7 +651,7 @@ def prepare_metrics(
             + 100 * (hybriderm_addition / total_root_tiles)
         )
 
-    ci_method = AmfCI.config_get("ci_method", "analytic")
+    ci_method = AmfConfig.get("ci_method")
 
     background_mask = AmfCI.auto_background_mask(tile_results_table)
     n_background = int(background_mask.sum())
