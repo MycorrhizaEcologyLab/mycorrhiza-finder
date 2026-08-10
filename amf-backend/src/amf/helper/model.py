@@ -45,9 +45,9 @@ import timm
 
 # PyTorch imports
 import torch
-import torch.nn as nn
-import torch.nn.init as init
 from loguru import logger
+from torch import nn
+from torch.nn import init
 from torchvision import models
 
 import amf.helper.config as AmfConfig
@@ -61,14 +61,12 @@ MODEL_DICT = {
     "deit3": "deit3_base_patch16_224.fb_in22k_ft_in1k",
 }
 
-torch.serialization.add_safe_globals([timm.models.efficientnet.EfficientNet])
+# torch.serialization.add_safe_globals([timm.models.efficientnet.EfficientNet])
 
 
 class ConvolutionalBlocks(nn.Module):
     def __init__(self) -> None:
-        super(
-            ConvolutionalBlocks, self
-        ).__init__()  # Perhaps use different type of super() function assignment
+        super().__init__()  # Perhaps use different type of super() function assignment
 
         kc = 32  # Initial kernel count
 
@@ -240,7 +238,7 @@ class FCLayers(nn.Module):
     def __init__(
         self, fc_in_size: int, output_size: int = 1
     ) -> None:  # activation='sigmoid'):
-        super(FCLayers, self).__init__()
+        super().__init__()
 
         # Layers
         self.fc1 = nn.Linear(
@@ -283,7 +281,7 @@ class FCLayers(nn.Module):
 
 class CNN1(nn.Module):
     def __init__(self) -> None:
-        super(CNN1, self).__init__()
+        super().__init__()
         self.conv = ConvolutionalBlocks()
         self.fc = FCLayers(
             fc_in_size=self.conv.flatten_size,
@@ -520,7 +518,7 @@ def load(name: str | None = None) -> torch.nn.Module:
 
 
 def filter_layers(
-    model: torch.nn.Module, layer_type: Type[torch.nn.Module]
+    model: torch.nn.Module, layer_type: type[torch.nn.Module]
 ) -> list[torch.nn.Module]:
     """
     Return all layers from a <model> that belong to a given <layer_type>.
@@ -530,7 +528,7 @@ def filter_layers(
 
 class FeatureExtractor(nn.Module):
     def __init__(self, layers: list[torch.nn.Module]) -> None:
-        super(FeatureExtractor, self).__init__()
+        super().__init__()
         # Combine the filtered layers into a new module
         self.layers = nn.Sequential(*layers)
 
