@@ -436,8 +436,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         dest="active_learning_method",
         type=str,
         default=x,
-        help="Active learning method to use (bald, batchbald)."
-        "\ndefault value: {}".format(x),
+        help=f"Active learning method to use (bald, batchbald).\ndefault value: {x}",
     )
 
     x = PAR["num_samples_for_labelling"]
@@ -448,8 +447,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         dest="num_samples_for_labelling",
         type=int,
         default=x,
-        help="Number of samples to select per file for labeling."
-        "\ndefault value: {}".format(x),
+        help=f"Number of samples to select per file for labeling.\ndefault value: {x}",
     )
 
     x = PAR["mc_samples"]
@@ -461,7 +459,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Number of Monte Carlo samples for uncertainty estimation."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["dropout_rate"]
@@ -473,7 +471,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=float,
         default=x,
         help="Dropout rate to use in the model for uncertainty-based acquisition."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["mlflow_flag"]
@@ -495,7 +493,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=int,
         default=x,
-        help="training batch size.\ndefault value: {}".format(x),
+        help=f"training batch size.\ndefault value: {x}",
     )
 
     x = PAR["data_augm"]
@@ -527,8 +525,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         action="store",
         dest="outdir",
         default=x,
-        help="folder where to save trained model and CNN architecture."
-        "\ndefault: {}".format(x),
+        help=f"folder where to save trained model and CNN architecture.\ndefault: {x}",
     )
 
     x = PAR["epochs"]
@@ -540,7 +537,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=int,
         default=x,
-        help="number of epochs to run.\ndefault value: {}".format(x),
+        help=f"number of epochs to run.\ndefault value: {x}",
     )
 
     x = PAR["epochs_active_learning"]
@@ -552,9 +549,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=int,
         default=x,
-        help="number of epochs to run after active learning.\ndefault value: {}".format(
-            x
-        ),
+        help=f"number of epochs to run after active learning.\ndefault value: {x}",
     )
 
     x = PAR["patience_e"]
@@ -567,7 +562,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="number of epochs to wait before early stopping is triggered."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["patience_r"]
@@ -580,7 +575,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="number of epochs to wait before learning rate reduction is triggered."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["learning_rate"]
@@ -592,7 +587,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=float,
         default=x,
-        help="learning rate used by the Adam optimizer.\ndefault value: {}".format(x),
+        help=f"learning rate used by the Adam optimizer.\ndefault value: {x}",
     )
 
     x = PAR["learning_rate_active_learning"]
@@ -605,7 +600,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=float,
         default=x,
         help="learning rate used by the Adam optimizer after active learning."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["adam_beta1"]
@@ -617,7 +612,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=float,
         default=x,
-        help="Beta 1 Hyperparameter for Adam optimiser\ndefault value: {}".format(x),
+        help=f"Beta 1 Hyperparameter for Adam optimiser\ndefault value: {x}",
     )
 
     x = PAR["adam_beta2"]
@@ -629,7 +624,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="NUM",
         type=float,
         default=x,
-        help="Beta 2 Hyperparameter for Adam optimiser\ndefault value: {}".format(x),
+        help=f"Beta 2 Hyperparameter for Adam optimiser\ndefault value: {x}",
     )
 
     x = PAR["balance_factor"]
@@ -643,7 +638,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         default=x,
         help=(
             "multiplier for balancing datasets based on class sizes and oriented on "
-            "Colonised classes.\ndefault value: {}".format(x)
+            f"Colonised classes.\ndefault value: {x}"
         ),
     )
 
@@ -656,7 +651,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="N",
         type=int,
         default=x,
-        help="Proportion of tiles used for validation.\ndefault value: {}%%".format(x),
+        help=f"Proportion of tiles used for validation.\ndefault value: {x}%%",
     )
 
     x = None  # by default, do not fine-tune
@@ -669,7 +664,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the pre-trained network to use as a basis for training for AM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = None  # by default, do not fine-tune
@@ -682,7 +677,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the pre-trained network to use as a basis for training for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_type"]
@@ -696,7 +691,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         default=x,
         help=(
             "Choice for new model intialisation: cnn1, resnet, resnext, efficientnet, "
-            "efficientnetv2.\ndefault value: {}".format(x)
+            f"efficientnetv2.\ndefault value: {x}"
         ),
     )
 
@@ -739,7 +734,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     x = PAR["dynamic_loading"]
@@ -790,7 +785,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Dimension to resize input images for compatibility (e.g. transformers)."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["weight_decay"]
@@ -801,7 +796,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         dest="weight_decay",
         type=float,
         default=x,
-        help="Weight decay for Adam optimizer.\ndefault value: {}".format(x),
+        help=f"Weight decay for Adam optimizer.\ndefault value: {x}",
     )
 
     x = PAR["backbone_lr_mult"]
@@ -813,7 +808,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=float,
         default=x,
         help="Learning rate multiplier for backbone layers during training."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["freeze_epochs"]
@@ -825,7 +820,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Number of epochs to freeze backbone layers during training."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["drop_path_rate"]
@@ -836,8 +831,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         dest="drop_path_rate",
         type=float,
         default=x,
-        help="Drop path probability for timm models."
-        "\ndefault value: {}".format(x),
+        help=f"Drop path probability for timm models.\ndefault value: {x}",
     )
 
     x = PAR["early_break_epoch"]
@@ -848,10 +842,8 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         dest="early_break_epoch",
         type=int,
         default=x,
-        help="Epoch at which training stopped early due to early stopping."
+        help="Epoch at which training stopped early due to early stopping.",
     )
-
-    return
 
 
 def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
@@ -895,7 +887,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for AM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_erm"]
@@ -908,7 +900,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["outdir"]
@@ -918,8 +910,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         action="store",
         dest="outdir",
         default=x,
-        help="folder where to save trained model and CNN architecture."
-        "\ndefault: {}".format(x),
+        help=f"folder where to save trained model and CNN architecture.\ndefault: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -942,7 +933,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     x = PAR["temperature_factor_path"]
@@ -954,7 +945,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the file that contains the temperature factor for the AM model."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["use_contextual_confidence"]
@@ -977,7 +968,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=float,
         default=x,
         help="Threshold below which max voting with surrounding tiles will be applied."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["temperature_factor_path_erm"]
@@ -989,7 +980,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the file that contains the temperature factor for the ErM model."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_path"]
@@ -1003,7 +994,7 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         help=(
             "name of the model to load for testing. If not set, will default to the "
             "value in the --model argument."
-            "\ndefault value: {}".format(x)
+            f"\ndefault value: {x}"
         ),
     )
 
@@ -1016,10 +1007,8 @@ def add_test_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Dimension to resize input images for compatibility (e.g. transformers)."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
-
-    return
 
 
 def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
@@ -1063,7 +1052,7 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for AM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_erm"]
@@ -1076,7 +1065,7 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["outdir"]
@@ -1086,8 +1075,7 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         action="store",
         dest="outdir",
         default=x,
-        help="folder where to save trained model and CNN architecture."
-        "\ndefault: {}".format(x),
+        help=f"folder where to save trained model and CNN architecture.\ndefault: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -1110,7 +1098,7 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     x = PAR["resize_dim"]
@@ -1122,10 +1110,8 @@ def add_colonisation_subparser(subparsers) -> None:  # type: ignore[no-untyped-d
         type=int,
         default=x,
         help="Dimension to resize input images for compatibility (e.g. transformers)."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
-
-    return
 
 
 def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
@@ -1168,7 +1154,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     x = PAR["model"]
@@ -1181,7 +1167,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for AM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_erm"]
@@ -1194,7 +1180,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         default=x,
         help="name of the pre-trained model to use for predictions for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     parser.add_argument(
@@ -1227,7 +1213,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         default=x,
         help="name of the file that contains the temperature factor for the AM model."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["temperature_factor_path_erm"]
@@ -1239,7 +1225,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         default=x,
         help="name of the file that contains the temperature factor for the ErM model."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["use_contextual_confidence"]
@@ -1262,7 +1248,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=float,
         default=x,
         help="Threshold below which max voting with surrounding tiles will be applied."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["model_path"]
@@ -1276,7 +1262,7 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         help=(
             "name of the model to load for prediction. If not set, will default to the "
             "value in the --model argument."
-            "\ndefault value: {}".format(x)
+            f"\ndefault value: {x}"
         ),
     )
 
@@ -1289,10 +1275,8 @@ def add_prediction_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=int,
         default=x,
         help="Dimension to resize input images for compatibility (e.g. transformers)."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
-
-    return
 
 
 def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
@@ -1320,7 +1304,7 @@ def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         metavar="N",
         type=float,
         default=x,
-        help="threshold for conversion: {}".format(x),
+        help=f"threshold for conversion: {x}",
     )
 
     x = PAR["input_files"]
@@ -1330,7 +1314,7 @@ def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=str,
         action="store",
         default=x,
-        help="plant root image to process.\ndefault value: {}".format(x),
+        help=f"plant root image to process.\ndefault value: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -1362,7 +1346,7 @@ def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     x = PAR["use_contextual_confidence"]
@@ -1374,8 +1358,6 @@ def add_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def
         const=True,
         help="Enable contextual confidence refinement for low confidence predictions",
     )
-
-    return
 
 
 def add_tif_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
@@ -1401,7 +1383,7 @@ def add_tif_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped
         type=str,
         action="store",
         default=x,
-        help="plant root image to process.\ndefault value: {}".format(x),
+        help=f"plant root image to process.\ndefault value: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -1435,10 +1417,8 @@ def add_tif_conversion_subparser(subparsers) -> None:  # type: ignore[no-untyped
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
-
-    return
 
 
 def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
@@ -1472,8 +1452,7 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         metavar="H5",
         type=str,
         default=x,
-        help="name of the model which shall be calibrated for AM."
-        "\ndefault value: {}".format(x),
+        help=f"name of the model which shall be calibrated for AM.\ndefault value: {x}",
     )
 
     x = PAR["model_erm"]
@@ -1486,7 +1465,7 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=str,
         default=x,
         help="name of the model which shall be calibrated for ErM."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
 
     x = PAR["input_files"]
@@ -1506,8 +1485,7 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         action="store",
         dest="outdir",
         default=x,
-        help="folder where to save trained model and CNN architecture."
-        "\ndefault: {}".format(x),
+        help=f"folder where to save trained model and CNN architecture.\ndefault: {x}",
     )
 
     x = PAR["colonisation_type"]
@@ -1530,7 +1508,7 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Tile size (in pixels) used for image segmentation."
-        "\ndefault value: {} pixels".format(x),
+        f"\ndefault value: {x} pixels",
     )
 
     x = PAR["dynamic_loading"]
@@ -1568,7 +1546,7 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         help=(
             "name of the model to load for calibration. If not set, will default to the "
             "value in the --model argument."
-            "\ndefault value: {}".format(x)
+            f"\ndefault value: {x}"
         ),
     )
 
@@ -1581,10 +1559,8 @@ def add_calibrate_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Dimension to resize input images for compatibility (e.g. transformers)."
-        "\ndefault value: {}".format(x),
+        f"\ndefault value: {x}",
     )
-
-    return
 
 
 def build_arg_parser() -> ArgumentParser:
