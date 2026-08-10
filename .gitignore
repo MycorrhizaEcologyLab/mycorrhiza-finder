@@ -13,6 +13,7 @@ amfenv
 
 # Trained networks
 **/trained_networks/**
+**/timm_models/**
 !**/trained_networks/README.txt
 
 # Output files
