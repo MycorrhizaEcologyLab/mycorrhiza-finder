@@ -36,8 +36,9 @@ import os
 import random
 import time
 from collections import Counter
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -47,8 +48,10 @@ import torch.nn.functional as F
 from loguru import logger
 from numpy.typing import NDArray
 from PIL import Image
+from torchvision import transforms
 from tqdm import tqdm
 
+import amf.helper.conf_intervals as AmfCI
 import amf.helper.config as AmfConfig
 import amf.helper.model as AmfModel
 import amf.helper.save as AmfSave
@@ -82,6 +85,12 @@ def process_batch(
     # Convert to PyTorch tensor
     batch_tensor = torch.tensor(batch, dtype=torch.float32)
     batch_tensor = batch_tensor.to(device)  # Move to the same device as the model
+
+    if AmfConfig.get("resize_dim") is not None:
+        resize_transform = transforms.Resize(
+            (AmfConfig.get("resize_dim"), AmfConfig.get("resize_dim"))
+        )
+        batch_tensor = resize_transform(batch_tensor)
 
     # Predict using the model
     with torch.no_grad():  # No gradient tracking for inference
@@ -167,6 +176,12 @@ def apply_contextual_confidence(
 
         # Convert to PyTorch tensor
         tiles_tensor = torch.tensor(valid_tiles, dtype=torch.float32).to(device)
+
+        if AmfConfig.get("resize_dim") is not None:
+            resize_transform = transforms.Resize(
+                (AmfConfig.get("resize_dim"), AmfConfig.get("resize_dim"))
+            )
+            tiles_tensor = resize_transform(tiles_tensor)
 
         # Make predictions
         with torch.no_grad():
@@ -473,17 +488,16 @@ def predict_level1(
     b_rows = []
     b_cols = []
 
-    # TODO: Replace with logger messages and delete prints
-    # print(f"{len(background_tiles)} background tiles identified and autoclassified.")
-    # print(f"Processing {total_tiles} tiles in batches of {batch_size}...")
-
-    # DEBUG: Enable for tracking total execution time of inference over a root image
-    # start_time = time.time()
+    logger.info(
+        f"{len(background_tiles)} background tiles identified and autoclassified."
+    )
+    logger.info(f"Processing {total_tiles} tiles in batches of {batch_size}...")
 
     if len(background_tiles) > 0:
+        background_class = AmfCI.background_class_index()
         for tile, r, c in background_tiles:
             background_pred = np.zeros(len(AmfConfig.get("header")))
-            background_pred[2] = 1.0
+            background_pred[background_class] = 1.0
             b_results.append(pd.DataFrame([background_pred]))
             b_rows.append(r)
             b_cols.append(c)
@@ -502,9 +516,6 @@ def predict_level1(
         # Process this batch
         batch_result = process_batch(model, batch_tiles, temperature_factor)
         results.append(batch_result)
-
-    # TODO: Replace with logger message if needed and delete print
-    # print("--- %s seconds ---" % (time.time() - start_time))
 
     # Concatenate to a single Pandas dataframe
     table = pd.concat(results, ignore_index=True)
@@ -640,11 +651,58 @@ def prepare_metrics(
             + 100 * (hybriderm_addition / total_root_tiles)
         )
 
-    # Calculate bootstrap distribution and confidence intervals
-    logger.info("Calculating bootstrap distribution")
-    bootstr_dist = bootstrap_distribution(tile_results_table)
-    logger.info("Calculating confidence intervals")
-    results_dict = add_conf_intervals(bootstr_dist, results_dict, include_hybrid)
+    ci_method = AmfCI.config_get("ci_method", "analytic")
+
+    background_mask = AmfCI.auto_background_mask(tile_results_table)
+    n_background = int(background_mask.sum())
+    ci_table = tile_results_table.loc[~background_mask]
+    logger.info(
+        f"Confidence intervals ({ci_method}): {len(ci_table)} inferred tiles, "
+        f"{n_background} auto-classified background tiles excluded."
+    )
+
+    base_keys = set(results_dict.keys())
+    analytic_ci: dict[str, float] = {}
+    sampled_ci: dict[str, float] = {}
+
+    if ci_method in ("analytic", "both"):
+        start = time.perf_counter()
+        probs = AmfCI.tile_probabilities(ci_table)
+        merged = AmfCI.add_conf_intervals(
+            probs, dict(results_dict), include_hybrid, background_count=n_background
+        )
+        analytic_ci = {k: v for k, v in merged.items() if k not in base_keys}
+        analytic_seconds = time.perf_counter() - start
+        logger.info(f"Analytic confidence intervals took {analytic_seconds:.3f} s")
+
+    if ci_method in ("bootstrap", "both"):
+        start = time.perf_counter()
+        logger.info("Calculating bootstrap distribution")
+        bootstr_dist = bootstrap_distribution(ci_table)
+        logger.info("Calculating confidence intervals")
+        merged = add_conf_intervals(bootstr_dist, dict(results_dict), include_hybrid)
+        sampled_ci = {k: v for k, v in merged.items() if k not in base_keys}
+        AmfCI.apply_background_offset(sampled_ci, n_background)
+        bootstrap_seconds = time.perf_counter() - start
+        logger.info(f"Bootstrap confidence intervals took {bootstrap_seconds:.1f} s")
+
+    if ci_method == "both":
+        results_dict.update(analytic_ci)
+        results_dict.update({f"MC_{k}": v for k, v in sampled_ci.items()})
+        max_pct, max_count = AmfCI.compare_intervals(analytic_ci, sampled_ci)
+        results_dict["ci_analytic_seconds"] = analytic_seconds
+        results_dict["ci_bootstrap_seconds"] = bootstrap_seconds
+        results_dict["ci_speedup"] = bootstrap_seconds / max(analytic_seconds, 1e-9)
+        results_dict["ci_max_abs_diff_percentage_points"] = max_pct
+        results_dict["ci_max_abs_diff_tiles"] = max_count
+        logger.info(
+            f"Analytic vs bootstrap: max difference {max_pct:.4f} percentage points, "
+            f"{max_count:.1f} tiles; speedup {results_dict['ci_speedup']:.0f}x"
+        )
+    elif ci_method == "bootstrap":
+        results_dict.update(sampled_ci)
+    else:
+        results_dict.update(analytic_ci)
 
     # Retrieve cumulative count distribution for max probabilities per tile
     logger.info("Calculating number of tiles per confidence level")
@@ -655,7 +713,10 @@ def prepare_metrics(
 
 
 def write_metrics(
-    collated_metrics: list[dict[str, Any]], timestamp_string: str, folder: str
+    collated_metrics: list[dict[str, Any]],
+    timestamp_string: str,
+    folder: str,
+    verbose: bool = True,
 ) -> None:
     """
     Write metrics for all processed images to a metrics file
@@ -664,10 +725,13 @@ def write_metrics(
         collated_metrics (list): list of metrics dicts (one per image)
         timestamp_string (list): timestamp formatted as "%Y%m%d_%H%M%S"
         folder (str): path to write file to
+        verbose (bool): log at info level. Set False for the per-image
+            incremental rewrites so the log is not flooded.
     """
     os.makedirs(folder, exist_ok=True)
-    metrics_filepath = os.path.join(folder, timestamp_string + "_results.csv")
-    logger.info(f"Saving metrics as {metrics_filepath}... ", end="")
+    metrics_filepath = os.path.join(folder, f"results_{timestamp_string}.csv")
+    log = logger.info if verbose else logger.debug
+    log(f"Saving metrics as {metrics_filepath}... ")
 
     try:
         output_df = pd.DataFrame.from_records(collated_metrics)
@@ -801,13 +865,16 @@ def write_metrics(
                 "Tiles with confidence <= 1.0",
             ]
 
+        ordered = [c for c in column_order if c in output_df.columns]
+        ordered += [c for c in output_df.columns if c not in column_order]
+
         output_df.to_csv(
             metrics_filepath,
             encoding="utf-8",
             index=False,
             lineterminator="\n",
             float_format="%g",
-            columns=column_order,
+            columns=ordered,
         )
     except Exception as e:
         logger.error(f"Errors occurred writing the metrics file: {e}")
@@ -866,6 +933,8 @@ def run(
 
     collated_metrics = []  # Get results from each image together
     class_changes_total = []
+    timestamp_string = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     for path in input_images:
         base = os.path.basename(path)
         logger.debug(f"Image {base}")
@@ -901,14 +970,19 @@ def run(
                 these_metrics = prepare_metrics(path, table)
                 collated_metrics.append(these_metrics)
 
+                write_metrics(
+                    collated_metrics,
+                    timestamp_string,
+                    folder=AmfConfig.get("outdir"),
+                    verbose=False,
+                )
             else:
                 postprocess(image, table, path)
 
-    timestamp_string = datetime.now().strftime("%Y%m%d_%H%M%S")
     use_contextual_confidence = AmfConfig.get("use_contextual_confidence")
     if use_contextual_confidence:
         csv_path = os.path.join(
-            AmfConfig.get("outdir"), timestamp_string + "_tile_class_changes.csv"
+            AmfConfig.get("outdir"), f"tile_class_changes_{timestamp_string}.csv"
         )
         final_class_changes_df = pd.concat(class_changes_total)
         final_class_changes_df.to_csv(csv_path, index=False)
