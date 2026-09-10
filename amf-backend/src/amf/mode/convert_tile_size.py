@@ -14,8 +14,10 @@ from amf.helper.api_objects import AnnotationValues
 from amf.helper.api_utils import (
     check_entries_for_id,
     download_entries_as_csv,
+    format_tags,
     get_enabled,
     get_tile_edge,
+    parse_tags,
     save_annotations_to_db,
 )
 from amf.helper.db_config import connect
@@ -84,6 +86,18 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
         # Drop question comment column
         annotation_data.drop("QuestionComment", axis=1, inplace=True, errors="ignore")
 
+    # Sub-tags are carried through the rescale rather than dropped: each new
+    # tile takes the union of the tags on the old tiles it absorbs.
+    tags_by_coord: dict[tuple[int, int], list[str]] = {}
+    if AmfConfig.TAGS_COLUMN in annotation_data.columns:
+        for entry in annotation_data.itertuples():
+            tags = parse_tags(getattr(entry, AmfConfig.TAGS_COLUMN))
+            if tags:
+                tags_by_coord[(entry.row, entry.col)] = tags
+        annotation_data.drop(
+            AmfConfig.TAGS_COLUMN, axis=1, inplace=True, errors="ignore"
+        )
+
     new_row_starts = list(
         range(0, annotation_data["row"].max(), SCALING_FACTOR)
     )  # Creating a sequence of new row indices with a step of two, based on the max
@@ -129,6 +143,14 @@ def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
                 "DSE": 0,
                 "Hybrid": 0,
             }
+
+            if tags_by_coord:
+                merged_tags: list[str] = []
+                for source in tile_annotations.itertuples():
+                    for tag in tags_by_coord.get((source.row, source.col), []):
+                        if tag not in merged_tags:
+                            merged_tags.append(tag)
+                this_result[AmfConfig.TAGS_COLUMN] = format_tags(merged_tags)
 
             # Entering rule tree
             # New tiles that do not contain any of the old tiles are omitted, to stay

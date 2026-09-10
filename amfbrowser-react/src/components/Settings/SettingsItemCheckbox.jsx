@@ -6,6 +6,7 @@ const SettingsItemCheckbox = ({
   name,
   displayName,
   defaultValue,
+  help,
   checked,
   handleInputChange,
   disabled = false,
@@ -22,13 +23,16 @@ const SettingsItemCheckbox = ({
 
   return (
     <div className="settings-item settings-item-checkbox">
-      <label htmlFor={name} title={`(type: boolean, default: ${defaultValue})`}>
+      <label
+        htmlFor={name}
+        title={`${help ? help + " " : ""}(type: boolean, default: ${defaultValue})`}
+      >
         {displayName}
       </label>
       <Checkbox
         name={name}
         color="primary"
-        checked={checked}
+        checked={checked ?? false}
         onChange={handleInputChange}
         disabled={disabled}
       />

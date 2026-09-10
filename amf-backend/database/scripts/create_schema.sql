@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS public.Cnn1AnnotationsAm
     Hybrid              integer,
     Question            integer,
     QuestionComment     text,
+    Tags                text,
     CONSTRAINT PK_row_col_annotations_cnn1_am       PRIMARY KEY (ImageReferenceId, RowNum, ColNum),
     CONSTRAINT FK_Annotation_ImageReferenceId_Am    FOREIGN KEY (ImageReferenceId) REFERENCES public.ImageReference(Id) ON DELETE CASCADE
 );
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS public.Cnn1AnnotationsErm
     HybridDse           integer,
     Question            integer,
     QuestionComment     text,
+    Tags                text,
     CONSTRAINT PK_row_col_annotations_cnn1_erm       PRIMARY KEY (ImageReferenceId, RowNum, ColNum),
     CONSTRAINT FK_Annotation_ImageReferenceId_Erm    FOREIGN KEY (ImageReferenceId) REFERENCES public.ImageReference(Id) ON DELETE CASCADE
 );
@@ -91,6 +93,19 @@ CREATE TABLE IF NOT EXISTS public.Settings (
     value           TEXT,
     default_value   TEXT
 );
+
+-- Column upgrades for existing installs. CREATE TABLE IF NOT EXISTS above
+-- leaves an existing table untouched, so additive columns have to be applied
+-- here. This whole file is executed on every API startup (run_amf_api.py) and
+-- every statement below is idempotent, so no manual migration step is needed.
+-- Settings rows are seeded separately, in fill_default_settings.sql.
+
+-- Per-tile user-defined sub-tags, stored delimiter-packed in one cell.
+ALTER TABLE IF EXISTS public.Cnn1AnnotationsAm
+    ADD COLUMN IF NOT EXISTS Tags text;
+
+ALTER TABLE IF EXISTS public.Cnn1AnnotationsErm
+    ADD COLUMN IF NOT EXISTS Tags text;
 
 ALTER TABLE IF EXISTS public.Cnn1PredictionsAm
     OWNER to postgres;

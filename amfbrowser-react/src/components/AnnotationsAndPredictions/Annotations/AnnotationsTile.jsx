@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { FaEyeSlash } from "react-icons/fa";
+import { getTagColour } from "../../../config/AnnotationsAndPredictionsConfig";
 
 const AnnotationsTile = memo(
   ({
@@ -17,10 +18,22 @@ const AnnotationsTile = memo(
     questionCommentOpen,
     questionMarkComments,
     questionMarkCommentActions,
+    allTags,
+    tagPalette,
+    tagBadgeSize,
+    tagBadgeFontSize,
   }) => {
     const imageUrl = tileImages.get(`${tile.row}.${tile.col}`);
     const [showQuestionComment, setShowQuestionComment] = useState(false);
     const wrapperRef = useRef(null);
+
+    // Only a small fraction of tiles carry sub-tags; untagged ones must render
+    // exactly as before so the tagged ones stand out when scanning the grid.
+    const tags = tile?.tags ?? [];
+    const hasTags = tags.length > 0;
+    const firstTagColour = hasTags
+      ? getTagColour(tags[0], tagPalette, allTags)
+      : null;
 
     useEffect(() => {
       function handleClickOutside(event) {
@@ -39,11 +52,19 @@ const AnnotationsTile = memo(
     return (
       <div
         className="noselect annotation-tile"
+        title={hasTags ? `Tags: ${tags.join(", ")}` : undefined}
         style={{
           width: `${tileWidth}px`,
           height: `${tileWidth}px`,
           outline: `solid ${selected ? "3px red" : "1px grey"}`,
           background: `url(${imageUrl})`,
+          // An inset ring rather than the outline, which is already spoken
+          // for by the selection state. White then the tag's own colour, so
+          // it reads against both light and dark tile colours.
+          boxShadow: hasTags
+            ? `inset 0 0 0 2px #fff, inset 0 0 0 4px ${firstTagColour}`
+            : undefined,
+          position: hasTags ? "relative" : undefined,
         }}
         onClick={() => {
           setSelectedTile({ row: tile?.row, col: tile?.col });
@@ -136,6 +157,33 @@ const AnnotationsTile = memo(
             }}
           >
             {tile?.value}
+          </div>
+        )}
+        {hasTags && (
+          <div
+            style={{
+              // A dot for a single tag, the count once there are several -
+              // a digit is unreadable at the smallest tile sizes otherwise.
+              width: `${tags.length > 1 ? tagBadgeSize : Math.round(tagBadgeSize * 0.6)}px`,
+              height: `${tags.length > 1 ? tagBadgeSize : Math.round(tagBadgeSize * 0.6)}px`,
+              lineHeight: `${tagBadgeSize}px`,
+              borderRadius: "50%",
+              position: "absolute",
+              bottom: "3px",
+              right: "3px",
+              backgroundColor: firstTagColour,
+              border: "1px solid #fff",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: `${tagBadgeFontSize}px`,
+              fontWeight: 700,
+              boxSizing: "border-box",
+              pointerEvents: "none",
+            }}
+          >
+            {tags.length > 1 ? tags.length : ""}
           </div>
         )}
       </div>

@@ -9,6 +9,9 @@
   margin: 0 auto;
   padding: 20px;
   padding-top: 0;
+  /* Reserve room for the position: fixed save/reset bar so the last settings
+     can be scrolled clear of it rather than sitting underneath. */
+  padding-bottom: 90px;
 }
 
 .settings-heading {
@@ -30,14 +33,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* Wrap so a long label and its control stack instead of squeezing each
+     other on a narrow settings pane. */
+  flex-wrap: wrap;
+  gap: 10px;
   padding: 10px 0;
 }
 
 .settings-item label {
-  flex: 1;
+  flex: 1 1 200px;
   font-size: 1em;
   color: #555;
-  width: 30%;
+  min-width: 0;
 }
 
 .settings-item .input,
@@ -81,10 +88,31 @@
   margin-right: 10px;
 }
 
+.settings-toolbar {
+  position: sticky;
+  top: -20px;
+  z-index: 51;
+  background-color: rgb(250, 249, 248);
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 0;
+}
+
+.settings-tabs {
+  position: sticky;
+  top: 30px;
+  z-index: 51;
+  background-color: rgb(250, 249, 248);
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 10px;
+}
+
 .full-width-sticky {
   width: 80%;
   position: fixed;
   display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   justify-content: center;
   bottom: 4%;
   box-sizing: border-box;
@@ -92,13 +120,17 @@
 
 .full-width-sticky .settingsSaveButton {
   display: inline-block;
-  margin: 0 5px;
+  margin: 0;
 }
 
+/* Minimums rather than fixed dimensions so the buttons can shrink towards
+   their labels on narrow viewports and wrap instead of overflowing. */
 .settingsSaveButton {
-  height: 40px;
-  width: 300px;
-  margin: 0 20px;
+  min-height: 40px;
+  min-width: 200px;
+  max-width: 300px;
+  flex: 1 1 200px;
+  margin: 0;
 }
 
 .reset-setting {

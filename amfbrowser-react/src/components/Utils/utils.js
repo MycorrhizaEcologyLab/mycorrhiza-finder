@@ -45,4 +45,26 @@ const removeFileExtension = (filename) => {
   return lastDotIndex === -1 ? filename : filename.slice(0, lastDotIndex);
 };
 
-export { calcStdDev, indexOfMax, isValidFilePath, removeFileExtension };
+const formatTimestampForFilename = (timestamp) => {
+  // Formats an API timestamp into the backend's canonical filename token,
+  // YYYYMMDD_HHMMSS (see save.py's now() and api_utils.py's save_to_local).
+  // Interpolating the raw ISO string instead would embed colons, which are
+  // illegal in filenames and get sanitised differently by each browser.
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) {
+    return "";
+  }
+  const pad = (value) => String(value).padStart(2, "0");
+  return (
+    `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}` +
+    `_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
+  );
+};
+
+export {
+  calcStdDev,
+  formatTimestampForFilename,
+  indexOfMax,
+  isValidFilePath,
+  removeFileExtension,
+};

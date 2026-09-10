@@ -39,7 +39,7 @@ Functions
 
 import os
 import sys
-from typing import Type, cast
+from typing import Any, Type, cast
 
 import timm
 
@@ -515,6 +515,51 @@ def load(name: str | None = None) -> torch.nn.Module:
             raise RuntimeError(
                 "Unreachable code after logger.error() and sys.exit()"
             )  # TODO replace with proper exceptions
+
+
+# timm's transformer-based architectures (currently only DeiT3, via MODEL_DICT)
+# all deserialize to this class name, regardless of the specific variant.
+_TRANSFORMER_MODEL_CLASSES = {"VisionTransformer"}
+
+
+def resolve_model_path(name: str | None) -> str | None:
+    """
+    Resolves a model name/path the same way `load()` does: checks the trained
+    networks directory first, then falls back to the given value as-is (e.g.
+    an absolute path). Returns None if neither location has a matching file.
+    """
+    if name is None:
+        return None
+
+    path = os.path.join(AmfConfig.get_model_dir(), name)
+    if not os.path.isfile(path):
+        path = name
+
+    return path if os.path.isfile(path) else None
+
+
+def inspect_model_architecture(name: str | None) -> dict[str, Any]:
+    """
+    Loads a saved checkpoint purely to inspect its class, to determine
+    whether it's a transformer architecture (which requires Resize Dimension
+    to be set to a fixed value), without the user needing to know.
+    """
+    path = resolve_model_path(name)
+    if path is None:
+        return {"exists": False, "isTransformer": False, "modelClassName": None}
+
+    try:
+        model = torch.load(path, map_location=torch.device("cpu"), weights_only=False)
+    except Exception as e:
+        logger.error(f"Failed to load model at {path} for architecture check: {e}")
+        return {"exists": True, "isTransformer": False, "modelClassName": None}
+
+    model_class_name = type(model).__name__
+    return {
+        "exists": True,
+        "isTransformer": model_class_name in _TRANSFORMER_MODEL_CLASSES,
+        "modelClassName": model_class_name,
+    }
 
 
 def filter_layers(

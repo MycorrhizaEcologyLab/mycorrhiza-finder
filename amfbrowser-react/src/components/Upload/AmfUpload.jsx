@@ -13,6 +13,8 @@ import { toast } from "react-toastify";
 import PredictionsApi from "../../api/amfinderApi";
 import { GlobalContextProvider } from "../../contexts/Contexts";
 import PrimaryButton from "../Utils/PrimaryButton";
+import { isValidFilePath } from "../Utils/utils";
+import ValidationIcon from "../Utils/ValidationIcon";
 import "./styles/upload.css";
 
 const AmfUpload = () => {
@@ -23,6 +25,10 @@ const AmfUpload = () => {
   const [imageName, setImageName] = useState("");
   const [cnn, setCnn] = useState(1);
   const [currentToast, setCurrentToast] = useState(0);
+
+  const [folderPath, setFolderPath] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   const uploadAnnotationsInputRef = useRef(null);
   const uploadPredictionsInputRef = useRef(null);
@@ -127,7 +133,7 @@ const AmfUpload = () => {
           }
 
           if (isAnnotations) {
-            optionalColumns = ["Question", "QuestionComment"];
+            optionalColumns = ["Question", "QuestionComment", "Tags"];
           } else {
             optionalColumns = ["ContextualLabel"];
           }
@@ -159,8 +165,13 @@ const AmfUpload = () => {
             if (isAnnotations) {
               results.data.forEach((value, key) => {
                 // Save CNN1 annotations into a format accepted by DB
+                // Full fixed width: [row, col, ...classes, Question,
+                // QuestionComment, Tags]. Absent optional columns leave their
+                // slot at its default rather than shortening the row.
                 if (colonisationType === "am") {
-                  const out = new Array(9).fill(0);
+                  const out = new Array(11).fill(0);
+                  out[9] = "";
+                  out[10] = "";
                   out[0] = parseInt(value["row"]);
                   out[1] = parseInt(value["col"]);
                   out[2] = parseInt(value["AMColonised"]);
@@ -175,9 +186,14 @@ const AmfUpload = () => {
                   if ("QuestionComment" in value) {
                     out[9] = value["QuestionComment"];
                   }
+                  if ("Tags" in value) {
+                    out[10] = value["Tags"];
+                  }
                   cnn1Values.push(out);
                 } else {
-                  const out = new Array(13).fill(0);
+                  const out = new Array(15).fill(0);
+                  out[13] = "";
+                  out[14] = "";
                   out[0] = parseInt(value["row"]);
                   out[1] = parseInt(value["col"]);
                   out[2] = parseInt(value["BlueCoils"]);
@@ -195,6 +211,9 @@ const AmfUpload = () => {
                   }
                   if ("QuestionComment" in value) {
                     out[13] = value["QuestionComment"];
+                  }
+                  if ("Tags" in value) {
+                    out[14] = value["Tags"];
                   }
                   cnn1Values.push(out);
                 }
@@ -314,6 +333,40 @@ const AmfUpload = () => {
     }
   };
 
+  const isFolderPathValid = isValidFilePath(folderPath);
+
+  const importFolder = async () => {
+    setIsImporting(true);
+    setImportResult(null);
+    toast.info("Importing folder - this may take a while for large batches", {
+      toastId: "importFolder",
+      autoClose: false,
+    });
+
+    const result = await PredictionsApi.importFolder({
+      folderPath,
+      colonisationType,
+    });
+
+    setIsImporting(false);
+
+    if (!result) {
+      toast.update("importFolder", {
+        type: "error",
+        render: "Failed to import folder",
+        autoClose: 5000,
+      });
+      return;
+    }
+
+    setImportResult(result);
+    toast.update("importFolder", {
+      type: result.errors.length === 0 ? "success" : "warning",
+      render: `Imported ${result.imported.length} file(s), ${result.errors.length} error(s)`,
+      autoClose: 5000,
+    });
+  };
+
   return (
     <div id="amfUploadContainer" className="fullHeight fullWidth flexRowCenter">
       <div
@@ -329,6 +382,74 @@ const AmfUpload = () => {
         >
           <div className="fullHeight fullWidth">
             <div className="fullHeight fullWidth flexColumnCenter">
+              <div id="batchImportSection" className="flexColumn">
+                <FormLabel
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    color: "black",
+                    fontWeight: 600,
+                    marginBottom: "10px",
+                  }}
+                >
+                  Batch Import Folder
+                </FormLabel>
+                <div className="flexRowCenter">
+                  <TextField
+                    label="Folder path"
+                    variant="outlined"
+                    error={folderPath !== "" && !isFolderPathValid}
+                    value={folderPath}
+                    sx={{ width: "350px", marginRight: "10px" }}
+                    onChange={(event) => setFolderPath(event.currentTarget.value)}
+                  />
+                  <ValidationIcon
+                    status={
+                      folderPath === ""
+                        ? "none"
+                        : isFolderPathValid
+                          ? "success"
+                          : "error"
+                    }
+                  />
+                </div>
+                <div
+                  className="flexRowCenter"
+                  style={{ marginTop: "10px", marginBottom: "10px" }}
+                >
+                  <PrimaryButton
+                    disabled={!isFolderPathValid || isImporting}
+                    sx={{ minWidth: "200px" }}
+                    onClick={importFolder}
+                  >
+                    Import Folder
+                  </PrimaryButton>
+                </div>
+                {importResult && (
+                  <div
+                    style={{
+                      maxHeight: "150px",
+                      overflowY: "auto",
+                      width: "500px",
+                      fontSize: "0.85em",
+                    }}
+                  >
+                    <div>Imported: {importResult.imported.length}</div>
+                    {importResult.errors.length > 0 && (
+                      <div>
+                        <div>Errors:</div>
+                        <ul>
+                          {importResult.errors.map((error) => (
+                            <li key={error.file}>
+                              {error.file}: {error.reason}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div id="uploadInputs" className="flexColumn">
                 <div className="flexRowCenter">
                   <div className="dummyDiv" style={{ width: "32px" }} />
@@ -450,12 +571,12 @@ const AmfUpload = () => {
               </div>
               <div
                 id="uploadButtons"
-                className="flexRow"
-                style={{ height: "100px", alignItems: "end" }}
+                className="buttonRow"
+                style={{ minHeight: "100px", alignItems: "end" }}
               >
                 <PrimaryButton
                   disabled={!imageName}
-                  sx={{ width: "200px", margin: "5px" }}
+                  sx={{ minWidth: "200px" }}
                   onClick={() => uploadAnnotationsInputRef.current.click()}
                 >
                   Upload annotations
@@ -470,7 +591,7 @@ const AmfUpload = () => {
                 />
                 <PrimaryButton
                   disabled={!imageName}
-                  sx={{ height: "40px", width: "200px", margin: "5px" }}
+                  sx={{ minWidth: "200px" }}
                   onClick={() => uploadPredictionsInputRef.current.click()}
                 >
                   Upload predictions

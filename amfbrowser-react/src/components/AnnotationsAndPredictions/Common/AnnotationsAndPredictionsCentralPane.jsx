@@ -1,3 +1,5 @@
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import Slider from "@mui/material/Slider";
 import Typography from "@mui/material/Typography";
 import { useState } from "react";
@@ -52,6 +54,11 @@ const AnnotationsAndPredictionsCentralPane = ({
   questionCommentOpen,
   questionMarkComments,
   questionMarkCommentActions,
+  tileTags,
+  allTags,
+  tagPalette,
+  tagBadgeSize,
+  tagBadgeFontSize,
   // Annotation buttons additional props
   saveAnnotations,
   areAnnotationsSaving,
@@ -61,6 +68,13 @@ const AnnotationsAndPredictionsCentralPane = ({
   convertWithContext,
   contextualLabelSize,
   contextualLabelFontSize,
+  autoClassifyBackground,
+  onAutoClassifyBackgroundToggle,
+  canUndoBackgroundFill,
+  onToggleBackgroundFill,
+  backgroundThreshold,
+  onBackgroundThresholdChange,
+  onBackgroundThresholdBlur,
 }) => {
   const [numTiles, setNumTiles] = useState(3);
   const [wheelEvent, setWheelEvent] = useState(null);
@@ -173,8 +187,10 @@ const AnnotationsAndPredictionsCentralPane = ({
       <div
         id="minSizeWrapper"
         style={{
-          minWidth: 2 * gridSize + 50, // Dynamic gridSize calculation: 2 * gridSize + 2 * 50px (side margins of the two columns)
-          minHeight: 110 + 75 + gridSize + 20 + 60, // Dynamic gridSize calculation: 110px (icons) + 75px (zoomBox) + gridSize + 20px (grid margin) + 75px (buttons)
+          // Dynamic gridSize calculation: 2 * gridSize + 2 * 50px (side margins of the two columns)
+          minWidth: 2 * gridSize + 50,
+          // Dynamic gridSize calculation: 110px (icons) + 75px (zoomBox) + gridSize + 20px (grid margin) + 110px (buttons, 2 rows)
+          minHeight: 110 + 75 + gridSize + 20 + 110,
         }}
       >
         <div
@@ -368,6 +384,11 @@ const AnnotationsAndPredictionsCentralPane = ({
                     questionCommentOpen={questionCommentOpen}
                     questionMarkComments={questionMarkComments}
                     questionMarkCommentActions={questionMarkCommentActions}
+                    tileTags={tileTags}
+                    allTags={allTags}
+                    tagPalette={tagPalette}
+                    tagBadgeSize={tagBadgeSize}
+                    tagBadgeFontSize={tagBadgeFontSize}
                   />
                 )}
                 {showPredictions && (
@@ -399,39 +420,85 @@ const AnnotationsAndPredictionsCentralPane = ({
         <div
           className="actionButtons"
           style={{
-            minHeight: "60px",
-            maxHeight: "75px", // Adding some flexibility to the buttons height to avoid annoying vertical scrolls due to vh vs px difference
+            // No maxHeight: the buttons below wrap onto a second row on
+            // narrow panes, and capping the height made the overflow paint
+            // over the neighbouring content instead of pushing it down.
+            minHeight: "110px",
             width: "100%",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
+            flexShrink: 0,
+            gap: "5px",
+            paddingBottom: "10px",
           }}
         >
-          <div>
+          <div className="buttonRow">
             {showAnnotations && (
               <PrimaryButton
                 disabled={areAnnotationsSaving}
-                sx={{ width: "200px", margin: "5px" }}
+                sx={{ minWidth: "200px" }}
                 onClick={() => saveAnnotations(false)}
               >
                 Save Annotations
               </PrimaryButton>
             )}
 
+            {showAnnotations && (
+              <PrimaryButton
+                sx={{ minWidth: "200px" }}
+                onClick={onToggleBackgroundFill}
+                title={
+                  canUndoBackgroundFill
+                    ? "Undo the last fill of remaining tiles as Background. Hotkey: Shift+*"
+                    : "Classifies all remaining/unlabelled tiles as Background. Hotkey: Shift+*"
+                }
+              >
+                {canUndoBackgroundFill ? "Undo X Fill" : "Fill X"}
+              </PrimaryButton>
+            )}
+
             <PrimaryButton
-              sx={{ width: "200px", margin: "5px" }}
+              sx={{ minWidth: "200px" }}
               onClick={captureScreenshot}
             >
               Take screenshot
             </PrimaryButton>
             <PrimaryButton
-              sx={{ width: "200px", margin: "5px" }}
+              sx={{ minWidth: "200px" }}
               onClick={() => setShowImageOverview(true)}
             >
               Show image overview
             </PrimaryButton>
           </div>
+
+          {showAnnotations && (
+            <div className="buttonRow">
+              <FormControlLabel
+                sx={{ margin: 0 }}
+                control={
+                  <Checkbox
+                    checked={autoClassifyBackground}
+                    onChange={onAutoClassifyBackgroundToggle}
+                  />
+                }
+                label="Auto-classify background tiles"
+                title="Automatically labels tiles detected as background (via mean pixel intensity, same heuristic as the Filter Background Tiles training option) as Background. Unchecking removes only the tiles it added. Adjust the threshold alongside to control sensitivity."
+              />
+              <div>
+                <NumericField
+                  label="Threshold"
+                  value={backgroundThreshold}
+                  onChange={onBackgroundThresholdChange}
+                  onBlur={onBackgroundThresholdBlur}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

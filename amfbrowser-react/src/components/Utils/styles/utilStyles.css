@@ -29,3 +29,15 @@
   align-items: center;
   justify-content: center;
 }
+
+/* A row of buttons that reflows onto further rows rather than overflowing its
+   container on narrow or short viewports. Use `gap` for spacing here - buttons
+   inside a .buttonRow should not carry their own margins. */
+.buttonRow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}

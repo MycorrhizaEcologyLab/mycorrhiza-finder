@@ -1,38 +1,45 @@
-import {
-  useState,
-  useEffect,
-  useContext,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import CircularProgress from "@mui/material/CircularProgress";
+import html2canvas from "html2canvas";
 import JSZip from "jszip";
 import { debounce } from "lodash";
-import html2canvas from "html2canvas";
-import { toast } from "react-toastify";
-import ImageSelectionHeader from "../../Browser/ImageSelectionHeader";
-import AnnotationsAndPredictionsWindow from "./AnnotationsAndPredictionsWindow";
-import ImageOverview from "./ImageOverview";
-import { GlobalContextProvider } from "../../../contexts/Contexts";
-import PredictionsApi from "../../../api/amfinderApi";
-import PrimaryButton from "../../Utils/PrimaryButton";
-import { calcStdDev, indexOfMax } from "../../Utils/utils";
-import Modal from "../../Utils/Modal";
 import {
-  getHeaderToValueMapCnn1,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import PredictionsApi from "../../../api/amfinderApi";
+import {
+  formatTags,
   getColorMappingCnn1,
   getColorMappingCnn1Transparent,
   getHeaderMapCnn1,
-  getValueMapCnn1,
+  getHeaderToValueMapCnn1,
   getKeyBindingsCnn1,
+  getValueMapCnn1,
+  parseTags,
 } from "../../../config/AnnotationsAndPredictionsConfig";
+import { GlobalContextProvider } from "../../../contexts/Contexts";
+import ImageSelectionHeader from "../../Browser/ImageSelectionHeader";
+import Modal from "../../Utils/Modal";
+import PrimaryButton from "../../Utils/PrimaryButton";
+import { calcStdDev, indexOfMax } from "../../Utils/utils";
 import "../styles/AnnotationsAndPredictionsStyles.css";
+import AnnotationsAndPredictionsWindow from "./AnnotationsAndPredictionsWindow";
+import ImageOverview from "./ImageOverview";
 
 const getImageReferenceIdFromPathname = (pathname) => {
+  // The id segment is a numeric DB id in database mode, or a local CSV
+  // filename in local (no-DB) mode. Its absence distinguishes a "new" annotation,
+  // the route with no id segment ends in "annotations"/"predictions".
   let imageIdCandidate = pathname.split("/").pop();
-  return !isNaN(imageIdCandidate) ? imageIdCandidate : null;
+  return imageIdCandidate === "annotations" || imageIdCandidate === "predictions"
+    ? null
+    : imageIdCandidate;
 };
 
 const AnnotationsAndPredictionsContainer = () => {
@@ -79,6 +86,8 @@ const AnnotationsAndPredictionsContainer = () => {
   const [maxGridSize, setMaxGridSize] = useState("20");
   const [maxOverviewSize, setMaxOverviewSize] = useState(1000);
   const [contextualLabelSize, setContextualLabelSize] = useState(25);
+  const [tagBadgeSize, setTagBadgeSize] = useState(15);
+  const [tagBadgeFontSize, setTagBadgeFontSize] = useState(9);
   const [contextualLabelFontSize, setContextualLabelFontSize] = useState(10);
 
   // Flags for the loading of tiles and images
@@ -110,6 +119,14 @@ const AnnotationsAndPredictionsContainer = () => {
   const [questionMarkWarning, setQuestionMarkWarning] = useState(false);
   const [questionCommentOpen, setQuestionCommentOpen] = useState(false);
   const [questionMarkComments, setQuestionMarkComments] = useState(new Map());
+
+  // Per-tile user-defined sub-tags, keyed "row.col" like the maps above.
+  const [tileTags, setTileTags] = useState(new Map());
+  // Tag name -> colour, loaded from the backend palette. Tag *names* come from
+  // the annotation data itself, so an empty palette only costs the colours.
+  const [tagPalette, setTagPalette] = useState({});
+  // Suppresses the annotation hotkeys while the tag name field has focus.
+  const [tagInputOpen, setTagInputOpen] = useState(false);
 
   const [numRows, setNumRows] = useState(0);
   const [numCols, setNumCols] = useState(0);
@@ -162,12 +179,23 @@ const AnnotationsAndPredictionsContainer = () => {
   const [disableConvertWithContext, setDisableConvertWithContext] =
     useState(false);
 
+  const [autoClassifyBackground, setAutoClassifyBackground] = useState(false);
+  const [canUndoBackgroundFill, setCanUndoBackgroundFill] = useState(false);
+  const [backgroundThreshold, setBackgroundThreshold] = useState(0.99);
+
   /////////////////////////////////////////////////////////////////////
   // useRef (in part used to avoid recursive state updates)
   const toCaptureRef = useRef();
   const selectedTileRef = useRef(selectedTile);
   const topLeftTileRef = useRef(topLeftTile);
   const keyHandled = useRef(false);
+  const lastFillBackgroundKeysRef = useRef(null);
+  const autoBackgroundKeysRef = useRef(null);
+  const backgroundThresholdRef = useRef(backgroundThreshold);
+  // Kept in sync on every render so debounced/async classification callbacks
+  // (whose identities must stay stable - see applyAutoBackgroundClassification
+  // below) always read the latest threshold instead of a stale closure.
+  backgroundThresholdRef.current = backgroundThreshold;
 
   /////////////////////////////////////////////////////////////////////
   // useMemo Actions
@@ -266,6 +294,56 @@ const AnnotationsAndPredictionsContainer = () => {
     }),
     [],
   );
+
+  const tileTagActions = useMemo(
+    () => ({
+      set: (key, value) =>
+        setTileTags((prevMap) => {
+          const nextMap = new Map(prevMap);
+          if (value && value.length > 0) {
+            nextMap.set(key, value);
+          } else {
+            // Never keep an empty list - "has tags" is a .has() check.
+            nextMap.delete(key);
+          }
+          return nextMap;
+        }),
+      setBulk: (map) => setTileTags(() => new Map(map)),
+      toggle: (key, tag) =>
+        setTileTags((prevMap) => {
+          const nextMap = new Map(prevMap);
+          const current = nextMap.get(key) ?? [];
+          const next = current.includes(tag)
+            ? current.filter((t) => t !== tag)
+            : [...current, tag];
+          if (next.length > 0) {
+            nextMap.set(key, next);
+          } else {
+            nextMap.delete(key);
+          }
+          return nextMap;
+        }),
+      remove: (key) =>
+        setTileTags((prevMap) => {
+          const nextMap = new Map(prevMap);
+          nextMap.delete(key);
+          return nextMap;
+        }),
+      clear: () => setTileTags(new Map()),
+    }),
+    [],
+  );
+
+  // Every tag the user can pick from: those with a stored colour, plus any
+  // found in the loaded annotations (so opening a file authored elsewhere
+  // repopulates the list without needing the palette).
+  const allTags = useMemo(() => {
+    const names = new Set(Object.keys(tagPalette));
+    tileTags.forEach((tags) => tags.forEach((tag) => names.add(tag)));
+    return Array.from(names).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" }),
+    );
+  }, [tagPalette, tileTags]);
 
   /////////////////////////////////////////////////////////////////////
   // useCallback
@@ -417,18 +495,161 @@ const AnnotationsAndPredictionsContainer = () => {
     [addQuestionMark, removeQuestionMark, cnn1Annotations, dragActivated],
   );
 
+  // Blindly fills every remaining/unlabelled tile as Background ("X"),
+  // triggered by the "*" hotkey. Tracks exactly which keys it added so
+  // undoFillBackgroundTiles can revert just this action.
   const fillBackgroundTiles = useCallback(() => {
     const tmpMap = new Map(cnn1Annotations);
+    const addedKeys = [];
     for (let i = 0; i < numRows; i++) {
       for (let j = 0; j < numCols; j++) {
         let key = `${i}.${j}`;
         if (!tmpMap.has(key)) {
           tmpMap.set(key, "X");
+          addedKeys.push(key);
         }
       }
     }
     setCnn1Annotations(tmpMap);
+    lastFillBackgroundKeysRef.current = addedKeys;
+    setCanUndoBackgroundFill(addedKeys.length > 0);
   }, [numCols, numRows, cnn1Annotations]);
+
+  // Undoes the most recent fillBackgroundTiles() call ("Ctrl+*"), removing
+  // only the tiles it added (and only if they haven't since been
+  // relabelled by hand).
+  const undoFillBackgroundTiles = useCallback(() => {
+    const keysToRemove = lastFillBackgroundKeysRef.current;
+    if (!keysToRemove || keysToRemove.length === 0) return;
+
+    setCnn1Annotations((prevMap) => {
+      const nextMap = new Map(prevMap);
+      keysToRemove.forEach((key) => {
+        if (nextMap.get(key) === "X") {
+          nextMap.delete(key);
+        }
+      });
+      return nextMap;
+    });
+    lastFillBackgroundKeysRef.current = null;
+    setCanUndoBackgroundFill(false);
+  }, []);
+
+  // Single entry point for the "*" hotkey and its button: fills remaining
+  // tiles as Background if there's nothing pending to undo, otherwise undoes
+  // the last fill.
+  const toggleBackgroundFill = useCallback(() => {
+    if (canUndoBackgroundFill) {
+      undoFillBackgroundTiles();
+    } else {
+      fillBackgroundTiles();
+    }
+  }, [canUndoBackgroundFill, fillBackgroundTiles, undoFillBackgroundTiles]);
+
+  // Asks the backend to classify the currently loaded tiles as
+  // background/root using the same mean-pixel-intensity heuristic as the
+  // "Filter Background Tiles" training option, and fills in only the
+  // detected background tiles that aren't already labelled. Reads the
+  // threshold via a ref (rather than depending on `backgroundThreshold`
+  // directly) so this callback's identity stays stable - keeping the
+  // debounced reclassify below from being recreated (and racing) on every
+  // threshold change.
+  const applyAutoBackgroundClassification = useCallback(async () => {
+    try {
+      const backgroundKeys = await PredictionsApi.getBackgroundTiles(
+        backgroundThresholdRef.current,
+      );
+      if (!backgroundKeys || backgroundKeys.length === 0) {
+        autoBackgroundKeysRef.current = [];
+        return;
+      }
+
+      const addedKeys = [];
+      setCnn1Annotations((prevMap) => {
+        const nextMap = new Map(prevMap);
+        backgroundKeys.forEach((key) => {
+          if (!nextMap.has(key)) {
+            nextMap.set(key, "X");
+            addedKeys.push(key);
+          }
+        });
+        return nextMap;
+      });
+      autoBackgroundKeysRef.current = addedKeys;
+    } catch (error) {
+      toast.error("Error auto-classifying background tiles");
+    }
+  }, []);
+
+  // Reverses applyAutoBackgroundClassification(), removing only the tiles
+  // it added (and only if they haven't since been relabelled by hand).
+  const undoAutoBackgroundClassification = useCallback(() => {
+    const keysToRemove = autoBackgroundKeysRef.current;
+    if (!keysToRemove || keysToRemove.length === 0) return;
+
+    setCnn1Annotations((prevMap) => {
+      const nextMap = new Map(prevMap);
+      keysToRemove.forEach((key) => {
+        if (nextMap.get(key) === "X") {
+          nextMap.delete(key);
+        }
+      });
+      return nextMap;
+    });
+    autoBackgroundKeysRef.current = null;
+  }, []);
+
+  // Re-runs auto-classification (undo previous + reapply) after the
+  // threshold has settled for a moment, so dragging/scrubbing the value
+  // doesn't spam the backend on every intermediate value. Only ever
+  // triggered explicitly (from a threshold change while checked, below) -
+  // NOT from an effect watching autoClassifyBackground, since that raced
+  // with handleAutoClassifyBackgroundToggle's own direct apply/undo and
+  // could re-add tiles shortly after the checkbox was unticked.
+  const debouncedReclassify = useMemo(
+    () =>
+      debounce(() => {
+        undoAutoBackgroundClassification();
+        applyAutoBackgroundClassification();
+      }, 400),
+    [undoAutoBackgroundClassification, applyAutoBackgroundClassification],
+  );
+
+  const handleAutoClassifyBackgroundToggle = useCallback(
+    (event) => {
+      const checked = event.target.checked;
+      setAutoClassifyBackground(checked);
+      if (checked) {
+        applyAutoBackgroundClassification();
+      } else {
+        // Cancel any reclassify still pending from a recent threshold drag -
+        // otherwise it could fire after this undo and re-add the tiles.
+        debouncedReclassify.cancel();
+        undoAutoBackgroundClassification();
+      }
+    },
+    [
+      applyAutoBackgroundClassification,
+      undoAutoBackgroundClassification,
+      debouncedReclassify,
+    ],
+  );
+
+  const handleBackgroundThresholdChange = useCallback(
+    (value) => {
+      setBackgroundThreshold(value);
+      if (autoClassifyBackground) {
+        debouncedReclassify();
+      }
+    },
+    [autoClassifyBackground, debouncedReclassify],
+  );
+
+  // Guarantees the latest threshold is applied the moment the user leaves
+  // the control, instead of waiting out the trailing debounce delay.
+  const flushBackgroundThresholdChange = useCallback(() => {
+    debouncedReclassify.flush();
+  }, [debouncedReclassify]);
 
   /////////////////////////////////////////////////////////////////////
   // UseEffect
@@ -459,6 +680,14 @@ const AnnotationsAndPredictionsContainer = () => {
       }
     }
   }, []);
+
+  // Re-run auto-classification whenever a new image's tiles finish loading,
+  // provided the "Auto-classify background tiles" checkbox is on.
+  useEffect(() => {
+    if (areTilesLoaded && autoClassifyBackground) {
+      applyAutoBackgroundClassification();
+    }
+  }, [areTilesLoaded]);
 
   useEffect(() => {
     setTotalTiles(numCols * numRows);
@@ -537,7 +766,9 @@ const AnnotationsAndPredictionsContainer = () => {
         ? `${focusedTile.row}.${focusedTile.col}`
         : `${selectedTile.row}.${selectedTile.col}`;
 
-      if (!questionCommentOpen) {
+      // Suppressed while either per-tile text field has focus, or typing
+      // would relabel the selected tile instead of entering text.
+      if (!questionCommentOpen && !tagInputOpen) {
         if (colonisationType === "am") {
           switch (e.key.toUpperCase()) {
             case "A":
@@ -576,7 +807,7 @@ const AnnotationsAndPredictionsContainer = () => {
               break;
             case "*":
               e.preventDefault();
-              fillBackgroundTiles();
+              toggleBackgroundFill();
               break;
             default:
               break;
@@ -643,7 +874,7 @@ const AnnotationsAndPredictionsContainer = () => {
               break;
             case "*":
               e.preventDefault();
-              fillBackgroundTiles();
+              toggleBackgroundFill();
               break;
             default:
               break;
@@ -672,13 +903,28 @@ const AnnotationsAndPredictionsContainer = () => {
     cnn1Predictions,
     cnn1PredictionActions,
     setQuestionTile,
-    fillBackgroundTiles,
+    toggleBackgroundFill,
     dragActivated,
     focusedTile,
     colonisationType,
     removeQuestionMark,
     questionCommentOpen,
+    tagInputOpen,
   ]);
+
+  // Load the saved tag colours once. Failure is non-fatal - tags still work,
+  // they just fall back to the default colour cycle.
+  useEffect(() => {
+    let cancelled = false;
+    PredictionsApi.getTagPalette().then((palette) => {
+      if (!cancelled && palette) {
+        setTagPalette(palette);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Auto resizing of grid based on window height
   useEffect(() => {
@@ -697,6 +943,8 @@ const AnnotationsAndPredictionsContainer = () => {
         setMaxOverviewSize(400);
         setContextualLabelFontSize(7);
         setContextualLabelSize(18);
+        setTagBadgeSize(12);
+        setTagBadgeFontSize(8);
       } else if (
         window.matchMedia("(max-height: 900px)").matches ||
         window.matchMedia("(max-width: 1150px)").matches
@@ -710,6 +958,8 @@ const AnnotationsAndPredictionsContainer = () => {
         setMaxOverviewSize(600);
         setContextualLabelFontSize(8);
         setContextualLabelSize(20);
+        setTagBadgeSize(13);
+        setTagBadgeFontSize(8);
       } else if (
         window.matchMedia("(max-height: 1050px)").matches ||
         window.matchMedia("(max-width: 1400px)").matches
@@ -723,6 +973,8 @@ const AnnotationsAndPredictionsContainer = () => {
         setMaxOverviewSize(750);
         setContextualLabelFontSize(10);
         setContextualLabelSize(22);
+        setTagBadgeSize(14);
+        setTagBadgeFontSize(9);
       } else if (
         window.matchMedia("(max-height: 1200px)").matches ||
         window.matchMedia("(max-width: 1550px)").matches
@@ -736,6 +988,8 @@ const AnnotationsAndPredictionsContainer = () => {
         setMaxOverviewSize(900);
         setContextualLabelFontSize(11);
         setContextualLabelSize(26);
+        setTagBadgeSize(16);
+        setTagBadgeFontSize(10);
       } else {
         setGridSize(600);
         setGridFontSize(1.4);
@@ -746,6 +1000,8 @@ const AnnotationsAndPredictionsContainer = () => {
         setMaxOverviewSize(1000);
         setContextualLabelFontSize(12);
         setContextualLabelSize(30);
+        setTagBadgeSize(18);
+        setTagBadgeFontSize(11);
       }
     }
 
@@ -845,8 +1101,8 @@ const AnnotationsAndPredictionsContainer = () => {
     };
 
     const handleKeyPress = (event) => {
-      // Do not allow tile movement when question comment box is open
-      if (!questionCommentOpen) {
+      // Do not allow tile movement when a per-tile text field is open
+      if (!questionCommentOpen && !tagInputOpen) {
         let direction = { row: 0, col: 0 };
         switch (event.key) {
           case "ArrowUp":
@@ -895,6 +1151,7 @@ const AnnotationsAndPredictionsContainer = () => {
     validationMetricIdxMap,
     confidenceMetricIdxMap,
     questionCommentOpen,
+    tagInputOpen,
     setCurrentValidationIdx,
     showPredictions,
   ]);
@@ -957,41 +1214,38 @@ const AnnotationsAndPredictionsContainer = () => {
     } else {
       setAreAnnotationsSaving(true);
       let cnn1Values = [];
+      // Row layout: [row, col, ...class one-hots incl. "?", QuestionComment,
+      // Tags]. Emitted at full fixed width so the two trailing text fields sit
+      // at stable indices.
+      const commentIdx = 2 + valueMapCnn1.length;
+      const tagsIdx = commentIdx + 1;
+      // Only classified tiles are written. A row with tags but an all-zero
+      // one-hot would be skipped on reload and read as the FIRST class by
+      // np.argmax during training, so it must never be saved.
       cnn1Annotations.forEach((value, key) => {
-        let populated_index;
-        let out;
-        if (colonisationType === "am") {
-          // Save CNN1 annotations into a format accepted by DB - AM
-          out = new Array(9).fill(0);
-          const splitKey = key.split(".");
-          // Add rows and cols
-          out[0] = parseInt(splitKey[0]);
-          out[1] = parseInt(splitKey[1]);
-          populated_index = valueMapCnn1.indexOf(value);
-          if (populated_index !== -1) {
-            // Add to array, skipping row and col indices
-            out[populated_index + 2] = 1;
-          }
-        } else {
-          // Save CNN1 annotations into a format accepted by DB - ErM
-          out = new Array(13).fill(0);
-          const splitKey = key.split(".");
-          // Add rows and cols
-          out[0] = parseInt(splitKey[0]);
-          out[1] = parseInt(splitKey[1]);
-          populated_index = valueMapCnn1.indexOf(value);
-          if (populated_index !== -1) {
-            // Add to array, skipping row and col indices
-            out[populated_index + 2] = 1;
-          }
+        const out = new Array(tagsIdx + 1).fill(0);
+        out[commentIdx] = "";
+        out[tagsIdx] = "";
+
+        const splitKey = key.split(".");
+        out[0] = parseInt(splitKey[0]);
+        out[1] = parseInt(splitKey[1]);
+
+        const populated_index = valueMapCnn1.indexOf(value);
+        if (populated_index !== -1) {
+          // Add to array, skipping row and col indices
+          out[populated_index + 2] = 1;
         }
 
         // If question mark then check for comment
         if (populated_index === valueMapCnn1.length - 1) {
           if (questionMarkComments.has(key)) {
-            // Add question mark comment
-            out.push(questionMarkComments.get(key));
+            out[commentIdx] = questionMarkComments.get(key);
           }
+        }
+
+        if (tileTags.has(key)) {
+          out[tagsIdx] = formatTags(tileTags.get(key));
         }
 
         cnn1Values.push(out);
@@ -1115,10 +1369,22 @@ const AnnotationsAndPredictionsContainer = () => {
 
     cnn1AnnotationActions.setBulk(cnn1AnnotationsMap);
 
-    // Navigate to existing annotation page
-    navigate(
-      `/browser/${selectedImageName}/${colonisationType}/annotations/${imageReferenceId}`,
-    );
+    if (settings?.useDb === false) {
+      // Local mode: predictions and annotations are separate files with
+      // separate identities (unlike DB mode's one shared ImageReference
+      // row), so imageReferenceId here is really the predictions file's own
+      // name. Reusing it as the annotations id would make the save
+      // overwrite that predictions file in place instead of creating a new
+      // annotations CSV, and would make the URL match both "predictions"
+      // and "annotations" substrings at once (showing both views
+      // simultaneously). Always start a fresh annotation set instead.
+      navigate(`/browser/${selectedImageName}/${colonisationType}/annotations`);
+    } else {
+      // Navigate to existing annotation page
+      navigate(
+        `/browser/${selectedImageName}/${colonisationType}/annotations/${imageReferenceId}`,
+      );
+    }
   };
 
   const handleSelectedValidationIdxChange = (value) => {
@@ -1185,6 +1451,59 @@ const AnnotationsAndPredictionsContainer = () => {
     }
   };
 
+  /////////////////////////////////////////////////////////////////////
+  // Sub-tags
+
+  const selectedTileKey = `${selectedTile.row}.${selectedTile.col}`;
+
+  // Creates (or recolours) a tag and persists the palette. Tag names may not
+  // contain the delimiter that packs them into a single CSV cell.
+  const onCreateTag = async (name, colour) => {
+    const tag = (name ?? "").trim();
+    if (tag === "") {
+      return;
+    }
+    if (tag.includes("|")) {
+      toast.error('Tag names cannot contain "|"');
+      return;
+    }
+    const nextPalette = { ...tagPalette, [tag]: colour };
+    setTagPalette(nextPalette);
+    const saved = await PredictionsApi.saveTagPalette(nextPalette);
+    if (saved) {
+      setTagPalette(saved);
+    }
+  };
+
+  // Forgets a tag entirely: removed from the palette and from every tile.
+  const onDeleteTag = async (tag) => {
+    setTileTags((prevMap) => {
+      const nextMap = new Map();
+      prevMap.forEach((tags, key) => {
+        const kept = tags.filter((t) => t !== tag);
+        if (kept.length > 0) {
+          nextMap.set(key, kept);
+        }
+      });
+      return nextMap;
+    });
+    const nextPalette = { ...tagPalette };
+    delete nextPalette[tag];
+    setTagPalette(nextPalette);
+    const saved = await PredictionsApi.saveTagPalette(nextPalette);
+    if (saved) {
+      setTagPalette(saved);
+    }
+  };
+
+  const onToggleTagOnSelectedTile = (tag) => {
+    tileTagActions.toggle(selectedTileKey, tag);
+  };
+
+  const onClearTagsOnSelectedTile = () => {
+    tileTagActions.remove(selectedTileKey);
+  };
+
   const onQuestionNext = () => {
     if (currentQuestions.length > 0) {
       if (currentQuestionIdx !== -1) {
@@ -1207,11 +1526,18 @@ const AnnotationsAndPredictionsContainer = () => {
     if (annotations) {
       let imageId = Object.keys(annotations)[0];
       let annotationsMap = new Map();
+      let tagsMap = new Map();
       let values = annotations[imageId];
+      // Trailing fields are located by index rather than by row length, so a
+      // row carrying tags does not hide the question comment (and a legacy
+      // row that stops short of either index simply has neither).
+      const commentIdx = 2 + valueMapCnn1.length;
+      const tagsIdx = commentIdx + 1;
       values?.forEach((value) => {
         let key = `${value[0].toString()}.${value[1].toString()}`;
-        // Ignore row and col
-        const labels = [...value].splice(2);
+        // Ignore row and col, and stop before the trailing text fields so
+        // they can never be mistaken for a set class flag.
+        const labels = value.slice(2, commentIdx);
         // Find which indices have value 1 and then set the grid values to these
         const indexes = labels.reduce((r, n, i) => {
           n === 1 && r.push(i);
@@ -1222,24 +1548,29 @@ const AnnotationsAndPredictionsContainer = () => {
           if (tileValue === "?") {
             setQuestionTile(key);
             // In this case, download question comment as well and set if non-empty
-            // Check length is 10 for AM or 14 for ErM to make sure we are fetching question comment
-            if (
-              colonisationType === "am"
-                ? value.length === 10
-                : value.length === 14
-            ) {
-              const questionComment = value[value.length - 1];
+            if (value.length > commentIdx) {
+              const questionComment = value[commentIdx];
               // Set if non-empty and non null
               if (questionComment !== null && questionComment !== "") {
                 questionMarkCommentActions.set(key, questionComment);
               }
             }
           }
+
+          // Absent in annotation files written before sub-tags existed.
+          if (value.length > tagsIdx) {
+            const tags = parseTags(value[tagsIdx]);
+            if (tags.length > 0) {
+              tagsMap.set(key, tags);
+            }
+          }
+
           annotationsMap.set(key, tileValue);
         }
       });
 
       cnn1AnnotationActions.setBulk(annotationsMap);
+      tileTagActions.setBulk(tagsMap);
     }
   };
 
@@ -1382,7 +1713,7 @@ const AnnotationsAndPredictionsContainer = () => {
   return (
     <div
       id="annotationsAndPredictionsContainer"
-      className="fullWidth fullHeight"
+      className="fullWidth fullHeight flexColumn"
     >
       <ImageSelectionHeader
         isSelectButtonDisabled={true}
@@ -1393,7 +1724,7 @@ const AnnotationsAndPredictionsContainer = () => {
       {(loadingTiles || loadingImages) && (
         <div
           className="fullWidth flexRowCenter"
-          style={{ height: "calc(100% - 60px)" }}
+          style={{ flex: 1, minHeight: 0 }}
         >
           <div id="circularProgressWrapper">
             <CircularProgress size={120} style={{ color: "rgb(39, 94, 55)" }} />
@@ -1460,6 +1791,19 @@ const AnnotationsAndPredictionsContainer = () => {
             questionCommentOpen={questionCommentOpen}
             questionMarkComments={questionMarkComments}
             questionMarkCommentActions={questionMarkCommentActions}
+            // Sub-tags
+            tileTags={tileTags}
+            allTags={allTags}
+            tagPalette={tagPalette}
+            selectedTileTags={tileTags.get(selectedTileKey) ?? []}
+            hasSelectedClass={cnn1Annotations.has(selectedTileKey)}
+            onCreateTag={onCreateTag}
+            onDeleteTag={onDeleteTag}
+            onToggleTag={onToggleTagOnSelectedTile}
+            onClearTags={onClearTagsOnSelectedTile}
+            setTagInputOpen={setTagInputOpen}
+            tagBadgeSize={tagBadgeSize}
+            tagBadgeFontSize={tagBadgeFontSize}
             // Action button additional props
             saveAnnotations={saveAnnotations}
             areAnnotationsSaving={areAnnotationsSaving}
@@ -1485,6 +1829,13 @@ const AnnotationsAndPredictionsContainer = () => {
             setConvertWithContext={setConvertWithContext}
             contextualLabelFontSize={contextualLabelFontSize}
             contextualLabelSize={contextualLabelSize}
+            autoClassifyBackground={autoClassifyBackground}
+            onAutoClassifyBackgroundToggle={handleAutoClassifyBackgroundToggle}
+            canUndoBackgroundFill={canUndoBackgroundFill}
+            onToggleBackgroundFill={toggleBackgroundFill}
+            backgroundThreshold={backgroundThreshold}
+            onBackgroundThresholdChange={handleBackgroundThresholdChange}
+            onBackgroundThresholdBlur={flushBackgroundThresholdChange}
           />
 
           {/* Warning modal that appears when trying to save with question marks */}
@@ -1498,15 +1849,15 @@ const AnnotationsAndPredictionsContainer = () => {
                 You still have question marks - do you want to proceed with
                 saving?
               </div>
-              <div className="save-questions-row">
+              <div className="save-questions-row buttonRow">
                 <PrimaryButton
-                  sx={{ width: "200px", margin: "5px" }}
+                  sx={{ minWidth: "200px" }}
                   onClick={() => saveAnnotations(true)}
                 >
                   Save Annotations
                 </PrimaryButton>
                 <PrimaryButton
-                  sx={{ width: "200px", margin: "5px" }}
+                  sx={{ minWidth: "200px" }}
                   onClick={() => setQuestionMarkWarning(false)}
                 >
                   Back

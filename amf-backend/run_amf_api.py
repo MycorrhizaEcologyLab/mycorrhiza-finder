@@ -5,11 +5,12 @@ import sys
 import threading
 import webbrowser
 from argparse import ArgumentParser, RawTextHelpFormatter
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from itertools import product
-from typing import Any, AsyncGenerator
+from typing import Any
 
-import psycopg2
+import numpy as np
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,8 @@ from fastapi.templating import Jinja2Templates
 from PIL import Image
 
 import amf.helper.config as AmfConfig
+import amf.helper.model as AmfModel
+import amf.helper.segmentation as AmfSegm
 import amf.mode.bald as AmfBald
 import amf.mode.calibrate as AmfCalibrate
 import amf.mode.colonisation as AmfColonisation
@@ -30,13 +33,15 @@ import amf.mode.test as AmfTest
 import amf.mode.train as AmfTrain
 from amf.helper.api_objects import (
     AnnotationValues,
-    BaseConfig,
     CalibrateConfig,
+    ColonisationConfig,
     ConvertConfig,
+    ImportFolderRequest,
     PredictionConfig,
     PredictionValues,
     Setting,
     Settings,
+    TagPalette,
     TestConfig,
     TifConversionConfig,
     TileEdgeConfig,
@@ -51,14 +56,18 @@ from amf.helper.api_utils import (
     fetch_items,
     get_all_settings_from_db,
     get_images,
+    get_tag_palette,
+    import_predictions_and_annotations_from_folder,
     save_annotations_to_db,
     save_predictions_to_db,
+    save_tag_palette,
     set_to_enabled_in_db,
     update_setting_in_db,
     zip_files_for_transit,
 )
 from amf.helper.db_config import connect, create_database_if_not_exists
 from amf.helper.log import logger
+from amf.helper.settings_schema import get_settings_schema, sync_settings_to_par
 
 # This allows any size image
 Image.MAX_IMAGE_PIXELS = None
@@ -73,8 +82,8 @@ else:
 
 ### CONFIG
 
-# Set this to True when developing and False when building exes
-IS_DEV = True
+# Automatically true whenever NOT running as the packaged exe
+IS_DEV = not getattr(sys, "frozen", False)
 
 
 def shutdown() -> Response:
@@ -89,6 +98,14 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan)
+
+static_dir = os.path.join(wd, "_internal/static")
+if os.path.isdir(static_dir):
+    # Setup serve of static files - files from npm install must be copied here.
+    # Only present in packaged builds (see build.bat); running from source
+    # doesn't need this, since the frontend is served separately via
+    # `npm start` in that case.
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 templates = Jinja2Templates(directory=os.path.join(wd, "_internal/templates"))
 
@@ -129,7 +146,7 @@ def fetch_annotations_cnn1(
 
 
 @app.post("/save-annotations")
-def save_annotations(annotations: AnnotationValues) -> int:
+def save_annotations(annotations: AnnotationValues) -> int | str:
     with conn, conn.cursor() as crsr:
         return save_annotations_to_db(crsr, annotations)
 
@@ -138,6 +155,18 @@ def save_annotations(annotations: AnnotationValues) -> int:
 def save_predictions(predictions: PredictionValues) -> None:  # TODO make consistent
     with conn, conn.cursor() as crsr:
         save_predictions_to_db(crsr, predictions)
+
+
+@app.post("/import-folder")
+def import_folder(request: ImportFolderRequest) -> dict[str, Any]:
+    """
+    Batch-imports every predictions/annotations CSV found directly under the
+    given folder into the database, in one pass.
+    """
+    with conn, conn.cursor() as crsr:
+        return import_predictions_and_annotations_from_folder(
+            crsr, request.folderPath, request.colonisationType
+        )
 
 
 @app.get("/get-image-names")
@@ -149,13 +178,15 @@ def get_image_names() -> list[tuple[str]]:
 @app.get("/check-entries-for-image")
 def check_for_image(
     name: str = "", colonisation_type: str = "am"
-) -> dict[int, dict[str, Any]]:
+) -> dict[Any, dict[str, Any]]:
     with conn, conn.cursor() as crsr:
         return check_entries_for_image(crsr, name, colonisation_type)
 
 
 @app.get("/check-entries-for-id")
-def check_for_id(id_: int, colonisation_type: str = "am") -> dict[int, dict[str, Any]]:
+def check_for_id(
+    id_: int | str, colonisation_type: str = "am"
+) -> dict[Any, dict[str, Any]]:
     with conn, conn.cursor() as crsr:
         return check_entries_for_id(crsr, id_, colonisation_type)
 
@@ -167,7 +198,7 @@ def download(id_: int, type_: str, colonisation_type: str = "am") -> str:
 
 
 @app.delete("/delete-image-reference/{id_}")
-def delete_image_reference(id_: int) -> None:
+def delete_image_reference(id_: int | str) -> None:
     with conn, conn.cursor() as crsr:
         return delete_image(crsr, id_)  # confusing as delete_image returns None
 
@@ -198,13 +229,13 @@ def train_model(train_config: TrainConfig) -> int | None:
     else:
         train_active_learning = AmfConfig.get("train_active_learning")
         ml_flow_flag = (
-            train_config.mlflowFlag if train_config.mlflowFlag is not None else False
+            train_config.mlFlowFlag if train_config.mlFlowFlag is not None else False
         )
         return AmfTrain.run(input_files, ml_flow_flag, train_active_learning)
 
 
 @app.post("/calculate-colonisation")
-def calculate_colonisation(colonisation_config: BaseConfig) -> int:
+def calculate_colonisation(colonisation_config: ColonisationConfig) -> int:
     AmfConfig.set_colonisation_config(colonisation_config)
     input_files = AmfConfig.get_input_files()
     return AmfColonisation.run(input_files)
@@ -300,10 +331,49 @@ async def tile_image(file: UploadFile = File(...)) -> dict[str, int]:
 @app.get("/get-image-tile")
 def get_tiles(startIndex: int, batchSize: int = 1000) -> Response:
     images = AmfConfig.get("tiles")
-    endIndex = (
-        startIndex + batchSize if startIndex + batchSize < len(images) else len(images)
-    )
+    endIndex = min(len(images), startIndex + batchSize)
     return zip_files_for_transit(dict(list(images.items())[startIndex:endIndex]))
+
+
+@app.get("/background-tiles")
+def get_background_tiles(threshold: float = 0.99) -> list[str]:
+    """
+    Classifies the currently tiled image's tiles as background/root using the
+    same mean-pixel-intensity heuristic as the `filter_background` training
+    option, so the manual annotation tool can auto-classify background tiles.
+
+    :param threshold: Mean intensity (normalised to [0, 1]) at or above which
+                       a tile is considered background (near-white).
+    """
+    tiles: dict[str, bytes] = AmfConfig.get("tiles")
+    background_keys = []
+    for key, tile_bytes in tiles.items():
+        tile_array = np.array(Image.open(io.BytesIO(tile_bytes)))
+        if AmfSegm.is_background_tile(tile_array, threshold=threshold):
+            background_keys.append(key)
+    return background_keys
+
+
+@app.get("/model-architecture")
+def get_model_architecture(path: str) -> dict[str, Any]:
+    """
+    Loads the given model checkpoint and reports its class name, so the
+    Settings page can tell whether it's a transformer architecture (which
+    requires Resize Dimension to be set) without the user needing to know.
+    """
+    return AmfModel.inspect_model_architecture(path)
+
+
+@app.get("/trained-models")
+def get_trained_models() -> list[str]:
+    """
+    Lists the .pth files available in the trained networks directory, for
+    the Model for AM/ErM dropdowns.
+    """
+    model_dir = AmfConfig.get_model_dir()
+    if not os.path.isdir(model_dir):
+        return []
+    return sorted(f for f in os.listdir(model_dir) if f.endswith(".pth"))
 
 
 @app.post("/set-tile-edge")
@@ -318,6 +388,7 @@ def save_settings(settings: Settings) -> None:
     with conn, conn.cursor() as crsr:
         for x in settings:
             update_setting_in_db(crsr, x[0], x[1])
+    sync_settings_to_par(dict(settings))
 
 
 @app.get("/get-all-settings")
@@ -326,10 +397,34 @@ def get_all_settings() -> dict[str, Any]:
         return get_all_settings_from_db(crsr)
 
 
+@app.get("/settings-schema")
+def settings_schema() -> list[dict[str, Any]]:
+    return get_settings_schema()
+
+
+@app.get("/tag-palette")
+def tag_palette() -> dict[str, str]:
+    """
+    The user's annotation sub-tag name -> colour map.
+    """
+    with conn, conn.cursor() as crsr:
+        return get_tag_palette(crsr)
+
+
+@app.post("/tag-palette")
+def update_tag_palette(palette: TagPalette) -> dict[str, str]:
+    with conn, conn.cursor() as crsr:
+        save_tag_palette(crsr, palette.colours)
+        return get_tag_palette(crsr)
+
+
 @app.post("/revert-setting-to-default")
 def revert_setting_to_default(setting: Setting) -> dict[str, Any] | int:
     with conn, conn.cursor() as crsr:
-        return change_setting_to_default_in_db(crsr, setting.key)
+        result = change_setting_to_default_in_db(crsr, setting.key)
+    if isinstance(result, dict):
+        sync_settings_to_par({result["key"]: result["value"]})
+    return result
 
 
 @app.post("/revert-all-settings-to-default")
@@ -337,7 +432,17 @@ def revert_all_settings_to_default(settings: Settings) -> int:
     with conn, conn.cursor() as crsr:
         for x in settings:
             change_setting_to_default_in_db(crsr, x[0])
+        sync_settings_to_par(get_all_settings_from_db(crsr))
     return 200
+
+
+# Catch-all for client-side (react-router) routes, e.g. /settings, /browser -
+# must be registered last so it doesn't shadow any route/mount above. Lets a
+# browser refresh or direct navigation to those paths still load the SPA,
+# which then takes over routing client-side.
+@app.get("/{full_path:path}")
+async def serve_spa_catch_all(request: Request) -> Response:
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 ############# UTILS ################
@@ -345,38 +450,6 @@ def revert_all_settings_to_default(settings: Settings) -> int:
 
 def open_browser() -> None:
     threading.Timer(1.25, lambda: webbrowser.open("http://127.0.0.1:8001")).start()
-
-
-def check_if_settings_exists(crsr: psycopg2.extensions.cursor) -> bool:
-    # Query to check if the table exists
-    crsr.execute(
-        """
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables
-            WHERE  table_schema = 'public'
-            AND    table_name   = %s
-        );
-    """,
-        ("settings",),
-    )
-
-    table_exists = crsr.fetchone()[0]
-
-    if not table_exists:
-        logger.debug("Table settings does not exist.")
-        return False
-
-    crsr.execute("SELECT COUNT(*) FROM settings")
-
-    # Fetch the count result
-    row_count = crsr.fetchone()[0]
-
-    if row_count == 0:
-        logger.debug("Settings exists but it is empty.")
-        return False
-    else:
-        logger.info(f"Settings exists and it contains {row_count} rows.")
-        return True
 
 
 ### MAIN
@@ -407,15 +480,19 @@ if __name__ == "__main__":
         # Initial setup of tables
         crsr.execute(open(os.path.join(scripts_dir, "create_schema.sql"), "r").read())
 
-        # Check if settings exist, and if not populate table with default values
-        settings_exist = check_if_settings_exists(crsr)
-        if not settings_exist:
-            logger.info("Populating settings.")
-            crsr.execute(
-                open(
-                    os.path.join(wd, scripts_dir, "fill_default_settings.sql"), "r"
-                ).read()
-            )
+        # Seed settings defaults. Idempotent (ON CONFLICT DO NOTHING), so this
+        # runs unconditionally: it populates a fresh database AND adds any
+        # newly-introduced key to one created by an older version, which is
+        # what removes the need for hand-run migration scripts. Values the
+        # user has already set are left untouched.
+        logger.info("Applying settings defaults.")
+        crsr.execute(
+            open(os.path.join(scripts_dir, "fill_default_settings.sql"), "r").read()
+        )
+
+        # Mirror whatever's persisted (freshly seeded or from a previous
+        # session) into AmfConfig.PAR, see sync_settings_to_par's docstring.
+        sync_settings_to_par(get_all_settings_from_db(crsr))
 
     # Only open browser if running from exe - https://pyinstaller.org/en/stable/runtime-information.html
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS") and not IS_DEV:

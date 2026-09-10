@@ -23,7 +23,9 @@ const AmfToolActionButtons = ({
   return (
     <div
       className="amfinder-buttons-container"
-      style={{ minWidth: "725px", maxWidth: "1300px" }}
+      // No minWidth: the seven squares need ~1015px in a single row, so
+      // forcing one would prevent them wrapping on a narrower viewport.
+      style={{ maxWidth: "1300px" }}
     >
       <AmfToolActionButton
         isSelected={selectedAction === "predict"}

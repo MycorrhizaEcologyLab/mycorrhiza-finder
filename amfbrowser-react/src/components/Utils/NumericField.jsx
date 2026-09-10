@@ -6,6 +6,7 @@ export default function NumericField({
   label,
   value,
   onChange,
+  onBlur,
   min = 0,
   max = undefined,
   step = 1,
@@ -44,6 +45,7 @@ export default function NumericField({
         <NumberField.Input
           className="NumericFieldInput"
           onInput={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
         />
         <NumberField.Increment className="NumericFieldIncrement">
           <PlusIcon />

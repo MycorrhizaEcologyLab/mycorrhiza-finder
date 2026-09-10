@@ -1,9 +1,9 @@
 import { useLocation } from "react-router-dom";
 import AnnotationsLeftSidebar from "../Annotations/AnnotationsLeftSidebar";
-import AnnotationsAndPredictionsCentralPane from "./AnnotationsAndPredictionsCentralPane";
 import AnnotationsRightSidebar from "../Annotations/AnnotationsRightSidebar";
 import PredictionsLeftSidebar from "../Predictions/PredictionsLeftSidebar";
 import PredictionsRightSidebar from "../Predictions/PredictionsRightSidebar";
+import AnnotationsAndPredictionsCentralPane from "./AnnotationsAndPredictionsCentralPane";
 
 const AnnotationsAndPredictionsWindow = ({
   colorMappingCnn1,
@@ -53,6 +53,19 @@ const AnnotationsAndPredictionsWindow = ({
   questionCommentOpen,
   questionMarkComments,
   questionMarkCommentActions,
+  // Sub-tags
+  tileTags,
+  allTags,
+  tagPalette,
+  selectedTileTags,
+  hasSelectedClass,
+  onCreateTag,
+  onDeleteTag,
+  onToggleTag,
+  onClearTags,
+  setTagInputOpen,
+  tagBadgeSize,
+  tagBadgeFontSize,
   // Action buttons additional props
   saveAnnotations,
   areAnnotationsSaving,
@@ -68,6 +81,13 @@ const AnnotationsAndPredictionsWindow = ({
   setConvertWithContext,
   contextualLabelSize,
   contextualLabelFontSize,
+  autoClassifyBackground,
+  onAutoClassifyBackgroundToggle,
+  canUndoBackgroundFill,
+  onToggleBackgroundFill,
+  backgroundThreshold,
+  onBackgroundThresholdChange,
+  onBackgroundThresholdBlur,
 }) => {
   const { pathname } = useLocation();
   const showAnnotations = pathname.includes("annotations");
@@ -77,7 +97,9 @@ const AnnotationsAndPredictionsWindow = ({
     <div
       id="browserMainWindow"
       className="fullWidth flexRowCenter"
-      style={{ height: "calc(100% - 60px)" }}
+      // Fills whatever the header leaves rather than assuming it is exactly
+      // 60px (it grows when the Image Directory banner shows).
+      style={{ flex: 1, minHeight: 0 }}
     >
       {/* Left Sidebar */}
       {showAnnotations && (
@@ -88,6 +110,15 @@ const AnnotationsAndPredictionsWindow = ({
           icons={headerToValueMapCnn1}
           handleModeChange={handleModeChange}
           keyBindings={keyBindingsCnn1}
+          allTags={allTags}
+          tagPalette={tagPalette}
+          selectedTileTags={selectedTileTags}
+          hasSelectedClass={hasSelectedClass}
+          onCreateTag={onCreateTag}
+          onDeleteTag={onDeleteTag}
+          onToggleTag={onToggleTag}
+          onClearTags={onClearTags}
+          setTagInputOpen={setTagInputOpen}
         />
       )}
       {showPredictions && (
@@ -141,6 +172,11 @@ const AnnotationsAndPredictionsWindow = ({
         questionCommentOpen={questionCommentOpen}
         questionMarkComments={questionMarkComments}
         questionMarkCommentActions={questionMarkCommentActions}
+        tileTags={tileTags}
+        allTags={allTags}
+        tagPalette={tagPalette}
+        tagBadgeSize={tagBadgeSize}
+        tagBadgeFontSize={tagBadgeFontSize}
         // Action buttons additional props
         saveAnnotations={saveAnnotations}
         areAnnotationsSaving={areAnnotationsSaving}
@@ -150,6 +186,13 @@ const AnnotationsAndPredictionsWindow = ({
         convertWithContext={convertWithContext}
         contextualLabelSize={contextualLabelSize}
         contextualLabelFontSize={contextualLabelFontSize}
+        autoClassifyBackground={autoClassifyBackground}
+        onAutoClassifyBackgroundToggle={onAutoClassifyBackgroundToggle}
+        canUndoBackgroundFill={canUndoBackgroundFill}
+        onToggleBackgroundFill={onToggleBackgroundFill}
+        backgroundThreshold={backgroundThreshold}
+        onBackgroundThresholdChange={onBackgroundThresholdChange}
+        onBackgroundThresholdBlur={onBackgroundThresholdBlur}
       />
       {showAnnotations && (
         <AnnotationsRightSidebar

@@ -5,6 +5,7 @@ import PredictionsApi from "../../api/amfinderApi";
 import { GlobalContextProvider } from "../../contexts/Contexts";
 import Modal from "../Utils/Modal";
 import PrimaryButton from "../Utils/PrimaryButton";
+import { formatTimestampForFilename } from "../Utils/utils";
 import ExistingTableContainer from "./ExistingTableContainer";
 import ImageNameContainer from "./ImageNameContainer";
 import "./styles/existing.css";
@@ -75,9 +76,15 @@ export default function ExistingContainer() {
     var encodedUri = encodeURI(csvContent);
     var link = document.createElement("a");
     link.setAttribute("href", encodedUri);
+    // Canonical YYYYMMDD_HHMMSS token so the downloaded file matches the
+    // convention the importer and local-file mode expect, and so it can be
+    // read straight back in.
+    const timestampToken = formatTimestampForFilename(timestamp);
     link.setAttribute(
       "download",
-      `${image}_${timestamp.toString()}_cnn_${cnn}_${type}.csv`,
+      timestampToken
+        ? `${image}_${timestampToken}_cnn_${cnn}_${type}.csv`
+        : `${image}_cnn_${cnn}_${type}.csv`,
     );
     document.body.appendChild(link);
 
@@ -161,9 +168,9 @@ export default function ExistingContainer() {
           <div className="save-questions-row">
             Are you sure you want to delete?
           </div>
-          <div className="save-questions-row">
+          <div className="save-questions-row buttonRow">
             <PrimaryButton
-              sx={{ width: "200px", margin: "5px" }}
+              sx={{ minWidth: "200px" }}
               onClick={() => {
                 onDelete(pendingDeletionId);
                 toast.success("Analysis successfully deleted");
@@ -173,7 +180,7 @@ export default function ExistingContainer() {
               Confirm
             </PrimaryButton>
             <PrimaryButton
-              sx={{ width: "200px", margin: "5px" }}
+              sx={{ minWidth: "200px" }}
               onClick={() => setPendingDeletionId(null)}
             >
               Cancel

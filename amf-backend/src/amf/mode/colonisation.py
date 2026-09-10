@@ -67,7 +67,7 @@ def run(input_images: list[str]) -> int:
     logger.info(f"Results Directory: {results_dir}")
 
     # Creating dataset
-    dataset_loader = AmfLoad.TileFilesandData(input_images)
+    dataset_loader = AmfLoad.TileFilesandData(input_images, load_images=False)
     x_test, y_test, filenames, rows, cols = dataset_loader.get_all_data()
 
     get_colonisation_results(

@@ -65,6 +65,7 @@ import amf.helper.config as AmfConfig
 import amf.helper.load as AmfLoad
 import amf.helper.model as AmfModel
 import amf.helper.save as AmfSave
+import amf.helper.segmentation as AmfSegm
 
 # logger = tf.get_logger()
 # logger.setLevel(logging.ERROR)
@@ -325,8 +326,7 @@ def run(
         # Auto-filter out background tiles based on mean pixel intensity above the given
         # threshold (mostly white and black tiles)
         for idx, tile in enumerate(x):
-            mean_intensity = np.mean(tile) / 255.0  # Normalise to [0, 1]
-            if mean_intensity >= empty_threshold or mean_intensity <= 0.01:
+            if AmfSegm.is_background_tile(tile, threshold=empty_threshold):
                 empty_indices.append(idx)
             else:
                 root_indices.append(idx)

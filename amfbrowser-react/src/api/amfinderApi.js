@@ -134,6 +134,11 @@ export default class PredictionsApi {
     return await this.getFromBackend(fetchPredictionsUrl);
   }
 
+  static async importFolder(request_body) {
+    const importFolderUrl = `http://127.0.0.1:8001/import-folder`;
+    return this.postToBackendWithResponse(importFolderUrl, request_body);
+  }
+
   static async saveAnnotations(request_body, return_status = false) {
     const saveAnnotationsUrl = `http://127.0.0.1:8001/save-annotations`;
     if (return_status) {
@@ -207,6 +212,11 @@ export default class PredictionsApi {
     return await this.getFromBackend(getAllSettingsUrl);
   }
 
+  static async getSettingsSchema() {
+    const getSettingsSchemaUrl = "http://127.0.0.1:8001/settings-schema";
+    return await this.getFromBackend(getSettingsSchemaUrl);
+  }
+
   static async revertSettingToDefault(request_body) {
     const revertUrl = "http://127.0.0.1:8001/revert-setting-to-default";
     return await this.postToBackendWithResponse(revertUrl, request_body);
@@ -215,6 +225,18 @@ export default class PredictionsApi {
   static async revertAllSettingsToDefault(request_body) {
     const revertUrl = "http://127.0.0.1:8001/revert-all-settings-to-default";
     return await this.postToBackend(revertUrl, request_body);
+  }
+
+  ////// Sub-tag palette //////
+
+  static async getTagPalette() {
+    const tagPaletteUrl = "http://127.0.0.1:8001/tag-palette";
+    return await this.getFromBackend(tagPaletteUrl);
+  }
+
+  static async saveTagPalette(colours) {
+    const tagPaletteUrl = "http://127.0.0.1:8001/tag-palette";
+    return await this.postToBackendWithResponse(tagPaletteUrl, { colours });
   }
 
   ////// Download //////
@@ -257,5 +279,20 @@ export default class PredictionsApi {
   static async setTileEdgeBackend(body) {
     const setTileEdgeUrl = `http://127.0.0.1:8001/set-tile-edge`;
     return await this.postToBackend(setTileEdgeUrl, body);
+  }
+
+  static async getBackgroundTiles(threshold) {
+    const getBackgroundTilesUrl = `http://127.0.0.1:8001/background-tiles?threshold=${threshold}`;
+    return await this.getFromBackend(getBackgroundTilesUrl);
+  }
+
+  static async checkModelArchitecture(path) {
+    const checkModelArchitectureUrl = `http://127.0.0.1:8001/model-architecture?path=${encodeURIComponent(path)}`;
+    return await this.getFromBackend(checkModelArchitectureUrl);
+  }
+
+  static async getTrainedModels() {
+    const getTrainedModelsUrl = "http://127.0.0.1:8001/trained-models";
+    return await this.getFromBackend(getTrainedModelsUrl);
   }
 }
