@@ -1,20 +1,20 @@
-import { NavLink } from "react-router-dom";
-import { styled } from "@mui/material/styles";
-import MuiDrawer from "@mui/material/Drawer";
-import Divider from "@mui/material/Divider";
-import IconButton from "@mui/material/IconButton";
+import BuildOutlinedIcon from "@mui/icons-material/BuildOutlined";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import OnlinePredictionOutlinedIcon from "@mui/icons-material/OnlinePredictionOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import Divider from "@mui/material/Divider";
+import MuiDrawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import BuildOutlinedIcon from "@mui/icons-material/BuildOutlined";
-import OnlinePredictionOutlinedIcon from "@mui/icons-material/OnlinePredictionOutlined";
-import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
+import { styled } from "@mui/material/styles";
+import { NavLink } from "react-router-dom";
 
 import combinedLogo from "../../assets/combined-logo.png";
 
@@ -217,7 +217,7 @@ const Sidebar = ({ open, handleSidebarChange }) => {
                 fontSize: "10px",
               }}
             >
-              v5.0.0
+              v6.0.0
             </div>
           </div>
         </div>

@@ -57,12 +57,13 @@ const PredictionAndAnnotationSelection = ({
       )}
       <div
         id="predictionAndAnnotationButtonWrapper"
+        className="buttonRow"
         style={{ marginTop: "30px", marginBottom: "30px" }}
       >
         {/* Create annotations */}
         <PrimaryButton
           disabled={selectedKey != null}
-          sx={{ height: "40px", width: "200px", marginRight: "10px" }}
+          sx={{ minWidth: "200px" }}
           onClick={() => navigateToAnnotations(null, selectedTileEdge)}
         >
           Create annotations
@@ -71,12 +72,7 @@ const PredictionAndAnnotationSelection = ({
         {/* Edit annotations */}
         <PrimaryButton
           disabled={selectedKey == null || !hasExistingAnnotations}
-          sx={{
-            height: "40px",
-            width: "200px",
-            marginLeft: "5px",
-            marginRight: "5px",
-          }}
+          sx={{ minWidth: "200px" }}
           onClick={() => navigateToAnnotations(selectedKey, selectedTileEdge)}
         >
           Edit annotations
@@ -85,7 +81,7 @@ const PredictionAndAnnotationSelection = ({
         {/* View predictions */}
         <PrimaryButton
           disabled={selectedKey == null || !hasExistingPredictions}
-          sx={{ height: "40px", width: "200px", marginLeft: "10px" }}
+          sx={{ minWidth: "200px" }}
           onClick={() => navigateToPredictions(selectedKey, selectedTileEdge)}
         >
           View predictions

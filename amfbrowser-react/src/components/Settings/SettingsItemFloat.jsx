@@ -6,6 +6,7 @@ const SettingsItemFloat = ({
   name,
   displayName,
   defaultValue,
+  help,
   value,
   handleInputChange,
   step = "any",
@@ -23,13 +24,16 @@ const SettingsItemFloat = ({
 
   return (
     <div className="settings-item">
-      <label htmlFor={name} title={`(type: float, default: ${defaultValue})`}>
+      <label
+        htmlFor={name}
+        title={`${help ? help + " " : ""}(type: float, default: ${defaultValue})`}
+      >
         {displayName}
       </label>
       <TextField
         className="text-input"
         name={name}
-        value={value}
+        value={value ?? ""}
         onChange={handleInputChange}
         disabled={disabled}
         step={step}

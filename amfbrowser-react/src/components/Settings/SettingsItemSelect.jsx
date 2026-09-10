@@ -7,6 +7,7 @@ const SettingsItemSelect = ({
   name,
   displayName,
   defaultValue,
+  help,
   value,
   options,
   handleInputChange,
@@ -24,13 +25,16 @@ const SettingsItemSelect = ({
 
   return (
     <div className="settings-item">
-      <label htmlFor={name} title={`(type: string, default: ${defaultValue})`}>
+      <label
+        htmlFor={name}
+        title={`${help ? help + " " : ""}(type: string, default: ${defaultValue})`}
+      >
         {displayName}
       </label>
       <Select
         className="select"
         name={name}
-        value={value}
+        value={value ?? defaultValue}
         onChange={handleInputChange}
       >
         {options.map((option, index) => (

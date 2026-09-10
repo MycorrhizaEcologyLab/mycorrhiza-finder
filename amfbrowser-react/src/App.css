@@ -27,8 +27,14 @@ code {
 #mainWindow {
   display: flex;
   height: calc(100vh - 40px);
-  align-items: center;
-  justify-content: center;
+  /* `safe` keeps centring on roomy viewports but falls back to start-alignment
+     when the content is taller than the window, so the top stays reachable
+     instead of being clipped above the scroll origin. */
+  align-items: safe center;
+  justify-content: safe center;
+  /* Content taller than the window scrolls here rather than overflowing and
+     painting over whatever sits below it. */
+  overflow-y: auto;
   background-color: rgb(250, 249, 248);
 }
 

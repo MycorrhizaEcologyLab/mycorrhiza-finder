@@ -182,6 +182,25 @@ def tile(
     return np.transpose(tile.astype(np.uint8), (2, 0, 1))
 
 
+def is_background_tile(
+    tile: NDArray[np.uint8], threshold: float = 0.99, low_threshold: float = 0.01
+) -> bool:
+    """
+    Classifies a tile as background based on its mean pixel intensity - the same
+    heuristic used by the `filter_background` training option: tiles that are
+    almost entirely white or almost entirely black are treated as background.
+
+    :param tile: Tile as a NumPy array of pixel values (any shape/channel order,
+                 since only the overall mean is used).
+    :param threshold: Mean intensity (normalised to [0, 1]) at or above which a
+                       tile is considered background (near-white).
+    :param low_threshold: Mean intensity at or below which a tile is considered
+                           background (near-black).
+    """
+    mean_intensity = np.mean(tile) / 255.0
+    return bool(mean_intensity >= threshold or mean_intensity <= low_threshold)
+
+
 def preprocess(tile_list: list[NDArray[np.uint8]]) -> NDArray[np.float32]:
     """
     Preprocess a list of tiles.

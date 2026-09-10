@@ -21,6 +21,11 @@ const AnnotationsViewer = ({
   questionCommentOpen,
   questionMarkComments,
   questionMarkCommentActions,
+  tileTags,
+  allTags,
+  tagPalette,
+  tagBadgeSize,
+  tagBadgeFontSize,
 }) => {
   const [tileWidth, setTileWidth] = useState(0);
 
@@ -51,12 +56,15 @@ const AnnotationsViewer = ({
           row: currentRow,
           col: currentCol,
           disabled,
+          // Undefined for the vast majority of tiles - only tagged ones get
+          // the ring and badge treatment in AnnotationsTile.
+          tags: tileTags?.get(key),
         });
       }
     }
 
     return tiles;
-  }, [topLeftTile, gridDataCnn1, numRows, numCols]);
+  }, [topLeftTile, gridDataCnn1, numRows, numCols, tileTags]);
 
   return (
     <div
@@ -84,6 +92,10 @@ const AnnotationsViewer = ({
         setQuestionCommentOpen={setQuestionCommentOpen}
         questionCommentOpen={questionCommentOpen}
         questionMarkCommentActions={questionMarkCommentActions}
+        allTags={allTags}
+        tagPalette={tagPalette}
+        tagBadgeSize={tagBadgeSize}
+        tagBadgeFontSize={tagBadgeFontSize}
         questionMarkComments={questionMarkComments}
       />
     </div>

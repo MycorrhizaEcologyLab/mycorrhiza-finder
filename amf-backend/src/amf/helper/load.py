@@ -847,6 +847,11 @@ class TileFilesandData(
     Expected Inputs:
     input_files: List of file paths to the images used for training. These images should
         ideally have corresponding annotation files or data.
+    load_images: When False, skips loading and tiling image pixel data for the
+        labelled (non-BALD) path - only the labels, filenames, and row/col metadata
+        are collected. Used by colonisation mode, which never uses the pixel data
+        and would otherwise pay for a full image decode plus a crop/array
+        conversion per annotated tile.
 
     Methods and Workflow:
     __init__(self, input_files):
@@ -875,7 +880,12 @@ class TileFilesandData(
     cols (list): Column indices for each extracted tile.
     """
 
-    def __init__(self, input_files: list[str], is_bald_folder: bool = False):
+    def __init__(
+        self,
+        input_files: list[str],
+        is_bald_folder: bool = False,
+        load_images: bool = True,
+    ):
         self.input_files = input_files
         if AmfConfig.get("dynamic_loading"):
             pretiled_dir = AmfConfig.get("pretiled_dir")
@@ -885,7 +895,9 @@ class TileFilesandData(
             )
         else:
             self.x, self.y, self.file_names, self.rows, self.cols = (
-                self._load_and_process_data(is_bald_folder)  # type: ignore[misc] # TODO fix better
+                self._load_and_process_data(  # type: ignore[misc] # TODO fix better
+                    is_bald_folder, load_images=load_images
+                )
             )
         if is_bald_folder:
             (
@@ -902,7 +914,10 @@ class TileFilesandData(
             self.cols_unlabelled = None
 
     def _load_and_process_data(
-        self, is_bald_folder: bool = False, is_unlabelled: bool = False
+        self,
+        is_bald_folder: bool = False,
+        is_unlabelled: bool = False,
+        load_images: bool = True,
     ) -> (
         tuple[
             list[NDArray[np.uint8]],
@@ -950,12 +965,16 @@ class TileFilesandData(
             logger.info(f"{len(filtered_dataset)} images in filtered dataset.")
 
             # Process and normalize dataset
-            x, y, file_names, rows, cols = self._process_dataset(filtered_dataset)
+            x, y, file_names, rows, cols = self._process_dataset(
+                filtered_dataset, load_images=load_images
+            )
 
             return x, y, file_names, rows, cols
 
     def _process_dataset(
-        self, dataset: list[tuple[str, dict[str, int], pd.DataFrame]]
+        self,
+        dataset: list[tuple[str, dict[str, int], pd.DataFrame]],
+        load_images: bool = True,
     ) -> tuple[
         list[NDArray[np.uint8]],
         list[NDArray[np.uint8]],
@@ -973,9 +992,11 @@ class TileFilesandData(
             edge = config["tile_edge"]
             AmfConfig.set_("tile_edge", edge)
 
-            image = AmfSegm.load(path)
+            image = AmfSegm.load(path) if load_images else None
             for annot in annots.itertuples():
-                if AmfConfig.get("dynamic_loading"):
+                if not load_images:
+                    tile = None
+                elif AmfConfig.get("dynamic_loading"):
                     # Store file path for dynamic loading
                     tile = path  # Save path, actual tile will be loaded in __getitem__
                 else:
@@ -988,7 +1009,8 @@ class TileFilesandData(
                 hot_labels.append(label)
                 file_names.append(path)
 
-            del image
+            if image is not None:
+                del image
 
         return (
             tiles,
@@ -1142,6 +1164,14 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
     Imports tile annotations from the auxiliary ZIP archive
     associated with the given input image.
 
+    Returns row/col plus the class one-hot columns ONLY. Every non-class
+    column (AmfConfig.ANNOTATION_EXTRA_COLUMNS) is dropped here, because
+    callers slice the label vector positionally as `annot[3:]` and feed it
+    straight to np.array(..., dtype=np.uint8). A leftover text column would
+    raise there, and a leftover numeric one would silently widen the one-hot
+    and corrupt np.argmax. Any new annotation column must be added to that
+    list, not just handled downstream.
+
     :param path: Path to an input image.
     :return: Pandas dataframe containing annotations
     :rtype: pd.DataFrame
@@ -1180,19 +1210,13 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
                 )
                 output = pd.read_csv(io.StringIO(csv), sep=",")
 
-                # Drop question marks from the CSV
-                if "Question" in output.columns:
-                    # logger.info(f"Dropping questions from annotations for {image_name}")
-                    output.drop("Question", axis=1, inplace=True, errors="ignore")
-
-                # Drop question comments from the CSV
-                if "QuestionComment" in output.columns:
-                    # logger.info(
-                    #     f"Dropping question comments from annotations for {image_name}"
-                    # )
-                    output.drop(
-                        "QuestionComment", axis=1, inplace=True, errors="ignore"
-                    )
+                # Drop the non-class columns (Question, QuestionComment, Tags)
+                # so only row/col and the class one-hots remain.
+                output.drop(
+                    columns=AmfConfig.ANNOTATION_EXTRA_COLUMNS,
+                    inplace=True,
+                    errors="ignore",
+                )
 
                 # Further check that csv is not empty
                 if is_bald_folder and output.empty:
@@ -1206,7 +1230,10 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
             directory = os.path.dirname(path)
             files = os.listdir(directory)
 
-            regex_pattern = f"{image_name}_.+cnn_1_annotations.+"
+            # Escaped so regex metacharacters in an image name are matched
+            # literally; the loose middle section matches both the current and
+            # legacy timestamp conventions.
+            regex_pattern = f"{re.escape(image_name)}_.+cnn_1_annotations.+"
 
             # Collect matching annotation files
             matching_annotations = [
@@ -1225,18 +1252,15 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
 
             output = pd.read_csv(os.path.join(directory, matching_annotations[0]))
 
-            # If question does not exist then do not error when dropping
-            # (for legacy CSVs)
-            if "Question" in output.columns:
-                # logger.info(f"Dropping questions from annotations for {image_name}")
-                output.drop("Question", axis=1, inplace=True, errors="ignore")
-
-            # Drop question comments from the CSV
-            if "QuestionComment" in output.columns:
-                # logger.info(
-                #     f"Dropping question comments from annotations for {image_name}"
-                # )
-                output.drop("QuestionComment", axis=1, inplace=True, errors="ignore")
+            # Drop the non-class columns (Question, QuestionComment, Tags) so
+            # only row/col and the class one-hots remain - callers read
+            # everything from the third column on as the label vector.
+            # errors="ignore" covers legacy CSVs that lack some or all of them.
+            output.drop(
+                columns=AmfConfig.ANNOTATION_EXTRA_COLUMNS,
+                inplace=True,
+                errors="ignore",
+            )
 
             # Further check that csv is not empty
             if output.empty:

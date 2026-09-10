@@ -42,7 +42,7 @@ const PredictionsLeftSidebar = ({
   return (
     <div
       id="PredictionsLeftSidebar"
-      className="fullHeight flexColumn"
+      className="fullHeight flexColumn sidebarColumn"
       style={{
         width: isOpen ? "200px" : "100px",
         overflowY: "auto",

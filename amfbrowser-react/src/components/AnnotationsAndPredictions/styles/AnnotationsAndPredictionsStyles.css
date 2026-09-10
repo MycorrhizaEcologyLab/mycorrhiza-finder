@@ -21,6 +21,16 @@
   transition: width 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms;
 }
 
+/* The sidebar sections set fixed pixel heights, but as flex items in a column
+   they default to flex-shrink: 1. On a short viewport they were therefore
+   squashed below those heights while their contents kept their own size, so
+   the contents overlapped each other and the column's overflow-y never
+   engaged. Holding each section at its natural height instead makes the
+   column overflow, which is what the existing `overflow-y: auto` handles. */
+.sidebarColumn > * {
+  flex-shrink: 0;
+}
+
 /* From old "AnnotationsGrid" folder */
 .annotation-tile {
   border-radius: 10px;

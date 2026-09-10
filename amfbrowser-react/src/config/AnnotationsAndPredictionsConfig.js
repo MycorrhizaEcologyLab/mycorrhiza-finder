@@ -164,3 +164,60 @@ const headerToKeyBindingsMapCnn1Erm = new Map([
   ["HD+", "Y"],
   ["?", "? or /"],
 ]);
+
+/* Sub-tags -------------------------------------------------------------- */
+
+// Separator packing multiple sub-tags into one CSV cell. Must match
+// TAG_DELIMITER in the backend's config.py.
+export const TAG_DELIMITER = "|";
+
+// Fallback colours, handed out in order to tags that have no stored colour
+// (e.g. an annotation file opened on a machine with no saved palette). Chosen
+// to stay distinguishable from the class colours above.
+export const DEFAULT_TAG_COLOURS = [
+  "#1b998b",
+  "#e07a5f",
+  "#8367c7",
+  "#dd6e42",
+  "#2a9d8f",
+  "#c9184a",
+  "#457b9d",
+  "#b56576",
+  "#6a994e",
+  "#9c6644",
+];
+
+export const parseTags = (value) => {
+  if (value === null || value === undefined) {
+    return [];
+  }
+  const text = String(value).trim();
+  if (text === "" || text.toLowerCase() === "nan") {
+    return [];
+  }
+  const tags = [];
+  text.split(TAG_DELIMITER).forEach((part) => {
+    const tag = part.trim();
+    if (tag !== "" && !tags.includes(tag)) {
+      tags.push(tag);
+    }
+  });
+  return tags;
+};
+
+// Packs sub-tags into a single delimited cell. Round-tripping through
+// parseTags trims, de-duplicates and drops empties; the trailing join is what
+// turns the result back into a string. Must stay equivalent to format_tags in
+// the backend's api_utils.py - a row element has to be a string, not a list.
+export const formatTags = (tags) =>
+  parseTags((tags ?? []).join(TAG_DELIMITER)).join(TAG_DELIMITER);
+
+// Resolves a tag's colour: the stored palette wins, otherwise a stable slot in
+// the default cycle based on the tag's position in the known tag list.
+export const getTagColour = (tag, palette, allTags) => {
+  if (palette && palette[tag]) {
+    return palette[tag];
+  }
+  const idx = Math.max(0, (allTags ?? []).indexOf(tag));
+  return DEFAULT_TAG_COLOURS[idx % DEFAULT_TAG_COLOURS.length];
+};

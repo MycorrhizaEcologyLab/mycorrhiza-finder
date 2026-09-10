@@ -6,6 +6,7 @@ const SettingsItemText = ({
   name,
   displayName,
   defaultValue,
+  help,
   value,
   handleInputChange,
   disabled = false,
@@ -22,13 +23,16 @@ const SettingsItemText = ({
 
   return (
     <div className="settings-item">
-      <label htmlFor={name} title={`(type: string, default: ${defaultValue})`}>
+      <label
+        htmlFor={name}
+        title={`${help ? help + " " : ""}(type: string, default: ${defaultValue})`}
+      >
         {displayName}
       </label>
       <TextField
         className="text-input"
         name={name}
-        value={value}
+        value={value ?? ""}
         onChange={handleInputChange}
         disabled={disabled}
       />

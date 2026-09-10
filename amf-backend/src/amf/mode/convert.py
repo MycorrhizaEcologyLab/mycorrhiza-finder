@@ -109,6 +109,19 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
     preds_without_coord = preds.drop(["row", "col"], axis=1)
     preds_numpy = preds_without_coord.to_numpy()
 
+    header = cast(list[str], AmfConfig.get("header"))
+    if preds_numpy.shape[1] != len(header):
+        raise ValueError(
+            f"Predictions file {os.path.basename(str(preds_path))} has "
+            f"{preds_numpy.shape[1]} class column(s) but the current "
+            f"colonisation type ('{AmfConfig.get('colonisation_type')}') "
+            f"expects {len(header)} ({', '.join(header)}). This usually means "
+            f"the file doesn't actually hold predictions for that colonisation "
+            f"type (e.g. it was accidentally overwritten with a different "
+            f"file's contents) - check the file, or that the correct "
+            f"colonisation type is selected, before converting."
+        )
+
     # Filter out any preds below the threshold
     max_scores = preds_numpy.max(axis=1)
     high_conf_mask = max_scores >= threshold
@@ -117,6 +130,14 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
     preds_numpy = preds_numpy[high_conf_mask]
     if contextual_labels is not None:
         contextual_labels = contextual_labels[high_conf_mask].reset_index(drop=True)
+
+    if len(preds_numpy) == 0:
+        logger.warning(
+            f"No tiles in {os.path.basename(path)} met the confidence "
+            f"threshold ({threshold}) - skipping annotation conversion for "
+            f"this image."
+        )
+        return pd.DataFrame(columns=["row", "col"] + header)
 
     # Initialize conversion matrix
     conv = np.zeros_like(preds_numpy, dtype=np.uint8)
@@ -129,7 +150,6 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
         logger.info(
             "Using contextual confidence for converting predictions to annotations"
         )
-        header = AmfConfig.get("header")
         for idx, label in enumerate(contextual_labels):
             if not pd.isnull(label):
                 # Reset this row (all zeros)
@@ -142,7 +162,7 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
         + "\t".join([str(x) for x in np.sum(conv, axis=0)])
     )
 
-    conv = pd.DataFrame(data=conv, columns=AmfConfig.get("header"))
+    conv = pd.DataFrame(data=conv, columns=header)
 
     # Generate the final table.
     return pd.concat([coord, conv], axis=1)
@@ -185,6 +205,12 @@ def create_annotations(path: str, tile_size: int) -> None:
                     crsr, id_, "Predictions", colonisation_type
                 )
                 out = preds_to_python_annot(path, io.StringIO(csv))
+                if out.empty:
+                    logger.info(
+                        f"Skipping {path} as no tiles cleared the confidence "
+                        f"threshold - no annotations to save"
+                    )
+                    return
                 cnn1results = out.values.tolist()
                 values = AnnotationValues(
                     imageReferenceId=id_,
@@ -200,8 +226,12 @@ def create_annotations(path: str, tile_size: int) -> None:
         directory = os.path.dirname(path)
         files = os.listdir(directory)
 
-        re_check_annotations = f"{image_name}.+annotations"
-        re_check_predictions = f"{image_name}.+predictions"
+        # Escaped so regex metacharacters in an image name (e.g. '+', '(' ) are
+        # matched literally. Deliberately loose about the timestamp between the
+        # name and the type, so both the current and legacy filename
+        # conventions are picked up.
+        re_check_annotations = f"{re.escape(image_name)}.+annotations"
+        re_check_predictions = f"{re.escape(image_name)}.+predictions"
 
         # Check if any annotations already exist (this will only allow one set of
         # annotions and predictions per image, unlike the DB which allows many)
@@ -219,6 +249,12 @@ def create_annotations(path: str, tile_size: int) -> None:
         elif len(preds) == 1:
             full_preds_path = os.path.join(directory, preds[0])
             out = preds_to_python_annot(path, full_preds_path)
+            if out.empty:
+                logger.info(
+                    f"Skipping {path} as no tiles cleared the confidence "
+                    f"threshold - no annotations to save"
+                )
+                return
             update_archive(out, full_preds_path)
 
         else:

@@ -1,21 +1,52 @@
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import CircularProgress from "@mui/material/CircularProgress";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import { toast } from "react-toastify";
 
 import PredictionsApi from "../../api/amfinderApi";
 import { GlobalContextProvider } from "../../contexts/Contexts";
 import PrimaryButton from "../Utils/PrimaryButton";
-import SettingsItemCheckbox from "./SettingsItemCheckbox";
-import SettingsItemFloat from "./SettingsItemFloat";
-import SettingsItemInteger from "./SettingsItemInteger";
+import SettingsField from "./SettingsField";
 import SettingsItemSelect from "./SettingsItemSelect";
-import SettingsItemText from "./SettingsItemText";
 import "./styles/settings.css";
+
+// Order tabs are shown in; only groups that actually have entries in the
+// fetched schema render as a tab.
+const TAB_ORDER = [
+  { key: "general", label: "General" },
+  { key: "train", label: "Train" },
+  { key: "activeLearning", label: "Active Learning" },
+  { key: "predict", label: "Predict" },
+  { key: "test", label: "Test" },
+  { key: "convert", label: "Convert" },
+  { key: "tifconversion", label: "TIF Conversion" },
+  { key: "calibrate", label: "Calibrate" },
+  { key: "colonisation", label: "Colonisation" },
+];
+
+// A handful of fields depend on each other in ways the schema doesn't
+// express (e.g. training uses either the "normal" or "after active
+// learning" learning rate/epoch pair, never both).
+const DISABLE_RULES = {
+  epochs: (settings) => !!settings.trainActiveLearning,
+  epochsActiveLearning: (settings) => !settings.trainActiveLearning,
+  learningRate: (settings) => !!settings.trainActiveLearning,
+  learningRateActiveLearning: (settings) => !settings.trainActiveLearning,
+};
 
 const AmfSettings = () => {
   const { colonisationType, tileEdge, setTileEdge, settings, setSettings } =
     useContext(GlobalContextProvider);
+
+  const [schema, setSchema] = useState([]);
+  const [trainedModels, setTrainedModels] = useState([]);
+  const [activeTab, setActiveTab] = useState("general");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const hasCheckedInitialModelTypeRef = useRef(false);
 
   useEffect(() => {
     if (colonisationType === "am") {
@@ -30,6 +61,16 @@ const AmfSettings = () => {
     setSettings(initialSettings);
   };
 
+  const fetchSchema = async () => {
+    const initialSchema = await PredictionsApi.getSettingsSchema();
+    setSchema(initialSchema ?? []);
+  };
+
+  const fetchTrainedModels = async () => {
+    const models = await PredictionsApi.getTrainedModels();
+    setTrainedModels(models ?? []);
+  };
+
   useEffect(() => {
     if (
       settings === null ||
@@ -38,7 +79,105 @@ const AmfSettings = () => {
     ) {
       fetchInitialSettings();
     }
+    if (schema.length === 0) {
+      fetchSchema();
+    }
+    fetchTrainedModels();
   }, []);
+
+  const specByKey = useMemo(
+    () => Object.fromEntries(schema.map((spec) => [spec.key, spec])),
+    [schema],
+  );
+
+  const availableGroups = useMemo(() => {
+    const groupsInSchema = new Set(schema.map((spec) => spec.group));
+    return TAB_ORDER.filter((tab) => groupsInSchema.has(tab.key));
+  }, [schema]);
+
+  const fieldsForTab = useMemo(
+    () =>
+      schema.filter(
+        (spec) => spec.group === activeTab && (showAdvanced || !spec.advanced),
+      ),
+    [schema, activeTab, showAdvanced],
+  );
+
+  // One-time startup check: if the saved/default Model Type is already a
+  // transformer (currently only DeiT3), make sure Resize Dimension reflects
+  // that instead of staying blank/stale from before. Guarded to run only
+  // once so it doesn't fight the user if they interactively clear Resize
+  // Dimension later while still on a transformer model type - that
+  // interactive case is already handled by handleInputChange below.
+  useEffect(() => {
+    if (
+      hasCheckedInitialModelTypeRef.current ||
+      schema.length === 0 ||
+      !settings ||
+      Object.keys(settings).length === 0
+    ) {
+      return;
+    }
+    hasCheckedInitialModelTypeRef.current = true;
+
+    const modelTypeSpec = specByKey.modelType;
+    const currentModelType = settings.modelType ?? modelTypeSpec?.default;
+    const chosenChoice = modelTypeSpec?.choices?.find(
+      (choice) => choice.value === currentModelType,
+    );
+    if (
+      chosenChoice?.isTransformer &&
+      settings.resizeDim !== chosenChoice.transformerResizeDim
+    ) {
+      setSettings((prevState) => ({
+        ...prevState,
+        resizeDim: chosenChoice.transformerResizeDim,
+      }));
+    }
+  }, [schema, settings, specByKey, setSettings]);
+
+  // Loads whichever model is actually going to be used (Model Path Override
+  // takes priority, same as the backend's own resolution order, else Model
+  // for AM/ErM) and inspects its real class to tell whether it's a
+  // transformer - so users who never touch the Train tab's Model Type
+  // dropdown (e.g. they only set Model Path Override) still get Resize
+  // Dimension set correctly.
+  const checkModelArchitecture = async () => {
+    const resolvedPath =
+      settings.modelPath ||
+      (colonisationType === "am" ? settings.model : settings.modelErm);
+    if (!resolvedPath) {
+      toast.error(
+        "No model path configured to check (Model Path Override, Model for AM, or Model for ErM).",
+      );
+      return;
+    }
+
+    const result = await PredictionsApi.checkModelArchitecture(resolvedPath);
+    if (!result || !result.exists) {
+      toast.error(`Could not find or load model: ${resolvedPath}`);
+      return;
+    }
+
+    const transformerChoice = specByKey.modelType?.choices?.find(
+      (choice) => choice.isTransformer,
+    );
+    const transformerResizeDim = transformerChoice?.transformerResizeDim ?? 224;
+
+    if (result.isTransformer) {
+      setSettings((prevState) => ({
+        ...prevState,
+        resizeDim: transformerResizeDim,
+      }));
+      toast.success(
+        `Detected ${result.modelClassName} (transformer) - Resize Dimension set to ${transformerResizeDim}.`,
+      );
+    } else {
+      toast.info(
+        `Detected ${result.modelClassName ?? "unknown"} architecture - no Resize Dimension change needed.`,
+      );
+    }
+  };
 
   const saveSettings = async () => {
     const response = await PredictionsApi.saveSettings(settings);
@@ -78,37 +217,32 @@ const AmfSettings = () => {
 
   const handleInputChange = (event) => {
     const { name, type } = event.target;
+    const spec = specByKey[name];
     let outputValue;
     if (type === "checkbox") {
-      const { checked } = event.target;
-      outputValue = checked;
+      outputValue = event.target.checked;
     } else {
       const { value } = event.target;
-      if (
-        name === "learningRate" ||
-        name === "threshold" ||
-        name === "adamBeta1" ||
-        name === "adamBeta2" ||
-        name === "vfrac" ||
-        name === "balanceFactor" ||
-        name === "learningRateActiveLearning" ||
-        name === "dropoutRate"
-      ) {
-        outputValue = parseFloat(value);
-      } else if (
-        name === "batchSize" ||
-        name === "epochs" ||
-        name === "vfrac" ||
-        name === "patienceE" ||
-        name === "patienceR" ||
-        name === "numSamplesForLabelling" ||
-        name === "mcSamples" ||
-        name === "epochsActiveLearning"
-      ) {
-        outputValue = parseInt(value);
+      if (spec?.type === "float") {
+        outputValue = value === "" ? null : parseFloat(value);
+      } else if (spec?.type === "integer") {
+        outputValue = value === "" ? null : parseInt(value, 10);
       } else {
         outputValue = value;
       }
+    }
+
+    // Transformer model types (currently only DeiT3) expect a fixed input
+    // resolution, so keep Resize Dimension in sync with the chosen model
+    // type instead of leaving it stale from whatever was picked before.
+    if (name === "modelType") {
+      const choice = spec?.choices?.find((option) => option.value === outputValue);
+      setSettings((prevState) => ({
+        ...prevState,
+        modelType: outputValue,
+        resizeDim: choice?.isTransformer ? choice.transformerResizeDim : null,
+      }));
+      return;
     }
 
     setSettings((prevState) => ({
@@ -117,11 +251,15 @@ const AmfSettings = () => {
     }));
   };
 
+  const isLoading =
+    settings === null ||
+    settings === undefined ||
+    Object.keys(settings).length === 0 ||
+    schema.length === 0;
+
   return (
     <div className="settings-grid">
-      {(settings === null ||
-        settings === undefined ||
-        Object.keys(settings).length === 0) && (
+      {isLoading && (
         <div
           style={{
             width: "100%",
@@ -147,67 +285,30 @@ const AmfSettings = () => {
           </div>
         </div>
       )}
-      {settings !== null &&
-        settings !== undefined &&
-        Object.keys(settings).length !== 0 && (
-          <div>
-            {/* GENERAL */}
-            <div className="settings-heading" id="general">
-              General Settings
-            </div>
-            <SettingsItemText
-              name="outdir"
-              displayName="Output directory"
-              defaultValue="images folder"
-              value={settings.outdir}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
+      {!isLoading && (
+        <div>
+          <div className="settings-toolbar">
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={showAdvanced}
+                  onChange={(event) => setShowAdvanced(event.target.checked)}
+                />
+              }
+              label="Show advanced settings"
             />
-            <SettingsItemText
-              name="model"
-              displayName="Model for AM"
-              defaultValue="efficientnet_252_6class_D2.pth"
-              value={settings.model}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemText
-              name="modelErm"
-              displayName="Model for ErM"
-              defaultValue="250411_126_ErM_EfficientNet_82.pth"
-              value={settings.modelErm}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemText
-              name="temperatureFactorPath"
-              displayName="Model Temperature Factor Path for AM"
-              defaultValue="efficientnet_252_6class_D2_temperature_value.txt"
-              value={settings.temperatureFactorPath}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemText
-              name="temperatureFactorPathErm"
-              displayName="Model Temperature Factor Path for ErM"
-              defaultValue="250411_126_ErM_EfficientNet_82_temperature_value.txt"
-              value={settings.temperatureFactorPathErm}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemSelect
-              name="device"
-              displayName="Device"
-              defaultValue="Automatic"
-              value={settings.device}
-              options={[
-                { value: "automatic", label: "Automatic" },
-                { value: "cpu", label: "CPU" },
-                { value: "cuda:0", label: "Cuda (GPU)" },
-              ]}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
+          </div>
+          <Tabs
+            className="settings-tabs"
+            value={activeTab}
+            onChange={(_event, value) => setActiveTab(value)}
+          >
+            {availableGroups.map((tab) => (
+              <Tab key={tab.key} value={tab.key} label={tab.label} />
+            ))}
+          </Tabs>
+
+          {activeTab === "general" && (
             <SettingsItemSelect
               name="tileEdge"
               displayName="Tile Edge"
@@ -217,263 +318,40 @@ const AmfSettings = () => {
                 { value: 252, label: "252" },
                 { value: 126, label: "126" },
               ]}
-              handleInputChange={(e) => setTileEdge(parseInt(e.target.value))}
+              handleInputChange={(e) => setTileEdge(parseInt(e.target.value, 10))}
+              resetToDefault={() => setTileEdge(colonisationType === "am" ? 252 : 126)}
             />
-            <SettingsItemCheckbox
-              name="useDb"
-              displayName="Use local database"
-              defaultValue={true}
-              checked={settings.useDb}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemCheckbox
-              name="useContextualConfidence"
-              displayName="Use Contextual Confidence"
-              defaultValue={true}
-              checked={settings.useContextualConfidence}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemFloat
-              name="contextualConfidenceThreshold"
-              displayName="Contextual Confidence Threshold"
-              defaultValue={1.0}
-              value={settings.contextualConfidenceThreshold}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            {/* TRAINING */}
-            <div className="settings-heading" id="train">
-              Train
+          )}
+
+          {activeTab === "general" && (
+            <div className="settings-item">
+              <label>
+                Checks whichever model is actually active (Model Path
+                Override, else Model for AM/ErM) and sets Resize Dimension
+                automatically if it's a transformer.
+              </label>
+              <PrimaryButton
+                sx={{ flexShrink: 0 }}
+                onClick={checkModelArchitecture}
+              >
+                Check Model Architecture
+              </PrimaryButton>
             </div>
-            <SettingsItemSelect
-              name="modelType"
-              displayName="Model Type"
-              defaultValue="EfficientNet"
-              value={settings.modelType}
-              options={[
-                { value: "cnn1", label: "CNN1" },
-                { value: "resnet", label: "ResNet" },
-                { value: "resnext", label: "ResNeXt" },
-                { value: "efficientnet", label: "EfficientNet" },
-                { value: "efficientnetv2", label: "EfficientNetV2" },
-              ]}
+          )}
+
+          {fieldsForTab.map((spec) => (
+            <SettingsField
+              key={spec.key}
+              spec={spec}
+              value={settings[spec.key] ?? spec.default}
               handleInputChange={handleInputChange}
               resetToDefault={resetToDefault}
+              disabled={DISABLE_RULES[spec.key]?.(settings) ?? false}
+              modelOptions={trainedModels}
             />
-            <SettingsItemCheckbox
-              name="trainActiveLearning"
-              displayName="Train model after active learning"
-              defaultValue={false}
-              checked={settings.trainActiveLearning}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemInteger
-              name="batchSize"
-              displayName="Batch Size"
-              defaultValue={32}
-              value={settings.batchSize}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-              min={0}
-            />
-            <SettingsItemInteger
-              name="epochs"
-              displayName="Epochs"
-              defaultValue={50}
-              value={settings.epochs}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-              disabled={settings.trainActiveLearning}
-              min={0}
-            />
-            <SettingsItemInteger
-              name="epochsActiveLearning"
-              displayName="Epochs after active learning"
-              defaultValue={5}
-              value={settings.epochsActiveLearning}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-              disabled={!settings.trainActiveLearning}
-              min={0}
-            />
-            <SettingsItemFloat
-              name="vfrac"
-              displayName="VFrac"
-              defaultValue={0.2}
-              value={settings.vfrac}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemInteger
-              name="patienceE"
-              displayName="Patience - Early Stopping"
-              defaultValue={10}
-              value={settings.patienceE}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemInteger
-              name="patienceR"
-              displayName="Patience - Learning Rate Reduction"
-              defaultValue={5}
-              value={settings.patienceR}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemCheckbox
-              name="dataAugm"
-              displayName="Data augmentation"
-              defaultValue={false}
-              checked={settings.dataAugm}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemCheckbox
-              name="summary"
-              displayName="Summary"
-              defaultValue={false}
-              checked={settings.summary}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemFloat
-              name="learningRate"
-              displayName="Learning Rate"
-              defaultValue={0.000004218361045}
-              value={settings.learningRate}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-              disabled={settings.trainActiveLearning}
-            />
-            <SettingsItemFloat
-              name="learningRateActiveLearning"
-              displayName="Learning Rate after active learning"
-              defaultValue={0.0000004}
-              value={settings.learningRateActiveLearning}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-              disabled={!settings.trainActiveLearning}
-            />
-            <SettingsItemFloat
-              name="adamBeta1"
-              displayName="Adam Beta 1"
-              defaultValue={0.906450740008503}
-              value={settings.adamBeta1}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemFloat
-              name="adamBeta2"
-              displayName="Adam Beta 2"
-              defaultValue={0.986390310777448}
-              value={settings.adamBeta2}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemFloat
-              name="balanceFactor"
-              displayName="Balance Factor"
-              defaultValue={1.24895925434138}
-              value={settings.balanceFactor}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemCheckbox
-              name="mlFlowFlag"
-              displayName="ML Flow flag"
-              defaultValue={false}
-              checked={settings.mlFlowFlag}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemCheckbox
-              name="preTrained"
-              displayName="Use pre-trained model"
-              defaultValue={false}
-              checked={settings.preTrained}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            {/* ACTIVE LEARNING */}
-            <div className="settings-heading" id="active">
-              Active Learning
-            </div>
-            <SettingsItemCheckbox
-              name="getTilesForLabellingUsingActiveLearning"
-              displayName="Output tiles for labelling"
-              defaultValue={false}
-              checked={settings.getTilesForLabellingUsingActiveLearning}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemSelect
-              name="activeLearningMethod"
-              displayName="Active Learning Method"
-              defaultValue="bald"
-              value={settings.activeLearningMethod}
-              options={[
-                { value: "bald", label: "BALD" },
-                { value: "batchbald", label: "BatchBALD" },
-              ]}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemInteger
-              name="numSamplesForLabelling"
-              displayName="Number of samples for labelling"
-              defaultValue={10}
-              value={settings.numSamplesForLabelling}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemInteger
-              name="mcSamples"
-              displayName="Number of Monte Carlo Samples"
-              defaultValue={50}
-              value={settings.mcSamples}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            {/* CONVERT */}
-            <div className="settings-heading" id="convert">
-              Convert
-            </div>
-            <SettingsItemFloat
-              name="threshold"
-              displayName="Threshold"
-              defaultValue={0.5}
-              value={settings.threshold}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <SettingsItemCheckbox
-              name="aggregateTiles"
-              displayName="Aggregate Tiles"
-              defaultValue={false}
-              checked={settings.aggregateTiles}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-            <div className="settings-heading" id="convert">
-              TIF Conversion
-            </div>
-            <SettingsItemSelect
-              name="convertImageFileType"
-              displayName="TIF Conversion File Type"
-              defaultValue="jpg"
-              value={settings.convertImageFileType}
-              options={[
-                { value: "jpg", label: "JPG" },
-                { value: "png", label: "PNG" },
-              ]}
-              handleInputChange={handleInputChange}
-              resetToDefault={resetToDefault}
-            />
-          </div>
-        )}
+          ))}
+        </div>
+      )}
       {/* SAVE */}
       <div className="full-width-sticky settings-save">
         <PrimaryButton className="settingsSaveButton" onClick={saveSettings}>

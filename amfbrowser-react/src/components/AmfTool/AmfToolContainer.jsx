@@ -28,6 +28,7 @@ export default function AmfToolContainer() {
   const [isFilePathValid, setIsFilePathValid] = useState(false);
   const [selectedAction, setSelectedAction] = useState(null);
   const [submissionStatus, setSubmissionStatus] = useState("none");
+  const [schema, setSchema] = useState([]);
 
   const filePathValidationStatus = isFilePathValid ? "success" : "error";
 
@@ -52,48 +53,44 @@ export default function AmfToolContainer() {
     setSettings(initialSettings);
   };
 
+  const fetchSchema = async () => {
+    const initialSchema = await PredictionsApi.getSettingsSchema();
+    setSchema(initialSchema ?? []);
+  };
+
   useEffect(() => {
     if (!settings || Object.keys(settings ?? {}).length === 0) {
       fetchInitialSettings();
     }
+    if (schema.length === 0) {
+      fetchSchema();
+    }
   }, []);
+
+  // Pulls every settings-schema field tagged with this action's mode out of
+  // the current settings object, plus the context fields (input path,
+  // colonisation type, tile edge) that live outside the settings schema.
+  // Adding a setting to the backend schema is then enough for every action
+  // that consumes it to automatically pick it up here.
+  const buildConfigForMode = (mode) => {
+    const modeFields = Object.fromEntries(
+      schema
+        .filter((spec) => spec.modes.includes(mode))
+        .map((spec) => [spec.key, settings[spec.key] ?? spec.default]),
+    );
+
+    return {
+      inputFiles: amfToolFilePath,
+      colonisationType: colonisationType,
+      tileEdge: tileEdge,
+      ...modeFields,
+    };
+  };
 
   const trainModel = async () => {
     const toastId = "trainModel";
 
-    let body = {
-      inputFiles: amfToolFilePath,
-      batchSize: settings.batchSize,
-      epochs: settings.epochs,
-      model: settings.model,
-      modelErm: settings.modelErm,
-      vfrac: settings.vfrac,
-      dataAugm: settings.dataAugm,
-      summary: settings.summary,
-      outdir: settings.outdir,
-      colonisationType: colonisationType,
-      useDb: settings.useDb,
-      learningRate: settings.learningRate,
-      adamBeta1: settings.adamBeta1,
-      adamBeta2: settings.adamBeta2,
-      balanceFactor: settings.balanceFactor,
-      mlFlowFlag: settings.mlFlowFlag,
-      device: settings.device,
-      modelType: settings.modelType,
-      preTrained: settings.preTrained,
-      patienceE: settings.patienceE,
-      patienceR: settings.patienceR,
-      learningRateActiveLearning: settings.learningRateActiveLearning,
-      getTilesForLabellingUsingActiveLearning:
-        settings.getTilesForLabellingUsingActiveLearning,
-      activeLearningMethod: settings.activeLearningMethod,
-      numSamplesForLabelling: settings.numSamplesForLabelling,
-      mcSamples: settings.mcSamples,
-      dropoutRate: settings.dropoutRate,
-      epochsActiveLearning: settings.epochsActiveLearning,
-      trainActiveLearning: settings.trainActiveLearning,
-      tileEdge: tileEdge,
-    };
+    let body = buildConfigForMode("train");
 
     toast.info("Training model", {
       toastId,
@@ -123,20 +120,7 @@ export default function AmfToolContainer() {
   const calculatePredictions = async () => {
     const toastId = "calculatePredictions";
 
-    let body = {
-      inputFiles: amfToolFilePath,
-      tileEdge: tileEdge,
-      model: settings.model,
-      modelErm: settings.modelErm,
-      outdir: settings.outdir,
-      colonisationType: colonisationType,
-      useDb: settings.useDb,
-      device: settings.device,
-      temperatureFactorPath: settings.temperatureFactorPath,
-      temperatureFactorPathErm: settings.temperatureFactorPathErm,
-      useContextualConfidence: settings.useContextualConfidence,
-      contextualConfidenceThreshold: settings.contextualConfidenceThreshold,
-    };
+    let body = buildConfigForMode("predict");
 
     toast.info("Calculating predictions", {
       toastId,
@@ -166,17 +150,7 @@ export default function AmfToolContainer() {
   const convertImages = async () => {
     const toastId = "convertImages";
 
-    let body = {
-      inputFiles: amfToolFilePath,
-      threshold: settings.threshold,
-      colonisationType: colonisationType,
-      useDb: settings.useDb,
-      aggregateTiles: settings.aggregateTiles,
-      device: settings.device,
-      outdir: settings.outdir,
-      tileEdge: tileEdge,
-      useContextualConfidence: settings.useContextualConfidence,
-    };
+    let body = buildConfigForMode("convert");
 
     toast.info("Converting images", {
       toastId,
@@ -206,15 +180,7 @@ export default function AmfToolContainer() {
   const tifConversion = async () => {
     const toastId = "tifConversion";
 
-    let body = {
-      inputFiles: amfToolFilePath,
-      colonisationType: colonisationType,
-      useDb: settings.useDb,
-      device: settings.device,
-      outdir: settings.outdir,
-      convertImageFileType: settings.convertImageFileType,
-      tileEdge: tileEdge,
-    };
+    let body = buildConfigForMode("tifconversion");
 
     toast.info("Converting TIFs", {
       toastId,
@@ -244,20 +210,7 @@ export default function AmfToolContainer() {
   const testModel = async () => {
     const toastId = "testModel";
 
-    let body = {
-      inputFiles: amfToolFilePath,
-      model: settings.model,
-      modelErm: settings.modelErm,
-      colonisationType: colonisationType,
-      useDb: settings.useDb,
-      device: settings.device,
-      outdir: settings.outdir,
-      tileEdge: tileEdge,
-      temperatureFactorPath: settings.temperatureFactorPath,
-      temperatureFactorPathErm: settings.temperatureFactorPathErm,
-      useContextualConfidence: settings.useContextualConfidence,
-      contextualConfidenceThreshold: settings.contextualConfidenceThreshold,
-    };
+    let body = buildConfigForMode("test");
 
     toast.info("Testing model", {
       toastId,
@@ -287,14 +240,7 @@ export default function AmfToolContainer() {
   const calculateColonisation = async () => {
     const toastId = "calculateColonisation";
 
-    let body = {
-      inputFiles: amfToolFilePath,
-      colonisationType: colonisationType,
-      useDb: settings.useDb,
-      device: settings.device,
-      outdir: settings.outdir,
-      tileEdge: tileEdge,
-    };
+    let body = buildConfigForMode("colonisation");
 
     toast.info("Calculating colonisation percentage", {
       toastId,
@@ -324,16 +270,7 @@ export default function AmfToolContainer() {
   const calibrateModel = async () => {
     const toastId = "calibrateModel";
 
-    let body = {
-      inputFiles: amfToolFilePath,
-      model: settings.model,
-      modelErm: settings.modelErm,
-      colonisationType: colonisationType,
-      useDb: settings.useDb,
-      device: settings.device,
-      outdir: settings.outdir,
-      tileEdge: tileEdge,
-    };
+    let body = buildConfigForMode("calibrate");
 
     toast.info("Calibrating model", {
       toastId,
@@ -398,7 +335,9 @@ export default function AmfToolContainer() {
         <div
           className="fullHeight fullWidth"
           style={{
-            minWidth: "925px",
+            // Was 925px, which forced a horizontal scrollbar and stopped the
+            // action-button row wrapping on narrower viewports.
+            minWidth: "600px",
             minHeight: "500px",
           }}
         >
@@ -494,11 +433,15 @@ export default function AmfToolContainer() {
                 className="actionWrapper"
                 style={{
                   width: "100%",
-                  height: "125px",
+                  // minHeight only, so the row grows when the action squares
+                  // wrap onto a second line instead of overflowing.
                   minHeight: "125px",
+                  flexShrink: 0,
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
+                  paddingTop: "10px",
+                  paddingBottom: "10px",
                 }}
               >
                 <div

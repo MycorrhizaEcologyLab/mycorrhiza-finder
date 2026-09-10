@@ -1,11 +1,11 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import IconButton from "@mui/material/IconButton";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FormLabel from "@mui/material/FormLabel";
 import { styled } from "@mui/material/styles";
 import SidebarRadioGroup from "../Common/SidebarRadioGroup";
-import { GlobalContextProvider } from "../../../contexts/Contexts";
+import AnnotationsTagPanel from "./AnnotationsTagPanel";
 
 const DrawerHeader = styled("div")(({ theme }) => ({
   display: "flex",
@@ -36,9 +36,16 @@ const AnnotationsLeftSidebar = ({
   icons,
   handleModeChange,
   keyBindings,
+  allTags,
+  tagPalette,
+  selectedTileTags,
+  hasSelectedClass,
+  onCreateTag,
+  onDeleteTag,
+  onToggleTag,
+  onClearTags,
+  setTagInputOpen,
 }) => {
-  const { colonisationType } = useContext(GlobalContextProvider);
-
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSidebarChange = () => {
@@ -48,11 +55,14 @@ const AnnotationsLeftSidebar = ({
   return (
     <div
       id="AnnotationsLeftSidebar"
+      className="sidebarColumn"
       style={{
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        width: isOpen ? "235px" : "135px",
+        // Wider when open so the tag name field, colour swatch and add
+        // button fit on one row.
+        width: isOpen ? "260px" : "135px",
         overflowY: "auto",
         overflowX: "clip",
         borderRight: "2px solid lightgray",
@@ -76,7 +86,10 @@ const AnnotationsLeftSidebar = ({
       <SidebarDivider />
 
       {/* Legend */}
-      <div id="sidebarLegend" style={{ padding: "20px 18px" }}>
+      <div
+        id="sidebarLegend"
+        style={{ padding: "20px 18px", flexShrink: 0, minWidth: 0 }}
+      >
         <FormLabel
           sx={{
             display: "flex",
@@ -139,6 +152,21 @@ const AnnotationsLeftSidebar = ({
           );
         })}
       </div>
+
+      <SidebarDivider />
+
+      <AnnotationsTagPanel
+        allTags={allTags}
+        tagPalette={tagPalette}
+        selectedTileTags={selectedTileTags}
+        hasSelectedClass={hasSelectedClass}
+        onCreateTag={onCreateTag}
+        onDeleteTag={onDeleteTag}
+        onToggleTag={onToggleTag}
+        onClearTags={onClearTags}
+        setTagInputOpen={setTagInputOpen}
+        isOpen={isOpen}
+      />
     </div>
   );
 };

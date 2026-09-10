@@ -80,7 +80,7 @@ const BrowserContainer = () => {
   };
 
   return (
-    <div id="browserContainer" className="fullWidth fullHeight">
+    <div id="browserContainer" className="fullWidth fullHeight flexColumn">
       <ImageSelectionHeader
         inputRef={imageSelectorInputRef}
         isSelectButtonDisabled={false}
@@ -94,7 +94,10 @@ const BrowserContainer = () => {
         id="browserMainWindow"
         className="fullWidth flexRowCenter"
         style={{
-          height: "calc(100% - 60px)",
+          // Fill whatever the header leaves, rather than assuming it is
+          // exactly 60px - it grows when the Image Directory banner shows.
+          flex: 1,
+          minHeight: 0,
           overflowY: "auto",
         }}
       >

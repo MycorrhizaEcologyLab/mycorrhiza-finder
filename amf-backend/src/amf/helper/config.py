@@ -50,6 +50,7 @@ import datetime
 import glob
 import mimetypes
 import os
+import sys
 from argparse import ArgumentParser, RawTextHelpFormatter
 from typing import Any, cast
 
@@ -119,6 +120,21 @@ HEADERS = {
         "HybridDse",
     ],
 }
+
+# Per-tile columns that follow the class one-hot columns in an annotations CSV.
+# "Question" is really the last one-hot slot (the "?" class); the two after it
+# are free text. Anything listed here must be dropped by import_annotations
+# before the remaining columns are read as class labels - see its docstring.
+QUESTION_COLUMN = "Question"
+QUESTION_COMMENT_COLUMN = "QuestionComment"
+TAGS_COLUMN = "Tags"
+ANNOTATION_EXTRA_COLUMNS = [
+    QUESTION_COLUMN,
+    QUESTION_COMMENT_COLUMN,
+    TAGS_COLUMN,
+]
+# Separates the user-defined sub-tags packed into a single Tags cell
+TAG_DELIMITER = "|"
 
 HUMAN_HEADERS = {
     "am": ["AM+", "N-", "Background", "Unreadable", "DSE", "Hybrid"],
@@ -204,6 +220,10 @@ PAR = {
     # Learning rate reduction patience
     "patience_r": 5,
     "outdir": None,
+    # Folder containing the images the user browses/annotates, used (together
+    # with outdir) to locate local prediction/annotation CSVs when use_db is
+    # off.
+    "image_directory": None,
     # Specify classes
     "header": HEADERS["am"],
     # Several monitoring functions
@@ -251,9 +271,19 @@ PAR = {
 }
 
 
-MODEL_DIR = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "trained_networks"
-)
+if getattr(sys, "frozen", False):
+    # Bundled by PyInstaller: config.py is packed inside the PYZ archive, so
+    # its __file__-relative navigation below doesn't apply - trained_networks
+    # is placed directly under _MEIPASS by build.bat's --add-data flags.
+    MODEL_DIR = os.path.join(sys._MEIPASS, "trained_networks")  # type: ignore[attr-defined]
+else:
+    MODEL_DIR = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        "..",
+        "..",
+        "..",
+        "trained_networks",
+    )
 
 
 def get_model_dir() -> str:
@@ -702,8 +732,7 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         action="store_true",
         dest="pre_trained",
         help=(
-            "Loads ImageNet weights if ResNet, ResNeXt or EfficentNet is selected for "
-            "Model type."
+            "Loads ImageNet weights if a pretrained model is selected for Model type."
         ),
     )
 
@@ -1669,7 +1698,7 @@ def set_train_config(trainConfig: TrainConfig) -> None:
     set_("input_files", files)
 
     set_("use_db", trainConfig.useDb)
-    set_("mlflow_flag", trainConfig.mlflowFlag)
+    set_("mlflow_flag", trainConfig.mlFlowFlag)
     set_("colonisation_type", trainConfig.colonisationType)
     set_("batch_size", trainConfig.batchSize)
     set_("adam_beta1", trainConfig.adamBeta1)

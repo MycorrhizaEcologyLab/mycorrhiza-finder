@@ -16,6 +16,10 @@ const TiledAnnotationsGrid = ({
   questionCommentOpen,
   questionMarkComments,
   questionMarkCommentActions,
+  allTags,
+  tagPalette,
+  tagBadgeSize,
+  tagBadgeFontSize,
 }) => {
   return (
     <div
@@ -45,6 +49,10 @@ const TiledAnnotationsGrid = ({
             setQuestionCommentOpen={setQuestionCommentOpen}
             questionCommentOpen={questionCommentOpen}
             questionMarkCommentActions={questionMarkCommentActions}
+            allTags={allTags}
+            tagPalette={tagPalette}
+            tagBadgeSize={tagBadgeSize}
+            tagBadgeFontSize={tagBadgeFontSize}
             questionMarkComments={questionMarkComments}
           />
         );

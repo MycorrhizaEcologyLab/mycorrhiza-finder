@@ -10,8 +10,11 @@
 
 .amfinder-buttons-container {
   display: flex;
-  justify-content: space-evenly;
-  flex-flow: row;
+  justify-content: center;
+  /* Wraps onto further rows rather than overflowing when the seven action
+     squares no longer fit across the viewport. */
+  flex-flow: row wrap;
+  gap: 10px;
   align-items: center;
   width: 80vw;
 }

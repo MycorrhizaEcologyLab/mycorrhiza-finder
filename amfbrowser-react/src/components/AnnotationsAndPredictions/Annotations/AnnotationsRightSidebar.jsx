@@ -113,6 +113,7 @@ const AnnotationsRightSidebar = ({
   return (
     <div
       id="AnnotationsRightSidebar"
+      className="sidebarColumn"
       style={{
         display: "flex",
         flexDirection: "column",

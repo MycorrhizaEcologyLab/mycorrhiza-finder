@@ -6,6 +6,7 @@ const SettingsItemInteger = ({
   name,
   displayName,
   defaultValue,
+  help,
   value,
   handleInputChange,
   disabled = false,
@@ -23,13 +24,16 @@ const SettingsItemInteger = ({
 
   return (
     <div className="settings-item">
-      <label htmlFor={name} title={`(type: int, default: ${defaultValue})`}>
+      <label
+        htmlFor={name}
+        title={`${help ? help + " " : ""}(type: int, default: ${defaultValue})`}
+      >
         {displayName}
       </label>
       <TextField
         className="text-input"
         name={name}
-        value={value}
+        value={value ?? ""}
         onChange={handleInputChange}
         disabled={disabled}
         min={min}
