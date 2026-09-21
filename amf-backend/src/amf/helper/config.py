@@ -1911,6 +1911,7 @@ def set_calibrate_config(calibrateConfig: CalibrateConfig) -> None:
     set_("model_erm", calibrateConfig.modelErm)
     set_("tile_edge", calibrateConfig.tileEdge)
     set_("dynamic_loading", calibrateConfig.dynamicLoading)
+    set_("pretiled_dir", calibrateConfig.pretiledDir)
     set_("model_path", calibrateConfig.modelPath)
     set_("resize_dim", calibrateConfig.resizeDim)
 

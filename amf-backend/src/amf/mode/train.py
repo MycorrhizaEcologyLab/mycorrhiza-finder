@@ -286,11 +286,11 @@ def run(
                 "Pre-tiled directory not specified in config for dynamic loading."
             )
             sys.exit(11)
-        AmfLoad.preprocess_to_tiles(
-            input_files,
-            pretiled_dir,
-            h5_name=f"{AmfConfig.get('colonisation_type')}_train.h5",
-        )
+        # AmfLoad.preprocess_to_tiles(
+        #     input_files,
+        #     pretiled_dir,
+        #     h5_name=f"{AmfConfig.get('colonisation_type')}_train.h5",
+        # )
         full_dataset = AmfLoad.PreTiledHDF5Loader(
             pretiled_dir,
             use_augmentation=AmfConfig.get("data_augm"),

@@ -368,12 +368,39 @@ def run(input_files: list[str]) -> int:
     results_dir = AmfConfig.get("outdir")
     logger.debug(f"Results Directory: {results_dir}")
 
-    # Extracting tiles and labels using list logic, to omit getitem() method.
-    cal_dataset = AmfLoad.TileFilesandData(cal_img_list)
-    x_cal, y_cal, filenames, rows, cols = cal_dataset.get_all_data()
+    # Extract tiles and labels
+    if AmfConfig.get("dynamic_loading"):
+        logger.info(
+            "Dynamic loading enabled. Calibrating with data loaded in batches from "
+            "disk."
+        )
+        pretiled_dir = AmfConfig.get("pretiled_dir")
+        if pretiled_dir is None:
+            logger.error(
+                "Pre-tiled directory not specified in config for dynamic loading."
+            )
+            sys.exit(11)
+        if not pretiled_dir.endswith(".h5"):
+            h5_name = f"{AmfConfig.get('colonisation_type')}_train.h5"
+            h5_path = os.path.join(pretiled_dir, h5_name)
+        else:
+            h5_path = pretiled_dir
+        # Row indices and per-tile metadata only; no image data is read here.
+        x_cal, y_cal, filenames, rows, cols = AmfLoad.get_tile_metadata(h5_path)
+    else:
+        logger.info(
+            "Loading entire dataset into memory. Ensure sufficient RAM is available or "
+            "enable dynamic loading."
+        )
+        h5_path = None  # Not used when dynamic loading is disabled
+        # Extracting tiles and labels using list logic, to omit getitem() method.
+        cal_dataset = AmfLoad.TileFilesandData(cal_img_list)
+        x_cal, y_cal, filenames, rows, cols = cal_dataset.get_all_data()
 
     # Convert to CustomDataset and create DataLoader
-    cal_normalised_dataset = AmfLoad.CustomNormalisedDataset(x_cal, y_cal)
+    cal_normalised_dataset = AmfLoad.CustomNormalisedDataset(
+        x_cal, y_cal, h5_path=h5_path
+    )
     bs = AmfConfig.get("batch_size")
     num_workers = AmfConfig.get("num_workers")
     cal_dataset_loader = DataLoader(
