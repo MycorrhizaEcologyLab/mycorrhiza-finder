@@ -268,6 +268,8 @@ PAR = {
     "freeze_epochs": 0,  # Number of epochs to freeze backbone layers during training
     "early_break_epoch": None,
     "ci_method": "analytic",  # Method for calculating confidence intervals (analytic, bootstrap, both)
+    "optimizer": "adam",  # Optimizer to use for training (adam, adamw)
+    "warmup_epochs": 0.0,  # Length of the linear LR warmup in epochs; 0 disables it
 }
 
 
@@ -873,6 +875,26 @@ def add_training_subparser(subparsers) -> None:  # type: ignore[no-untyped-def]
         type=int,
         default=x,
         help="Epoch at which training stopped early due to early stopping.",
+    )
+
+    x = PAR["optimizer"]
+    parser.add_argument(
+        "-opt",
+        "--optimizer",
+        choices=["adam", "adamw"],
+        dest="optimizer",
+        default=x,
+        help="adam: coupled L2 weight decay (original behaviour)"
+        "\nadamw: decoupled weight decay, none on norms, biases or embeddings",
+    )
+    x = PAR["warmup_epochs"]
+    parser.add_argument(
+        "-we",
+        "--warmup-epochs",
+        type=float,
+        dest="warmup_epochs",
+        default=x,
+        help="length of the linear LR warmup in epochs; 0 disables it",
     )
 
 
@@ -1730,6 +1752,8 @@ def set_train_config(trainConfig: TrainConfig) -> None:
     set_("freeze_epochs", trainConfig.freezeEpochs)
     set_("drop_path_rate", trainConfig.dropPathRate)
     set_("early_break_epoch", trainConfig.earlyBreakEpoch)
+    set_("optimizer", trainConfig.optimizer)
+    set_("warmup_epochs", trainConfig.warmupEpochs)
 
     if trainConfig.outdir is None or trainConfig.outdir == "":
         results_dir = create_results_dir("train")
@@ -2017,6 +2041,8 @@ def initialize() -> None:
         set_("freeze_epochs", par.freeze_epochs)
         set_("drop_path_rate", par.drop_path_rate)
         set_("early_break_epoch", par.early_break_epoch)
+        set_("optimizer", par.optimizer)
+        set_("warmup_epochs", par.warmup_epochs)
 
     elif par.run_mode == "predict":
         set_("tile_edge", par.edge)

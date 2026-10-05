@@ -44,6 +44,7 @@ Functions
 
 # New total imports log for train_flx
 # Original AMFinder imports.
+import copy
 import os
 import random
 import sys
@@ -158,7 +159,7 @@ class EarlyStopping:
         score = -val_loss
         if self.best_score is None:
             self.best_score = score
-            self.best_weights = model.state_dict()  # Save best weights
+            self.best_weights = copy.deepcopy(model.state_dict())  # Save best weights
 
         elif score < self.best_score + self.delta:
             self.counter += 1
@@ -175,7 +176,7 @@ class EarlyStopping:
 
         else:
             self.best_score = score
-            self.best_weights = model.state_dict()  # Save best weights
+            self.best_weights = copy.deepcopy(model.state_dict())  # Save best weights
             self.counter = 0
 
 
@@ -250,13 +251,44 @@ def run(
     backbone_lr_mult = AmfConfig.get("backbone_lr_mult")
     freeze_epochs = AmfConfig.get("freeze_epochs")
 
-    optim = torch.optim.Adam(
-        [
-            {"params": backbone_params, "lr": lr * backbone_lr_mult},
-            {"params": head_params, "lr": lr},
-        ],
+    weight_decay = AmfConfig.get("weight_decay")
+    use_adamw = AmfConfig.get("optimizer") == "adamw"
+
+    # AdamW decouples weight decay from the adaptive step, and exempts norm
+    # weights, biases (all 1-D) and anything the model lists itself (pos_embed
+    # and cls_token on DeiT3). With Adam, every parameter is decayed as before.
+    no_decay_ids = set()
+    if use_adamw:
+        skip = (
+            set(model.no_weight_decay()) if hasattr(model, "no_weight_decay") else set()
+        )
+        no_decay_ids = {
+            id(p) for name, p in model.named_parameters() if p.ndim <= 1 or name in skip
+        }
+
+    param_groups = []
+    for params, group_lr in (
+        (backbone_params, lr * backbone_lr_mult),
+        (head_params, lr),
+    ):
+        decay = [p for p in params if id(p) not in no_decay_ids]
+        no_decay = [p for p in params if id(p) in no_decay_ids]
+        if decay:
+            param_groups.append({"params": decay, "lr": group_lr})
+        if no_decay:
+            param_groups.append(
+                {"params": no_decay, "lr": group_lr, "weight_decay": 0.0}
+            )
+
+    optim_cls = torch.optim.AdamW if use_adamw else torch.optim.Adam
+    optim = optim_cls(
+        param_groups,
         betas=(AmfConfig.get("adam_beta1"), AmfConfig.get("adam_beta2")),
-        weight_decay=AmfConfig.get("weight_decay"),
+        weight_decay=weight_decay,
+    )
+    logger.info(
+        f"Optimiser: {optim_cls.__name__}, weight decay {weight_decay}, "
+        f"{len(no_decay_ids)} parameter tensors exempt from decay"
     )
 
     # Phase 1: only the head trains for the first `freeze_epochs` epochs.
@@ -441,6 +473,14 @@ def run(
 
         best_val_loss = float("inf")
 
+        # Linear LR warmup over the first `warmup_epochs` epochs (0 disables it).
+        # Each param group ramps to the LR it was built with, so the backbone/head
+        # ratio is kept. Keep it <= 1 epoch so it ends before the plateau
+        # scheduler can first reduce the LR.
+        warmup_steps = round(AmfConfig.get("warmup_epochs") * len(train_loader))
+        base_lrs = [group["lr"] for group in optimiser.param_groups]
+        global_step = 0
+
         for epoch in range(num_epochs):
             if freeze_epochs > 0 and epoch == freeze_epochs:
                 set_requires_grad(backbone_params, True)
@@ -455,6 +495,11 @@ def run(
                 desc=f"Training Epoch {epoch + 1}/{num_epochs}",
                 leave=False,
             ):
+                if global_step < warmup_steps:
+                    for group, base_lr in zip(optimiser.param_groups, base_lrs):
+                        group["lr"] = base_lr * (global_step + 1) / warmup_steps
+                global_step += 1
+
                 batch_x = batch_x.to(device)
                 batch_y = batch_y.to(device)
                 optimiser.zero_grad()
@@ -526,13 +571,13 @@ def run(
                     "Average validation loss improved, updating saved model weights."
                 )
                 best_val_loss = avg_val_loss
-                best_model_weights = (
+                best_model_weights = copy.deepcopy(
                     model.state_dict()
                 )  # Always store best performing model weights.
 
             # Step the learning rate scheduler
             if reduce_lr is not None:
-                logger.info("LR reduced due to plateau in validation loss.")
+                logger.info("Stepping LR scheduler.")
                 reduce_lr.step(avg_val_loss)
                 AmfConfig.set_("reduce_lr_on_plateau", reduce_lr)
             else:
