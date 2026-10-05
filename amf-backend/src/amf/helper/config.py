@@ -253,7 +253,7 @@ PAR = {
     "temperature_factor_path": "am_252_efficientnet_temperature_value.txt",
     # This value points towards the temperature value for the model (ErM)
     "temperature_factor_path_erm": "erm_126_efficientnet_temperature_value.txt",
-    "num_workers": 0,
+    "num_workers": 12,
     "use_contextual_confidence": True,  # Enable contextual confidence refinement
     "contextual_confidence_threshold": 1,  # Threshold for applying max voting
     "dynamic_loading": False,  # Whether to load tile images dynamically during training
