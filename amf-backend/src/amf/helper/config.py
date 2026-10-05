@@ -216,9 +216,9 @@ PAR = {
     # Save model architecture after training
     "summary": False,
     # Early stopping patience
-    "patience_e": 10,
+    "patience_e": 2,
     # Learning rate reduction patience
-    "patience_r": 5,
+    "patience_r": 1,
     "outdir": None,
     # Folder containing the images the user browses/annotates, used (together
     # with outdir) to locate local prediction/annotation CSVs when use_db is
