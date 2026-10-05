@@ -135,7 +135,7 @@ const AmfUpload = () => {
           if (isAnnotations) {
             optionalColumns = ["Question", "QuestionComment", "Tags"];
           } else {
-            optionalColumns = ["ContextualLabel"];
+            optionalColumns = ["ContextualLabel", "ManualLabel"];
           }
 
           // Validate CSV
@@ -252,8 +252,13 @@ const AmfUpload = () => {
             } else {
               results.data.forEach((value, key) => {
                 // Save CNN1 predictions into a format accepted by DB
+                // Full fixed width: [row, col, ...class scores,
+                // ContextualLabel, ManualLabel]. Absent optional columns leave
+                // their slot at its default rather than shortening the row.
                 if (colonisationType === "am") {
-                  const out = new Array(9).fill(0);
+                  const out = new Array(10).fill(0);
+                  out[8] = "";
+                  out[9] = "";
                   out[0] = parseInt(value["row"]);
                   out[1] = parseInt(value["col"]);
                   out[2] = parseFloat(value["AMColonised"]);
@@ -265,9 +270,14 @@ const AmfUpload = () => {
                   if ("ContextualLabel" in value) {
                     out[8] = value["ContextualLabel"];
                   }
+                  if ("ManualLabel" in value) {
+                    out[9] = value["ManualLabel"];
+                  }
                   cnn1Values.push(out);
                 } else {
-                  const out = new Array(13).fill(0);
+                  const out = new Array(14).fill(0);
+                  out[12] = "";
+                  out[13] = "";
                   out[0] = parseInt(value["row"]);
                   out[1] = parseInt(value["col"]);
                   out[2] = parseFloat(value["BlueCoils"]);
@@ -282,6 +292,9 @@ const AmfUpload = () => {
                   out[11] = parseFloat(value["HybridDse"]);
                   if ("ContextualLabel" in value) {
                     out[12] = value["ContextualLabel"];
+                  }
+                  if ("ManualLabel" in value) {
+                    out[13] = value["ManualLabel"];
                   }
                   cnn1Values.push(out);
                 }

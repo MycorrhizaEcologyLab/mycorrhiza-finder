@@ -99,11 +99,22 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
 
     # Extract and handle contextual labels if needed
     contextual_labels = None
-    if "ContextualLabel" in preds.columns:
+    if AmfConfig.CONTEXTUAL_LABEL_COLUMN in preds.columns:
         if use_contextual_confidence:
-            contextual_labels = preds["ContextualLabel"].copy()
+            contextual_labels = preds[AmfConfig.CONTEXTUAL_LABEL_COLUMN].copy()
         # Always drop the ContextualLabel column
-        preds = preds.drop(columns=["ContextualLabel"])
+        preds = preds.drop(columns=[AmfConfig.CONTEXTUAL_LABEL_COLUMN])
+
+    # Human corrections made while reviewing predictions in the browser. Taken
+    # unconditionally - unlike ContextualLabel these are a person's decision,
+    # not a model output, so use_contextual_confidence does not gate them. This
+    # mirrors the browser's own precedence (manual > contextual > argmax), so
+    # both converters agree on the same file.
+    manual_labels = None
+    if AmfConfig.MANUAL_LABEL_COLUMN in preds.columns:
+        manual_labels = preds[AmfConfig.MANUAL_LABEL_COLUMN].copy()
+        # Dropped before the width check below, which expects only class columns
+        preds = preds.drop(columns=[AmfConfig.MANUAL_LABEL_COLUMN])
 
     # Get the predictions for automatic conversion
     preds_without_coord = preds.drop(["row", "col"], axis=1)
@@ -122,14 +133,21 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
             f"colonisation type is selected, before converting."
         )
 
-    # Filter out any preds below the threshold
+    # Filter out any preds below the threshold. A manually corrected tile is
+    # always kept regardless of the model's confidence - the whole point of the
+    # correction is that the person overrode a low-confidence prediction, and
+    # the browser's equivalent branch has no threshold gate either.
     max_scores = preds_numpy.max(axis=1)
     high_conf_mask = max_scores >= threshold
+    if manual_labels is not None:
+        high_conf_mask = high_conf_mask | manual_labels.notna().to_numpy()
 
     coord = coord[high_conf_mask].reset_index(drop=True)
     preds_numpy = preds_numpy[high_conf_mask]
     if contextual_labels is not None:
         contextual_labels = contextual_labels[high_conf_mask].reset_index(drop=True)
+    if manual_labels is not None:
+        manual_labels = manual_labels[high_conf_mask].reset_index(drop=True)
 
     if len(preds_numpy) == 0:
         logger.warning(
@@ -155,6 +173,28 @@ def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFr
                 # Reset this row (all zeros)
                 conv[idx, :] = 0
                 conv[idx, header.index(label)] = 1
+
+    # Human corrections win over both the contextual label and argmax, so this
+    # is applied last.
+    if manual_labels is not None:
+        applied = 0
+        for idx, label in enumerate(manual_labels):
+            if pd.isnull(label) or str(label).strip() == "":
+                continue
+            if label not in header:
+                logger.warning(
+                    f"Ignoring unrecognised manual label {label!r} in "
+                    f"{os.path.basename(path)} - not a class of colonisation "
+                    f"type '{AmfConfig.get('colonisation_type')}'."
+                )
+                continue
+            conv[idx, :] = 0
+            conv[idx, header.index(label)] = 1
+            applied += 1
+        if applied:
+            logger.info(
+                f"Applied {applied} manual correction(s) from the review screen"
+            )
 
     logger.debug(
         os.path.basename(path)

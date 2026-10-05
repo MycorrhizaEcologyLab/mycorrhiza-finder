@@ -152,9 +152,9 @@ def save_annotations(annotations: AnnotationValues) -> int | str:
 
 
 @app.post("/save-predictions")
-def save_predictions(predictions: PredictionValues) -> None:  # TODO make consistent
+def save_predictions(predictions: PredictionValues) -> int | str:
     with conn, conn.cursor() as crsr:
-        save_predictions_to_db(crsr, predictions)
+        return save_predictions_to_db(crsr, predictions)
 
 
 @app.post("/import-folder")

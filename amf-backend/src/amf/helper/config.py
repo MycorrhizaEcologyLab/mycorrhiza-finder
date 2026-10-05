@@ -136,6 +136,18 @@ ANNOTATION_EXTRA_COLUMNS = [
 # Separates the user-defined sub-tags packed into a single Tags cell
 TAG_DELIMITER = "|"
 
+# Per-tile columns that follow the class score columns in a predictions CSV.
+# ContextualLabel is the model's own neighbourhood-derived label; ManualLabel is
+# a human correction made while reviewing predictions. Both hold a class header
+# name (e.g. "DSE"), and both must be dropped before the remaining
+# columns are read as class scores - see preds_to_python_annot.
+CONTEXTUAL_LABEL_COLUMN = "ContextualLabel"
+MANUAL_LABEL_COLUMN = "ManualLabel"
+PREDICTION_EXTRA_COLUMNS = [
+    CONTEXTUAL_LABEL_COLUMN,
+    MANUAL_LABEL_COLUMN,
+]
+
 HUMAN_HEADERS = {
     "am": ["AM+", "N-", "Background", "Unreadable", "DSE", "Hybrid"],
     "erm": [

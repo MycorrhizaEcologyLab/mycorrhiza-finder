@@ -1,8 +1,7 @@
 import FormControlLabel from "@mui/material/FormControlLabel";
 import { styled } from "@mui/material/styles";
 import Switch from "@mui/material/Switch";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import NumericField from "../../Utils/NumericField";
 import PrimaryButton from "../../Utils/PrimaryButton";
@@ -44,17 +43,33 @@ const PredictionsRightSidebar = ({
   setSelectedTile,
   tileEdge,
   conversionThreshold,
+  onSessionThresholdChange,
   convertWithContext,
   disableConvertWithContext,
   setConvertWithContext,
 }) => {
-  const navigate = useNavigate();
-
   const [showValidate, setShowValidate] = useState(false);
 
-  const settingsRoute = () => {
-    // TODO get scroll to ID to work
-    navigate("/settings#convert");
+  // Draft value for the threshold field. Committed only when Apply is pressed,
+  // so a half-typed number never takes effect.
+  const [thresholdDraft, setThresholdDraft] = useState(conversionThreshold ?? "");
+
+  // Follow the value in force whenever it changes from elsewhere (initial
+  // settings load, or a revert), but leave an in-progress edit alone.
+  useEffect(() => {
+    setThresholdDraft(conversionThreshold ?? "");
+  }, [conversionThreshold]);
+
+  const parsedDraft = parseFloat(thresholdDraft);
+  const isDraftValid =
+    !isNaN(parsedDraft) && parsedDraft >= 0 && parsedDraft <= 1;
+  const isDraftApplied =
+    isDraftValid && parsedDraft === parseFloat(conversionThreshold);
+
+  const applyThreshold = () => {
+    if (isDraftValid) {
+      onSessionThresholdChange(parsedDraft);
+    }
   };
 
   const onValidatePrev = () => {
@@ -390,14 +405,26 @@ const PredictionsRightSidebar = ({
         <div style={{ fontSize: "12px", fontWeight: 600, margin: "5px 0px" }}>
           Threshold
         </div>
-        <div style={{ fontSize: "16px", fontWeight: 600, margin: "5px 0px" }}>
-          {conversionThreshold}
+        <div style={{ fontSize: "12px", margin: "5px 0px" }}>
+          <NumericField
+            value={thresholdDraft}
+            onChange={setThresholdDraft}
+            min={0}
+            max={1}
+            step={0.01}
+          />
         </div>
         <PrimaryButton
-          onClick={() => settingsRoute()}
+          onClick={applyThreshold}
+          disabled={!isDraftValid || isDraftApplied}
+          title={
+            isDraftValid
+              ? "Use this threshold for the rest of this session. The saved default in Settings is left unchanged."
+              : "Enter a value between 0.00 and 1.00"
+          }
           sx={{ height: "30px", fontSize: "12px", margin: "5px 0px" }}
         >
-          Settings
+          {isDraftApplied ? "Applied" : "Apply"}
         </PrimaryButton>
       </div>
       <SidebarDivider />

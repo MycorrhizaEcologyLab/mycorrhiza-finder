@@ -185,7 +185,7 @@ def save_to_local(values: "AnnotationValues | PredictionValues", type_: str) -> 
     if type_ == "annotations":
         columns = ["row", "col"] + class_headers + AmfConfig.ANNOTATION_EXTRA_COLUMNS
     else:
-        columns = ["row", "col"] + class_headers + ["ContextualLabel"]
+        columns = ["row", "col"] + class_headers + AmfConfig.PREDICTION_EXTRA_COLUMNS
 
     normalized_rows = []
     for row in values.cnnOneValues or []:
@@ -523,7 +523,7 @@ def save_annotations_to_db(
 
 def save_predictions_to_db(
     crsr: psycopg2.extensions.cursor, values: PredictionValues
-) -> None:
+) -> int | str:
     """
     Saves prediction data to the database associated with a specific image reference.
 
@@ -541,16 +541,15 @@ def save_predictions_to_db(
         type, and CNN prediction values.
 
     Returns:
-    None: This function does not return any value but modifies the database
-          according to the provided predictions.
+    int | str: The ID of the saved image reference, or in local (no-DB) mode the
+        filename written.
 
     Raises:
     Exception: May raise exceptions related to database operations (e.g., SQL errors or
                constraint violations).
     """
     if not AmfConfig.get("use_db"):
-        save_to_local(values, "predictions")
-        return
+        return save_to_local(values, "predictions")
 
     # Check if image reference ID exists in DB
     exists = False
@@ -587,11 +586,16 @@ def save_predictions_to_db(
                 INSERT INTO cnn1predictions{values.colonisationType}
                 (
                     imagereferenceid, rownum, colnum, amcolonised, uncolonised,
-                    background, unreadable, dse, hybrid, contextuallabel
+                    background, unreadable, dse, hybrid, contextuallabel,
+                    manuallabel
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
+            # Trailing label fields are read by index and guarded by length, so
+            # a shorter legacy row (one predating either label column) still
+            # lands in the right columns instead of raising IndexError.
             for row in values.cnnOneValues:
+                row_length = len(row)
                 crsr.execute(
                     insert_values_query,
                     (
@@ -604,7 +608,8 @@ def save_predictions_to_db(
                         row[5],
                         row[6],
                         row[7],
-                        row[8],
+                        row[8] if row_length >= 9 else None,
+                        row[9] if row_length >= 10 else None,
                     ),
                 )
         else:
@@ -613,11 +618,14 @@ def save_predictions_to_db(
                 (
                     imagereferenceid, rownum, colnum, BlueCoils, BrownCoils, TypeTwo,
                     Uncolonised, Background, MainRoot, Unreadable, DSE, HybridErm,
-                    HybridDse, contextuallabel
+                    HybridDse, contextuallabel, manuallabel
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                )
             """
             for row in values.cnnOneValues:
+                row_length = len(row)
                 crsr.execute(
                     insert_values_query,
                     (
@@ -634,9 +642,13 @@ def save_predictions_to_db(
                         row[9],
                         row[10],
                         row[11],
-                        row[12],
+                        row[12] if row_length >= 13 else None,
+                        row[13] if row_length >= 14 else None,
                     ),
                 )
+
+    logger.info(f"Saved Image Reference ID: {image_id}")
+    return image_id
 
 
 # Matches the exact filename convention `save.py`'s prediction_table() uses:
@@ -763,17 +775,26 @@ def _build_annotation_row(row: "pd.Series[Any]", class_headers: list[str]) -> li
 
 def _build_prediction_row(row: "pd.Series[Any]", class_headers: list[str]) -> list[Any]:
     """
-    Mirrors AmfUpload.jsx's row layout: row, col, one entry per class, then
-    ContextualLabel.
+    Row, col, one entry per class, then ContextualLabel and ManualLabel.
+
+    Emitted at full fixed width so the two trailing label fields sit at stable
+    indices. ManualLabel is absent from CSVs written before predictions could
+    be corrected in the browser, which simply means no human correction.
     """
-    out: list[Any] = [0] * (2 + len(class_headers) + 1)
+    contextual_idx = 2 + len(class_headers)
+    manual_idx = contextual_idx + 1
+
+    out: list[Any] = [0] * (manual_idx + 1)
     out[0] = int(row["row"])
     out[1] = int(row["col"])
     for i, header in enumerate(class_headers):
         out[2 + i] = float(row[header])
-    label_idx = 2 + len(class_headers)
-    if "ContextualLabel" in row.index and not pd.isna(row["ContextualLabel"]):
-        out[label_idx] = row["ContextualLabel"]
+    for idx, column in (
+        (contextual_idx, AmfConfig.CONTEXTUAL_LABEL_COLUMN),
+        (manual_idx, AmfConfig.MANUAL_LABEL_COLUMN),
+    ):
+        if column in row.index and not pd.isna(row[column]):
+            out[idx] = row[column]
     return out
 
 
@@ -812,7 +833,7 @@ def import_predictions_and_annotations_from_folder(
             optional_columns = (
                 AmfConfig.ANNOTATION_EXTRA_COLUMNS
                 if file_type == "annotations"
-                else ["ContextualLabel"]
+                else AmfConfig.PREDICTION_EXTRA_COLUMNS
             )
             _validate_import_columns(
                 df.columns.tolist(), mandatory_columns, optional_columns
@@ -1065,7 +1086,7 @@ def download_entries_as_csv(
     if type_.lower() == "annotations":
         trailing_columns = AmfConfig.ANNOTATION_EXTRA_COLUMNS
     else:
-        trailing_columns = ["ContextualLabel"]
+        trailing_columns = AmfConfig.PREDICTION_EXTRA_COLUMNS
     writer.writerow(["row", "col"] + class_headers + trailing_columns)
 
     for row in out:

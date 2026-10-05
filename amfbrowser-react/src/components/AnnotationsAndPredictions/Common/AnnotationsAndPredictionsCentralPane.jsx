@@ -65,6 +65,10 @@ const AnnotationsAndPredictionsCentralPane = ({
   captureScreenshot,
   setShowImageOverview,
   conversionThreshold,
+  savePredictions,
+  onOverwritePredictions,
+  arePredictionsSaving,
+  predictionsDirty,
   convertWithContext,
   contextualLabelSize,
   contextualLabelFontSize,
@@ -442,6 +446,30 @@ const AnnotationsAndPredictionsCentralPane = ({
                 onClick={() => saveAnnotations(false)}
               >
                 Save Annotations
+              </PrimaryButton>
+            )}
+
+            {showPredictions && (
+              <PrimaryButton
+                disabled={arePredictionsSaving}
+                sx={{ minWidth: "200px" }}
+                onClick={onOverwritePredictions}
+                title="Replace the predictions version you opened with your corrections"
+              >
+                {predictionsDirty
+                  ? "Save Predictions *"
+                  : "Save Predictions"}
+              </PrimaryButton>
+            )}
+
+            {showPredictions && (
+              <PrimaryButton
+                disabled={arePredictionsSaving}
+                sx={{ minWidth: "200px" }}
+                onClick={() => savePredictions("new")}
+                title="Write your corrections to a new timestamped predictions file, leaving the original untouched"
+              >
+                Save As New
               </PrimaryButton>
             )}
 

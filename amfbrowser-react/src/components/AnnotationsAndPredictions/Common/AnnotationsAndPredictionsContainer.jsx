@@ -128,6 +128,24 @@ const AnnotationsAndPredictionsContainer = () => {
   // Suppresses the annotation hotkeys while the tag name field has focus.
   const [tagInputOpen, setTagInputOpen] = useState(false);
 
+  // Confidence threshold override for this session only, set from the
+  // predictions sidebar so correcting doesn't have to be abandoned to visit
+  // the Settings page. null means "use the persisted setting".
+  const [sessionThreshold, setSessionThreshold] = useState(null);
+  // The threshold actually in force: the session override when one has been
+  // applied, otherwise the persisted setting.
+  const effectiveThreshold = sessionThreshold ?? settings?.threshold;
+
+  // Unsaved prediction corrections. Set by the two handlers that change a
+  // tile's manual label, cleared on load and after a successful save.
+  const [predictionsDirty, setPredictionsDirty] = useState(false);
+  const [arePredictionsSaving, setArePredictionsSaving] = useState(false);
+  // null | "overwrite" - the overwrite confirmation for a predictions save.
+  const [predictionsOverwriteWarning, setPredictionsOverwriteWarning] =
+    useState(false);
+  // null | "choose" | "save" - the two steps of the Convert prompt.
+  const [convertStage, setConvertStage] = useState(null);
+
   const [numRows, setNumRows] = useState(0);
   const [numCols, setNumCols] = useState(0);
   const [totalTiles, setTotalTiles] = useState(0);
@@ -740,21 +758,14 @@ const AnnotationsAndPredictionsContainer = () => {
           cnn1AnnotationActions.set(currentKey, value);
         }
       } else if (showPredictions) {
-        let preds = cnn1Predictions.get(currentKey);
-        if (preds) {
-          if (preds?.annotations === value) {
-            // Remove annotation
-            preds.annotations = null;
-            cnn1PredictionActions.set(currentKey, preds);
-          } else {
-            // Add annotations
-            preds.annotations = value;
-            cnn1PredictionActions.set(currentKey, preds);
-          }
-        } else {
-          preds = { predictions: null, annotations: value };
-          cnn1PredictionActions.set(currentKey, preds);
-        }
+        // Copied rather than mutated in place - see setTileValueWithIcon.
+        const preds = cnn1Predictions.get(currentKey);
+        cnn1PredictionActions.set(currentKey, {
+          predictions: preds?.predictions ?? null,
+          contextualLabel: preds?.contextualLabel ?? null,
+          annotations: preds?.annotations === value ? null : value,
+        });
+        setPredictionsDirty(true);
       }
     };
 
@@ -1208,99 +1219,190 @@ const AnnotationsAndPredictionsContainer = () => {
     [numCols, numRows, debouncedHandleScroll, selectedTile, dragActivated],
   );
 
+  // Serialises an annotations map and posts it. Takes the map explicitly rather
+  // than reading cnn1Annotations, because the convert flow needs to save a map
+  // it has only just built - setBulk is asynchronous, so saving from state
+  // there would persist the previous map.
+  const saveAnnotationsFromMap = async (
+    annotationsMap,
+    { targetId, navigateAfter } = {},
+  ) => {
+    setAreAnnotationsSaving(true);
+    let cnn1Values = [];
+    // Row layout: [row, col, ...class one-hots incl. "?", QuestionComment,
+    // Tags]. Emitted at full fixed width so the two trailing text fields sit
+    // at stable indices.
+    const commentIdx = 2 + valueMapCnn1.length;
+    const tagsIdx = commentIdx + 1;
+    // Only classified tiles are written. A row with tags but an all-zero
+    // one-hot would be skipped on reload and read as the FIRST class by
+    // np.argmax during training, so it must never be saved.
+    annotationsMap.forEach((value, key) => {
+      const out = new Array(tagsIdx + 1).fill(0);
+      out[commentIdx] = "";
+      out[tagsIdx] = "";
+
+      const splitKey = key.split(".");
+      out[0] = parseInt(splitKey[0]);
+      out[1] = parseInt(splitKey[1]);
+
+      const populated_index = valueMapCnn1.indexOf(value);
+      if (populated_index !== -1) {
+        // Add to array, skipping row and col indices
+        out[populated_index + 2] = 1;
+      }
+
+      // If question mark then check for comment
+      if (populated_index === valueMapCnn1.length - 1) {
+        if (questionMarkComments.has(key)) {
+          out[commentIdx] = questionMarkComments.get(key);
+        }
+      }
+
+      if (tileTags.has(key)) {
+        out[tagsIdx] = formatTags(tileTags.get(key));
+      }
+
+      cnn1Values.push(out);
+    });
+
+    let body = {
+      imageReferenceId: targetId !== undefined ? targetId : imageReferenceId,
+      fileName: selectedImageName, // Taken from GlobalContextProvider
+      cnnOneValues: cnn1Values,
+      colonisationType: colonisationType,
+      tileEdge: tileEdge,
+      enabled: true,
+    };
+
+    // ImageId is returned if the annotations have been successfully saved
+    let savedImageReferenceId = await PredictionsApi.saveAnnotations(body);
+
+    setQuestionMarkWarning(false);
+    setAreAnnotationsSaving(false);
+
+    if (savedImageReferenceId) {
+      if (navigateAfter) {
+        navigate(
+          `/browser/${selectedImageName}/${colonisationType}/annotations/${savedImageReferenceId}`,
+        );
+      }
+      toast.success("Annotations saved successfully!");
+    } else {
+      toast.error("Failed to save annotations");
+    }
+    return savedImageReferenceId;
+  };
+
   const saveAnnotations = async (overrideQuestions) => {
     if (currentQuestions.length !== 0 && !overrideQuestions) {
       setQuestionMarkWarning(true);
-    } else {
-      setAreAnnotationsSaving(true);
-      let cnn1Values = [];
-      // Row layout: [row, col, ...class one-hots incl. "?", QuestionComment,
-      // Tags]. Emitted at full fixed width so the two trailing text fields sit
-      // at stable indices.
-      const commentIdx = 2 + valueMapCnn1.length;
-      const tagsIdx = commentIdx + 1;
-      // Only classified tiles are written. A row with tags but an all-zero
-      // one-hot would be skipped on reload and read as the FIRST class by
-      // np.argmax during training, so it must never be saved.
-      cnn1Annotations.forEach((value, key) => {
-        const out = new Array(tagsIdx + 1).fill(0);
-        out[commentIdx] = "";
-        out[tagsIdx] = "";
+      return;
+    }
+    // Navigate to the update path only if it is a new annotation
+    await saveAnnotationsFromMap(cnn1Annotations, {
+      navigateAfter: isNewAnnotation,
+    });
+  };
 
-        const splitKey = key.split(".");
-        out[0] = parseInt(splitKey[0]);
-        out[1] = parseInt(splitKey[1]);
+  // State holds UI glyphs ("AM+", "D"); the CSV and DB hold class header names
+  // ("AMColonised", "DSE"). valueMapCnn1 and headerMapCnn1 are index-aligned,
+  // so this is the inverse of headerToValueMapCnn1.
+  const glyphToHeader = (glyph) => {
+    if (!glyph) return "";
+    const idx = valueMapCnn1.indexOf(glyph);
+    return idx === -1 ? "" : headerMapCnn1[idx];
+  };
 
-        const populated_index = valueMapCnn1.indexOf(value);
-        if (populated_index !== -1) {
-          // Add to array, skipping row and col indices
-          out[populated_index + 2] = 1;
-        }
+  /**
+   * Persists the corrected predictions.
+   *
+   * mode "overwrite" replaces the version currently open; mode "new" passes a
+   * null id so the backend mints a fresh timestamped CSV (or a new
+   * ImageReference row), leaving the original untouched.
+   *
+   * navigateAfter is suppressed by callers that are about to navigate
+   * elsewhere themselves (the convert flow), so the URL is not pointed at the
+   * new predictions version only to be replaced a moment later.
+   */
+  const savePredictions = async (mode, { navigateAfter = true } = {}) => {
+    setArePredictionsSaving(true);
 
-        // If question mark then check for comment
-        if (populated_index === valueMapCnn1.length - 1) {
-          if (questionMarkComments.has(key)) {
-            out[commentIdx] = questionMarkComments.get(key);
-          }
-        }
+    // Row layout: [row, col, ...class scores, ContextualLabel, ManualLabel],
+    // indices derived from the class count rather than hardcoded. headerMapCnn1
+    // ends with "Question", which has no predictions counterpart, so the score
+    // columns are one fewer than its length.
+    const classCount = headerMapCnn1.length - 1;
+    const contextualIdx = 2 + classCount;
+    const manualIdx = contextualIdx + 1;
 
-        if (tileTags.has(key)) {
-          out[tagsIdx] = formatTags(tileTags.get(key));
-        }
+    const cnn1Values = [];
+    cnn1Predictions.forEach((value, key) => {
+      const out = new Array(manualIdx + 1).fill(0);
+      out[contextualIdx] = "";
+      out[manualIdx] = "";
 
-        cnn1Values.push(out);
+      const splitKey = key.split(".");
+      out[0] = parseInt(splitKey[0]);
+      out[1] = parseInt(splitKey[1]);
+
+      // Class scores, in header order
+      (value?.predictions ?? []).forEach(([header, score], idx) => {
+        out[2 + idx] = score;
       });
 
-      let body = {
-        imageReferenceId, // Derived from the pathname
-        fileName: selectedImageName, // Taken from GlobalContextProvider
-        cnnOneValues: cnn1Values,
-        colonisationType: colonisationType,
-        tileEdge: tileEdge,
-        enabled: true,
-      };
+      out[contextualIdx] = glyphToHeader(value?.contextualLabel);
+      out[manualIdx] = glyphToHeader(value?.annotations);
 
-      // ImageId is returned if the annotations have been successfully saved
-      let savedImageReferenceId = await PredictionsApi.saveAnnotations(body);
+      cnn1Values.push(out);
+    });
 
-      if (savedImageReferenceId) {
-        setQuestionMarkWarning(false);
-        setAreAnnotationsSaving(false);
-        // Navigate to the update path if it is a new annotation
-        if (isNewAnnotation) {
+    const body = {
+      imageReferenceId: mode === "overwrite" ? imageReferenceId : null,
+      fileName: selectedImageName,
+      cnnOneValues: cnn1Values,
+      colonisationType: colonisationType,
+      tileEdge: tileEdge,
+    };
+
+    // The id/filename of the version just written
+    const savedId = await PredictionsApi.savePredictions(body);
+
+    setArePredictionsSaving(false);
+    setPredictionsOverwriteWarning(false);
+
+    if (savedId) {
+      setPredictionsDirty(false);
+      if (mode === "new") {
+        if (navigateAfter) {
+          // Point the URL at the new version so later saves target it, and so
+          // it can be reloaded from the Browser by its timestamp.
           navigate(
-            `/browser/${selectedImageName}/${colonisationType}/annotations/${savedImageReferenceId}`,
+            `/browser/${selectedImageName}/${colonisationType}/predictions/${savedId}`,
           );
         }
-
-        toast.success("Annotations saved successfully!");
+        toast.success("Corrections saved as a new predictions file");
       } else {
-        setQuestionMarkWarning(false);
-        setAreAnnotationsSaving(false);
-        toast.error("Failed to save annotations");
+        toast.success("Predictions saved successfully!");
       }
+    } else {
+      toast.error("Failed to save predictions");
     }
+    return savedId;
   };
 
   const setTileValueWithIcon = (icon) => {
     const currentKey =
       selectedTile.row?.toString() + "." + selectedTile.col?.toString();
     if (showPredictions) {
-      let preds = cnn1Predictions.get(currentKey);
-      if (preds) {
-        if (preds.annotations === icon) {
-          // Remove annotation
-          preds.annotations = null;
-          cnn1PredictionActions.set(currentKey, preds);
-        } else {
-          // Add annotations
-          preds.annotations = icon;
-          cnn1PredictionActions.set(currentKey, preds);
-        }
-      } else {
-        preds = { predictions: null, annotations: icon };
-        cnn1PredictionActions.set(currentKey, preds);
-      }
+      // Copy rather than mutating in place.
+      const preds = cnn1Predictions.get(currentKey);
+      cnn1PredictionActions.set(currentKey, {
+        predictions: preds?.predictions ?? null,
+        contextualLabel: preds?.contextualLabel ?? null,
+        annotations: preds?.annotations === icon ? null : icon,
+      });
+      setPredictionsDirty(true);
     } else {
       if (!selectIcons) {
         if (selectedOverlay === icon) {
@@ -1328,7 +1430,9 @@ const AnnotationsAndPredictionsContainer = () => {
     }
   };
 
-  const onConvert = () => {
+  // Builds the annotations map the current predictions convert to, without
+  // committing or navigating, so the caller decides what to do with it.
+  const buildConvertedAnnotations = () => {
     let cnn1AnnotationsMap = new Map();
     cnn1Predictions.forEach((value, key) => {
       // In below flow, prioritise manual label, then context, then max
@@ -1350,7 +1454,7 @@ const AnnotationsAndPredictionsContainer = () => {
         // Get the index of the prediction with the highest value
         const maxIdx = indexOfMax(predictions);
         // Only set annotation if prediction value is above threshold
-        if (predictions[maxIdx] >= settings?.threshold) {
+        if (predictions[maxIdx] >= effectiveThreshold) {
           cnn1AnnotationsMap.set(key, annotation);
         }
       } else if (value?.predictions && value?.predictions.length > 0) {
@@ -1360,31 +1464,55 @@ const AnnotationsAndPredictionsContainer = () => {
         // Get the index of the prediction with the highest value
         const maxIdx = indexOfMax(predictions);
         // Only set annotation if prediction value is above threshold
-        if (predictions[maxIdx] >= settings?.threshold) {
+        if (predictions[maxIdx] >= effectiveThreshold) {
           const label = copyValue[maxIdx][0];
           cnn1AnnotationsMap.set(key, headerToValueMapCnn1.get(label));
         }
       }
     });
 
-    cnn1AnnotationActions.setBulk(cnn1AnnotationsMap);
+    return cnn1AnnotationsMap;
+  };
 
-    if (settings?.useDb === false) {
-      // Local mode: predictions and annotations are separate files with
-      // separate identities (unlike DB mode's one shared ImageReference
-      // row), so imageReferenceId here is really the predictions file's own
-      // name. Reusing it as the annotations id would make the save
-      // overwrite that predictions file in place instead of creating a new
-      // annotations CSV, and would make the URL match both "predictions"
-      // and "annotations" substrings at once (showing both views
-      // simultaneously). Always start a fresh annotation set instead.
-      navigate(`/browser/${selectedImageName}/${colonisationType}/annotations`);
-    } else {
-      // Navigate to existing annotation page
-      navigate(
-        `/browser/${selectedImageName}/${colonisationType}/annotations/${imageReferenceId}`,
-      );
-    }
+  // Local mode: predictions and annotations are separate files with separate
+  // identities (unlike DB mode's one shared ImageReference row), so
+  // imageReferenceId here is really the predictions file's own name.
+  const annotationsTargetId = () =>
+    settings?.useDb === false ? null : imageReferenceId;
+
+  const navigateToAnnotationsView = () => {
+    const targetId = annotationsTargetId();
+    navigate(
+      targetId == null
+        ? `/browser/${selectedImageName}/${colonisationType}/annotations`
+        : `/browser/${selectedImageName}/${colonisationType}/annotations/${targetId}`,
+    );
+  };
+
+  // Convert and open the annotations view, leaving them unsaved for the user
+  // to save there - the long-standing behaviour of the Convert button.
+  const convertAndOpenAnnotations = () => {
+    cnn1AnnotationActions.setBulk(buildConvertedAnnotations());
+    setConvertStage(null);
+    navigateToAnnotationsView();
+  };
+
+  // Convert and write the annotations out immediately, staying on the
+  // predictions screen so correcting can continue.
+  const convertAndSaveStaying = async () => {
+    const converted = buildConvertedAnnotations();
+    cnn1AnnotationActions.setBulk(converted);
+    setConvertStage(null);
+    // Passes the map explicitly: setBulk above has not been applied to state
+    // yet, so saving from cnn1Annotations would persist the previous map.
+    await saveAnnotationsFromMap(converted, {
+      targetId: annotationsTargetId(),
+      navigateAfter: false,
+    });
+  };
+
+  const onConvert = () => {
+    setConvertStage("choose");
   };
 
   const handleSelectedValidationIdxChange = (value) => {
@@ -1591,17 +1719,32 @@ const AnnotationsAndPredictionsContainer = () => {
 
       let contextualLabelCount = 0;
 
+      // Row layout: [row, col, ...class scores, ContextualLabel, ManualLabel].
+      // Read by index rather than popping the tail, so the scores are never
+      // confused with a label and a short legacy row (written before either
+      // label column existed) simply yields no labels.
+      const classCount = headerMapCnn1.length - 1;
+      const contextualIdx = 2 + classCount;
+      const manualIdx = contextualIdx + 1;
+
       values?.forEach((value) => {
         let key = `${value[0].toString()}.${value[1].toString()}`;
-        // Ignore row and col
-        const labels = [...value].splice(2);
+        // Class scores only
+        const labels = value.slice(2, contextualIdx);
 
-        const contextualLabel = labels.pop();
+        const contextualLabel = value[contextualIdx];
         let convertedContextualLabel = null;
         if (contextualLabel) {
           convertedContextualLabel = headerToValueMapCnn1.get(contextualLabel);
           contextualLabelCount += 1;
         }
+
+        // A human correction saved on a previous visit comes back as a
+        // correction, so it stays distinct from the model's contextual label.
+        const manualLabel = value[manualIdx];
+        const convertedManualLabel = manualLabel
+          ? (headerToValueMapCnn1.get(manualLabel) ?? null)
+          : null;
 
         // Calculate standard deviation as a validation metric
         const stdDev = calcStdDev(labels);
@@ -1617,7 +1760,7 @@ const AnnotationsAndPredictionsContainer = () => {
         });
         predictionsMap.set(key, {
           predictions: output,
-          annotations: null,
+          annotations: convertedManualLabel,
           contextualLabel: convertedContextualLabel,
         });
       });
@@ -1667,6 +1810,9 @@ const AnnotationsAndPredictionsContainer = () => {
         }
 
         cnn1PredictionActions.setBulk(predictionsMap);
+        // Freshly loaded, so nothing to save yet - any corrections present
+        // came from the file itself.
+        setPredictionsDirty(false);
       }
     }
   };
@@ -1816,7 +1962,12 @@ const AnnotationsAndPredictionsContainer = () => {
               handleSelectedValidationIdxChange
             }
             validationMetrics={validationMetrics}
-            conversionThreshold={settings?.threshold}
+            conversionThreshold={effectiveThreshold}
+            onSessionThresholdChange={setSessionThreshold}
+            savePredictions={savePredictions}
+            onOverwritePredictions={() => setPredictionsOverwriteWarning(true)}
+            arePredictionsSaving={arePredictionsSaving}
+            predictionsDirty={predictionsDirty}
             confidenceMetricIdxMap={confidenceMetricIdxMap}
             currentConfidenceIdx={currentConfidenceIdx}
             setCurrentConfidenceIdx={setCurrentConfidenceIdx}
@@ -1837,6 +1988,126 @@ const AnnotationsAndPredictionsContainer = () => {
             onBackgroundThresholdChange={handleBackgroundThresholdChange}
             onBackgroundThresholdBlur={flushBackgroundThresholdChange}
           />
+
+          {/* Warning before replacing the predictions */}
+          <Modal
+            isOpen={predictionsOverwriteWarning}
+            onClose={() => setPredictionsOverwriteWarning(false)}
+            overrideStyles={{ width: "800px", height: "260px" }}
+          >
+            <div className="save-questions-container">
+              <div className="save-questions-row">
+                This will replace the predictions you opened
+                {imageReferenceId ? ` (${imageReferenceId})` : ""}. The original
+                will not be recoverable.
+              </div>
+              <div className="save-questions-row buttonRow">
+                <PrimaryButton
+                  disabled={arePredictionsSaving}
+                  sx={{ minWidth: "200px" }}
+                  onClick={() => savePredictions("overwrite")}
+                >
+                  Overwrite
+                </PrimaryButton>
+                <PrimaryButton
+                  disabled={arePredictionsSaving}
+                  sx={{ minWidth: "200px" }}
+                  onClick={() => savePredictions("new")}
+                >
+                  Save as new instead
+                </PrimaryButton>
+                <PrimaryButton
+                  sx={{ minWidth: "200px" }}
+                  onClick={() => setPredictionsOverwriteWarning(false)}
+                >
+                  Cancel
+                </PrimaryButton>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Convert: where to go, and what to do with unsaved corrections */}
+          <Modal
+            isOpen={convertStage !== null}
+            onClose={() => setConvertStage(null)}
+            overrideStyles={{ width: "800px", height: "260px" }}
+          >
+            <div className="save-questions-container">
+              {convertStage === "choose" && (
+                <>
+                  <div className="save-questions-row">
+                    Convert these predictions to annotations?
+                  </div>
+                  <div className="save-questions-row buttonRow">
+                    <PrimaryButton
+                      sx={{ minWidth: "200px" }}
+                      onClick={() =>
+                        predictionsDirty
+                          ? setConvertStage("save")
+                          : convertAndOpenAnnotations()
+                      }
+                    >
+                      Open the annotations
+                    </PrimaryButton>
+                    <PrimaryButton
+                      disabled={areAnnotationsSaving}
+                      sx={{ minWidth: "200px" }}
+                      onClick={convertAndSaveStaying}
+                      title="Save the converted annotations now and stay here to carry on correcting"
+                    >
+                      Continue correcting
+                    </PrimaryButton>
+                    <PrimaryButton
+                      sx={{ minWidth: "200px" }}
+                      onClick={() => setConvertStage(null)}
+                    >
+                      Cancel
+                    </PrimaryButton>
+                  </div>
+                </>
+              )}
+              {convertStage === "save" && (
+                <>
+                  <div className="save-questions-row">
+                    You have unsaved corrections to these predictions. Save them
+                    before opening the annotations?
+                  </div>
+                  <div className="save-questions-row buttonRow">
+                    <PrimaryButton
+                      disabled={arePredictionsSaving}
+                      sx={{ minWidth: "200px" }}
+                      onClick={async () => {
+                        await savePredictions("overwrite", {
+                          navigateAfter: false,
+                        });
+                        convertAndOpenAnnotations();
+                      }}
+                    >
+                      Overwrite
+                    </PrimaryButton>
+                    <PrimaryButton
+                      disabled={arePredictionsSaving}
+                      sx={{ minWidth: "200px" }}
+                      onClick={async () => {
+                        await savePredictions("new", {
+                          navigateAfter: false,
+                        });
+                        convertAndOpenAnnotations();
+                      }}
+                    >
+                      Save as new
+                    </PrimaryButton>
+                    <PrimaryButton
+                      sx={{ minWidth: "200px" }}
+                      onClick={convertAndOpenAnnotations}
+                    >
+                      Discard changes
+                    </PrimaryButton>
+                  </div>
+                </>
+              )}
+            </div>
+          </Modal>
 
           {/* Warning modal that appears when trying to save with question marks */}
           <Modal

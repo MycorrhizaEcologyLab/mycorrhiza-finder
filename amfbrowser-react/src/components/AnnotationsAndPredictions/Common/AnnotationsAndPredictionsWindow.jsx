@@ -76,6 +76,11 @@ const AnnotationsAndPredictionsWindow = ({
   handleSelectedValidationIdxChange,
   validationMetrics,
   conversionThreshold,
+  onSessionThresholdChange,
+  savePredictions,
+  onOverwritePredictions,
+  arePredictionsSaving,
+  predictionsDirty,
   convertWithContext,
   disableConvertWithContext,
   setConvertWithContext,
@@ -183,6 +188,10 @@ const AnnotationsAndPredictionsWindow = ({
         captureScreenshot={captureScreenshot}
         setShowImageOverview={setShowImageOverview}
         conversionThreshold={conversionThreshold}
+        savePredictions={savePredictions}
+        onOverwritePredictions={onOverwritePredictions}
+        arePredictionsSaving={arePredictionsSaving}
+        predictionsDirty={predictionsDirty}
         convertWithContext={convertWithContext}
         contextualLabelSize={contextualLabelSize}
         contextualLabelFontSize={contextualLabelFontSize}
@@ -219,6 +228,7 @@ const AnnotationsAndPredictionsWindow = ({
           validationMetricIdxMap={validationMetricIdxMap}
           confidenceMetricIdxMap={confidenceMetricIdxMap}
           conversionThreshold={conversionThreshold}
+          onSessionThresholdChange={onSessionThresholdChange}
           convertWithContext={convertWithContext}
           disableConvertWithContext={disableConvertWithContext}
           setConvertWithContext={setConvertWithContext}

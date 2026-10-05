@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.Cnn1PredictionsAm
     DSE                 numeric,
     Hybrid              numeric,
     ContextualLabel      text,
+    ManualLabel          text,
     CONSTRAINT PK_row_col_predictions_cnn1_am       PRIMARY KEY (ImageReferenceId, RowNum, ColNum),
     CONSTRAINT FK_Prediction_ImageReferenceId_Am    FOREIGN KEY (ImageReferenceId) REFERENCES public.ImageReference(Id) ON DELETE CASCADE
 );
@@ -60,6 +61,7 @@ CREATE TABLE IF NOT EXISTS public.Cnn1PredictionsErm
     HybridErm           numeric,
     HybridDse           numeric,
     ContextualLabel      text,
+    ManualLabel          text,
     CONSTRAINT PK_row_col_predictions_cnn1_erm       PRIMARY KEY (ImageReferenceId, RowNum, ColNum),
     CONSTRAINT FK_Prediction_ImageReferenceId_Erm    FOREIGN KEY (ImageReferenceId) REFERENCES public.ImageReference(Id) ON DELETE CASCADE
 );
@@ -106,6 +108,14 @@ ALTER TABLE IF EXISTS public.Cnn1AnnotationsAm
 
 ALTER TABLE IF EXISTS public.Cnn1AnnotationsErm
     ADD COLUMN IF NOT EXISTS Tags text;
+
+-- Human correction made while reviewing predictions, kept separate from the
+-- model's own ContextualLabel
+ALTER TABLE IF EXISTS public.Cnn1PredictionsAm
+    ADD COLUMN IF NOT EXISTS ManualLabel text;
+
+ALTER TABLE IF EXISTS public.Cnn1PredictionsErm
+    ADD COLUMN IF NOT EXISTS ManualLabel text;
 
 ALTER TABLE IF EXISTS public.Cnn1PredictionsAm
     OWNER to postgres;
