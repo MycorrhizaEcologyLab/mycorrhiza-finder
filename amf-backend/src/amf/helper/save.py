@@ -122,17 +122,9 @@ def save_training_data(
     # As this metric is not used any longer, it is not included in the PyTorch
     # version of the code.´
 
-    early = AmfConfig.get("early_stopping")
-    if early is not None and early.early_stop:
-        epochs = AmfConfig.get("early_break_epoch")
-    else:
-        train_active_learning = AmfConfig.get("train_active_learning")
-        epochs = (
-            AmfConfig.get("epochs")
-            if not train_active_learning
-            else AmfConfig.get("epochs_active_learning")
-        )
-
+    # Derive the epoch count from the history so the x-axis always matches the
+    # recorded values, including when early stopping ends training prematurely.
+    epochs = len(history["loss"])
     x_range = np.arange(0, epochs)
 
     AmfPlot.initialize()
