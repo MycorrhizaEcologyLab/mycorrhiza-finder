@@ -3,7 +3,6 @@ import io
 import json
 import os
 import random
-import re
 import sys
 from collections import defaultdict
 from typing import cast
@@ -29,6 +28,7 @@ from amf.helper.api_utils import (
     download_entries_as_csv,
     get_enabled,
     get_tile_edge,
+    select_annotation_file,
 )
 from amf.helper.db_config import connect
 
@@ -1228,29 +1228,23 @@ def import_annotations(path: str, is_bald_folder: bool = False) -> pd.DataFrame 
                 return output
         else:
             directory = os.path.dirname(path)
-            files = os.listdir(directory)
 
-            # Escaped so regex metacharacters in an image name are matched
-            # literally; the loose middle section matches both the current and
-            # legacy timestamp conventions.
-            regex_pattern = f"{re.escape(image_name)}_.+cnn_1_annotations.+"
+            # Several timestamped versions per image is the normal state of a
+            # local output folder, so the newest is chosen rather than treated
+            # as an error. select_annotation_file logs every candidate and
+            # which it picked, so the run log always shows the file a result
+            # was actually calculated from.
+            chosen = select_annotation_file(directory, image_name)
 
-            # Collect matching annotation files
-            matching_annotations = [
-                file for file in files if re.match(regex_pattern, file)
-            ]
-
-            # Ensure exactly one matching annotation file exists
-            if len(matching_annotations) != 1:
+            if chosen is None:
                 if is_bald_folder:
                     return None
                 else:
                     raise ValueError(
-                        f"Expected exactly one annotation file, found: "
-                        f"{len(matching_annotations)}"
+                        f"No annotation file found for {image_name} in {directory}"
                     )
 
-            output = pd.read_csv(os.path.join(directory, matching_annotations[0]))
+            output = pd.read_csv(os.path.join(directory, chosen))
 
             # Drop the non-class columns (Question, QuestionComment, Tags) so
             # only row/col and the class one-hots remain - callers read

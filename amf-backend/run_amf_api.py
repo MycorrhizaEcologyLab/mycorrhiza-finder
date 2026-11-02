@@ -237,7 +237,7 @@ def train_model(train_config: TrainConfig) -> int | None:
 @app.post("/calculate-colonisation")
 def calculate_colonisation(colonisation_config: ColonisationConfig) -> int:
     AmfConfig.set_colonisation_config(colonisation_config)
-    input_files = AmfConfig.get_input_files()
+    input_files = AmfConfig.get_colonisation_input_files()
     return AmfColonisation.run(input_files)
 
 

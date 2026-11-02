@@ -1653,6 +1653,20 @@ def build_arg_parser() -> ArgumentParser:
     return main
 
 
+def get_colonisation_input_files() -> list[str]:
+    """
+    Input files for colonisation mode.
+
+    Deliberately NOT get_input_files(): that runs the list through abspath(),
+    whose glob drops any path without a file on disk, and then filters to image
+    mimetypes - both of which would discard the annotation-derived subjects
+    find_colonisation_subjects returns. Those are already absolute.
+    """
+    files = cast(list[str], get("input_files"))
+    logger.info(f"Input subjects: {len(files)}")
+    return files
+
+
 def abspath(files: list[str]) -> list[str]:
     """
     Returns absolute paths to input files.
@@ -1846,7 +1860,12 @@ def set_colonisation_config(colonisationConfig: BaseConfig) -> None:
     """
     set_("run_mode", "colonisation")
     set_device(cast(str, colonisationConfig.device))
-    files = find_files_in_directory(colonisationConfig.inputFiles)
+    # Colonisation works from annotations, not images (see
+    # find_colonisation_subjects). Imported here rather than at module scope
+    # because api_utils imports this module.
+    from amf.helper.api_utils import find_colonisation_subjects
+
+    files = find_colonisation_subjects(colonisationConfig.inputFiles)
     set_("input_files", files)
 
     set_("use_db", colonisationConfig.useDb)
@@ -1989,7 +2008,12 @@ def initialize() -> None:
     if par.run_mode == "tifconversion":
         convert_tiff = True
 
-    files = find_files_in_directory(par.images, convert_tiff)
+    if par.run_mode == "colonisation":
+        from amf.helper.api_utils import find_colonisation_subjects
+
+        files = find_colonisation_subjects(par.images)
+    else:
+        files = find_files_in_directory(par.images, convert_tiff)
     set_("input_files", files)
 
     set_("use_db", par.use_db)

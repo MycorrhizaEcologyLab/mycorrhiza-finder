@@ -697,6 +697,118 @@ def _parse_filename_timestamp(timestamp: str | None) -> datetime | None:
     return None
 
 
+# Image extensions recognised when looking for a subject's source image.
+_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".tif", ".tiff")
+
+
+def list_annotation_files(directory: str, image_name: str) -> list[str]:
+    """
+    Annotation CSVs for one image in one directory, newest first.
+
+    Ordered by the timestamp in the filename, falling back to the file's mtime
+    for a name that carries none, so the current, legacy and untimestamped
+    conventions can be compared against each other.
+    """
+    entries = []
+    for filename in os.listdir(directory):
+        match = _match_prediction_annotation_filename(filename)
+        if (
+            match is None
+            or match["name"] != image_name
+            or match["type"] != "annotations"
+        ):
+            continue
+        stamp = _parse_filename_timestamp(match["timestamp"])
+        if stamp is None:
+            stamp = datetime.fromtimestamp(
+                os.path.getmtime(os.path.join(directory, filename))
+            )
+        entries.append((stamp, filename))
+
+    entries.sort(key=lambda e: e[0], reverse=True)
+    return [filename for _, filename in entries]
+
+
+def select_annotation_file(directory: str, image_name: str) -> str | None:
+    """
+    Chooses which annotation CSV to read for an image, newest wins.
+
+    Local mode deliberately keeps multiple timestamped versions per image, so
+    more than one match is normal rather than an error. Every candidate is
+    logged along with the one picked and the ones ignored, so it is always
+    visible in the run log which file a result was actually calculated from.
+    """
+    candidates = list_annotation_files(directory, image_name)
+    if not candidates:
+        return None
+
+    chosen = candidates[0]
+    if len(candidates) > 1:
+        ignored = candidates[1:]
+        logger.warning(
+            f"{len(candidates)} annotation files found for {image_name} in "
+            f"{directory}: {', '.join(candidates)}"
+        )
+        logger.warning(
+            f"Using the most recent, {chosen}. Ignoring: {', '.join(ignored)}"
+        )
+    return chosen
+
+
+def find_colonisation_subjects(directory: str) -> list[str]:
+    """
+    Finds the images to calculate colonisation for, from their annotations.
+
+    Colonisation reads annotation labels only and never decodes a pixel (see
+    TileFilesandData's load_images), so it must not require image files to be
+    present. This scans for annotation CSVs and derives the image name from
+    each, also picking up any real images that happen to be alongside them.
+
+    Returns one absolute "subject path" per distinct image name. Where no image
+    file exists the path is synthetic: nothing ever opens it, it exists only to
+    carry the directory and the image name through import_annotations and
+    import_settings, which derive both from the path.
+    """
+    if not os.path.isdir(directory):
+        raise HTTPException(status_code=400, detail=f"Folder not found: {directory}")
+
+    images: dict[str, str] = {}
+    # Directory holding the annotations for each image name.
+    annotated: dict[str, str] = {}
+
+    for root, _dirs, files in os.walk(directory):
+        for filename in files:
+            name, ext = os.path.splitext(filename)
+            if ext.lower() in _IMAGE_EXTENSIONS:
+                images.setdefault(name, os.path.join(root, filename))
+                continue
+            match = _match_prediction_annotation_filename(filename)
+            if match is not None and match["type"] == "annotations":
+                annotated.setdefault(match["name"], root)
+
+    if not annotated:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"No annotation files found in {directory}. Colonisation needs "
+                f"annotations named like "
+                f"<image>_<timestamp>_cnn_1_annotations.csv; image files are "
+                f"not required."
+            ),
+        )
+
+    subjects = []
+    for name in sorted(annotated):
+        path = images.get(name) or os.path.join(annotated[name], f"{name}.jpg")
+        subjects.append(os.path.abspath(path))
+
+    logger.info(
+        f"{len(subjects)} annotated image(s) found in {directory} "
+        f"({len(images)} with a source image present)"
+    )
+    return subjects
+
+
 def _read_tile_edge_sidecar(folder_path: str, image_name: str) -> int:
     """
     Reads the `{image_name}_settings.json` sidecar `save.py`/`load.py` already
