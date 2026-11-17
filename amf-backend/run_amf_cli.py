@@ -24,6 +24,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+import sys
+
 import torch
 
 import amf.helper.config as AmfConfig
@@ -36,12 +38,22 @@ import amf.mode.convert_tile_size as AmfConvertTileSize
 import amf.mode.predict as AmfPredict
 import amf.mode.test as AmfTest
 import amf.mode.train as AmfTrain
+from amf.helper.db_config import set_credentials
+from amf.helper.db_login import resolve_login
 from amf.helper.log import logger
 
 
 def main() -> None:
     AmfConfig.initialize()
     run_mode = AmfConfig.get("run_mode")
+
+    # Uses the login saved by the API/exe if there is one, otherwise prompts.
+    if AmfConfig.get("use_db"):
+        login = resolve_login()
+        if login is None:
+            logger.info("PostgreSQL login cancelled, exiting.")
+            sys.exit(0)
+        set_credentials(login.user, login.password, login.port)
 
     # Device Switch
     device = AmfConfig.get("device")  # e.g. 'cpu', 'cuda:0' or 'automatic'

@@ -65,7 +65,12 @@ from amf.helper.api_utils import (
     update_setting_in_db,
     zip_files_for_transit,
 )
-from amf.helper.db_config import connect, create_database_if_not_exists
+from amf.helper.db_config import (
+    connect,
+    create_database_if_not_exists,
+    set_credentials,
+)
+from amf.helper.db_login import forget_login, resolve_login
 from amf.helper.log import logger
 from amf.helper.settings_schema import get_settings_schema, sync_settings_to_par
 
@@ -468,14 +473,58 @@ if __name__ == "__main__":
         dest="db_password",
         action="store",
         required=False,
-        help="Password for postgres",
+        help="PostgreSQL password. Skips the login prompt if the login works.",
+    )
+
+    main.add_argument(
+        "--db-user",
+        type=str,
+        dest="db_user",
+        action="store",
+        required=False,
+        help="PostgreSQL username. Skips the login prompt if the login works.",
+    )
+
+    main.add_argument(
+        "--db-port",
+        type=int,
+        dest="db_port",
+        action="store",
+        required=False,
+        help="PostgreSQL port. Skips the login prompt if the login works.",
+    )
+
+    main.add_argument(
+        "--login",
+        dest="force_login",
+        action="store_true",
+        help="Show the PostgreSQL login prompt even if a saved login works.",
+    )
+
+    main.add_argument(
+        "--forget-login",
+        dest="forget_login",
+        action="store_true",
+        help="Delete the saved PostgreSQL login, then ask for one.",
     )
 
     par = main.parse_known_args()[0]
-    password = par.db_password
 
-    create_database_if_not_exists("amf", "postgres", password)
-    conn = connect("amf", password)
+    if par.forget_login:
+        forget_login()
+    login = resolve_login(
+        user=par.db_user,
+        password=par.db_password,
+        port=par.db_port,
+        force_prompt=par.force_login,
+    )
+    if login is None:
+        logger.info("PostgreSQL login cancelled, exiting.")
+        sys.exit(0)
+    set_credentials(login.user, login.password, login.port)
+
+    create_database_if_not_exists("amf", login.user)
+    conn = connect("amf")
     with conn, conn.cursor() as crsr:
         # Initial setup of tables
         crsr.execute(open(os.path.join(scripts_dir, "create_schema.sql"), "r").read())
