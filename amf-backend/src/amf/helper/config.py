@@ -1653,14 +1653,15 @@ def build_arg_parser() -> ArgumentParser:
     return main
 
 
-def get_colonisation_input_files() -> list[str]:
+def get_subject_input_files() -> list[str]:
     """
-    Input files for colonisation mode.
+    Input files for the CSV-driven modes (colonisation and convert).
 
     Deliberately NOT get_input_files(): that runs the list through abspath(),
     whose glob drops any path without a file on disk, and then filters to image
-    mimetypes - both of which would discard the annotation-derived subjects
-    find_colonisation_subjects returns. Those are already absolute.
+    mimetypes - both of which would discard the CSV-derived subjects
+    find_colonisation_subjects/find_convert_subjects return, whose image file
+    may not exist. Those are already absolute.
     """
     files = cast(list[str], get("input_files"))
     logger.info(f"Input subjects: {len(files)}")
@@ -1860,15 +1861,20 @@ def set_colonisation_config(colonisationConfig: BaseConfig) -> None:
     """
     set_("run_mode", "colonisation")
     set_device(cast(str, colonisationConfig.device))
+    # Set before discovery, which needs it, and read back with get() so a
+    # None (ignored by set_) resolves exactly as the mode itself will see it.
+    set_("use_db", colonisationConfig.useDb)
+
     # Colonisation works from annotations, not images (see
     # find_colonisation_subjects). Imported here rather than at module scope
     # because api_utils imports this module.
     from amf.helper.api_utils import find_colonisation_subjects
 
-    files = find_colonisation_subjects(colonisationConfig.inputFiles)
+    files = find_colonisation_subjects(
+        colonisationConfig.inputFiles, bool(get("use_db"))
+    )
     set_("input_files", files)
 
-    set_("use_db", colonisationConfig.useDb)
     set_("colonisation_type", colonisationConfig.colonisationType)
     set_("tile_edge", colonisationConfig.tileEdge)
 
@@ -1893,10 +1899,22 @@ def set_convert_config(convertConfig: ConvertConfig) -> None:
     """
     set_("run_mode", "convert")
     set_device(cast(str, convertConfig.device))
-    files = find_files_in_directory(convertConfig.inputFiles)
-    set_("input_files", files)
+    # Set before discovery, which needs both, and read back with get() so a
+    # None (ignored by set_) resolves exactly as the mode itself will see it.
     set_("use_db", convertConfig.useDb)
     set_("aggregate_tiles", convertConfig.aggregateTiles)
+
+    # Convert works from prediction/annotation CSVs, not images (see
+    # find_convert_subjects). Imported here rather than at module scope
+    # because api_utils imports this module.
+    from amf.helper.api_utils import find_convert_subjects
+
+    files = find_convert_subjects(
+        convertConfig.inputFiles,
+        bool(get("aggregate_tiles")),
+        bool(get("use_db")),
+    )
+    set_("input_files", files)
     set_("colonisation_type", convertConfig.colonisationType)
     set_("threshold", convertConfig.threshold)
     set_("tile_edge", convertConfig.tileEdge)
@@ -2008,15 +2026,25 @@ def initialize() -> None:
     if par.run_mode == "tifconversion":
         convert_tiff = True
 
+    # Set before discovery, which needs it. The flags are store_const with no
+    # default, so an absent flag is None; set_ ignores that and get() then
+    # returns the PAR default, which is what the modes themselves will see.
+    set_("use_db", par.use_db)
+
     if par.run_mode == "colonisation":
         from amf.helper.api_utils import find_colonisation_subjects
 
-        files = find_colonisation_subjects(par.images)
+        files = find_colonisation_subjects(par.images, bool(get("use_db")))
+    elif par.run_mode == "convert":
+        from amf.helper.api_utils import find_convert_subjects
+
+        set_("aggregate_tiles", par.aggregate_tiles)
+        files = find_convert_subjects(
+            par.images, bool(get("aggregate_tiles")), bool(get("use_db"))
+        )
     else:
         files = find_files_in_directory(par.images, convert_tiff)
     set_("input_files", files)
-
-    set_("use_db", par.use_db)
 
     if par.run_mode == "train":
         if par.train_active_learning:
@@ -2111,8 +2139,8 @@ def initialize() -> None:
             set_("outdir", results_dir)
 
     elif par.run_mode == "convert":
+        # aggregate_tiles is set above, before input discovery.
         set_("threshold", par.threshold)
-        set_("aggregate_tiles", par.aggregate_tiles)
         set_("tile_edge", par.edge)
         set_("use_contextual_confidence", par.use_contextual_confidence)
 

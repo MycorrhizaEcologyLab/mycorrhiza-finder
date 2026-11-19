@@ -29,7 +29,6 @@ import os
 import re
 from typing import cast
 
-import imagesize
 import numpy as np
 import pandas as pd
 from loguru import logger
@@ -45,16 +44,17 @@ from amf.helper.api_utils import (
 )
 from amf.helper.db_config import connect
 
-NROWS: int | None = None
-NCOLS: int | None = None
 
-
-def initialize_size(path: str) -> int:
+def resolve_tile_size(path: str) -> int:
     """
-    Retrieve the number of rows and columns based on image and tile sizes.
+    Tile edge for an image: from the DB, else its _settings.json sidecar, else
+    the configured default.
+
+    Never opens `path` - it may be a synthetic subject path with no image file
+    behind it (see find_convert_subjects), and only its directory and image
+    name are used.
     """
     tile_size = AmfConfig.get("tile_edge")
-    width, height = imagesize.get(path)
 
     image_name = os.path.splitext(os.path.basename(path))[0]
     if AmfConfig.get("use_db"):
@@ -73,14 +73,9 @@ def initialize_size(path: str) -> int:
                 x = json.load(json_file)
                 tile_size = x["tile_edge"]
 
-    global NROWS, NCOLS
     if tile_size is None:
         raise ValueError("Tile size not configured")
-    tile_size_int = cast(int, tile_size)
-    NCOLS = width // tile_size_int
-    NROWS = height // tile_size_int
-
-    return tile_size_int
+    return cast(int, tile_size)
 
 
 def preds_to_python_annot(path: str, preds_path: str | io.StringIO) -> pd.DataFrame:
@@ -269,7 +264,7 @@ def run(input_images: list[str]) -> int:
     logger.info("Image\t" + "\t".join(AmfConfig.human_readable_header()))
 
     for path in input_images:
-        tile_size = initialize_size(path)
+        tile_size = resolve_tile_size(path)
         create_annotations(path, tile_size)
 
     return 200

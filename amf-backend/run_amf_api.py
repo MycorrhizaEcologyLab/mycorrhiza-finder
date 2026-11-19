@@ -242,7 +242,7 @@ def train_model(train_config: TrainConfig) -> int | None:
 @app.post("/calculate-colonisation")
 def calculate_colonisation(colonisation_config: ColonisationConfig) -> int:
     AmfConfig.set_colonisation_config(colonisation_config)
-    input_files = AmfConfig.get_colonisation_input_files()
+    input_files = AmfConfig.get_subject_input_files()
     return AmfColonisation.run(input_files)
 
 
@@ -256,7 +256,7 @@ def test_model(test_config: TestConfig) -> int | None:
 @app.post("/convert-images")
 def convert_images(convert_config: ConvertConfig) -> int:
     AmfConfig.set_convert_config(convert_config)
-    input_files = AmfConfig.get_input_files()
+    input_files = AmfConfig.get_subject_input_files()
     if AmfConfig.get("aggregate_tiles"):
         return AmfConvertTileSize.run(input_files)
     else:

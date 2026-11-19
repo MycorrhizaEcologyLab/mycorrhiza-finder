@@ -121,11 +121,11 @@ def main() -> None:
 
     elif run_mode == "colonisation":
         logger.debug("Get colonisation percentage for annotations")
-        input_files = AmfConfig.get_colonisation_input_files()
+        input_files = AmfConfig.get_subject_input_files()
         AmfColonisation.run(input_files)
 
     elif run_mode == "convert":
-        input_files = AmfConfig.get_input_files()
+        input_files = AmfConfig.get_subject_input_files()
         if AmfConfig.get("aggregate_tiles"):
             AmfConvertTileSize.run(input_files)
         else:

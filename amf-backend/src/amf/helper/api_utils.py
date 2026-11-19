@@ -755,58 +755,104 @@ def select_annotation_file(directory: str, image_name: str) -> str | None:
     return chosen
 
 
-def find_colonisation_subjects(directory: str) -> list[str]:
+def _find_subjects(
+    directory: str, csv_type: str, include_image_only: bool
+) -> list[str]:
     """
-    Finds the images to calculate colonisation for, from their annotations.
+    Finds the images a CSV-driven mode should process, from their CSVs.
 
-    Colonisation reads annotation labels only and never decodes a pixel (see
-    TileFilesandData's load_images), so it must not require image files to be
-    present. This scans for annotation CSVs and derives the image name from
-    each, also picking up any real images that happen to be alongside them.
+    Scans `directory` recursively for `csv_type` ("predictions" or
+    "annotations") CSVs and derives the image name from each filename, so the
+    source images need not be present. With `include_image_only`, image files
+    that have no such CSV alongside them are included too - DB mode needs
+    this, as its predictions/annotations live in Postgres rather than on disk
+    and the folder may hold nothing but images.
 
-    Returns one absolute "subject path" per distinct image name. Where no image
-    file exists the path is synthetic: nothing ever opens it, it exists only to
-    carry the directory and the image name through import_annotations and
-    import_settings, which derive both from the path.
+    Returns one absolute "subject path" per distinct image name, sorted by
+    name. A CSV-derived subject's path sits in the directory holding its CSVs:
+    the real image if one is there, otherwise a synthetic `{name}.jpg`. Nothing
+    ever opens a synthetic path; it exists only to carry the directory and the
+    image name through the modes, which derive both from the path.
     """
     if not os.path.isdir(directory):
         raise HTTPException(status_code=400, detail=f"Folder not found: {directory}")
 
-    images: dict[str, str] = {}
-    # Directory holding the annotations for each image name.
-    annotated: dict[str, str] = {}
+    # Every image file found, keyed by (directory, image name).
+    images: dict[tuple[str, str], str] = {}
+    # First image file found for each image name, wherever it is.
+    images_by_name: dict[str, str] = {}
+    # Directory holding the CSVs for each image name.
+    csv_dirs: dict[str, str] = {}
 
     for root, _dirs, files in os.walk(directory):
         for filename in files:
             name, ext = os.path.splitext(filename)
             if ext.lower() in _IMAGE_EXTENSIONS:
-                images.setdefault(name, os.path.join(root, filename))
+                path = os.path.join(root, filename)
+                images.setdefault((root, name), path)
+                images_by_name.setdefault(name, path)
                 continue
             match = _match_prediction_annotation_filename(filename)
-            if match is not None and match["type"] == "annotations":
-                annotated.setdefault(match["name"], root)
+            if match is not None and match["type"] == csv_type:
+                csv_dirs.setdefault(match["name"], root)
 
-    if not annotated:
+    subject_paths: dict[str, str] = {}
+    if include_image_only:
+        subject_paths.update(images_by_name)
+    for name, root in csv_dirs.items():
+        subject_paths[name] = images.get((root, name)) or os.path.join(
+            root, f"{name}.jpg"
+        )
+
+    if not subject_paths:
+        image_hint = " or images" if include_image_only else ""
         raise HTTPException(
             status_code=400,
             detail=(
-                f"No annotation files found in {directory}. Colonisation needs "
-                f"annotations named like "
-                f"<image>_<timestamp>_cnn_1_annotations.csv; image files are "
+                f"No {csv_type} files{image_hint} found in {directory}. "
+                f"Expected {csv_type} named like "
+                f"<image>_<timestamp>_cnn_1_{csv_type}.csv; image files are "
                 f"not required."
             ),
         )
 
-    subjects = []
-    for name in sorted(annotated):
-        path = images.get(name) or os.path.join(annotated[name], f"{name}.jpg")
-        subjects.append(os.path.abspath(path))
+    subjects = [os.path.abspath(subject_paths[name]) for name in sorted(subject_paths)]
 
     logger.info(
-        f"{len(subjects)} annotated image(s) found in {directory} "
-        f"({len(images)} with a source image present)"
+        f"{len(subjects)} image(s) to process found in {directory} "
+        f"({len(csv_dirs)} with {csv_type}, "
+        f"{len(images_by_name)} with a source image present)"
     )
     return subjects
+
+
+def find_colonisation_subjects(directory: str, use_db: bool = False) -> list[str]:
+    """
+    Finds the images to calculate colonisation for.
+
+    Colonisation reads annotation labels only and never decodes a pixel (see
+    TileFilesandData's load_images), so it must not require image files to be
+    present. Locally the subjects come from the annotation CSVs; in DB mode,
+    where annotations are stored in Postgres, image files are counted too.
+    See _find_subjects for the shape of the returned paths.
+    """
+    return _find_subjects(directory, "annotations", include_image_only=use_db)
+
+
+def find_convert_subjects(
+    directory: str, aggregate_tiles: bool, use_db: bool = False
+) -> list[str]:
+    """
+    Finds the images to run <amf convert> on.
+
+    Converting predictions to annotations reads only the prediction CSVs, and
+    aggregating tiles reads only the annotation CSVs, so neither requires the
+    source images. Locally the subjects come from whichever CSV type the run
+    reads; in DB mode, where both are stored in Postgres, image files are
+    counted too. See _find_subjects for the shape of the returned paths.
+    """
+    csv_type = "annotations" if aggregate_tiles else "predictions"
+    return _find_subjects(directory, csv_type, include_image_only=use_db)
 
 
 def _read_tile_edge_sidecar(folder_path: str, image_name: str) -> int:

@@ -5,7 +5,6 @@ import re
 import sys
 from typing import cast
 
-import imagesize
 import pandas as pd
 from loguru import logger
 
@@ -23,16 +22,18 @@ from amf.helper.api_utils import (
 from amf.helper.db_config import connect
 
 SCALING_FACTOR = 2
-NROWS: int
-NCOLS: int
 
 
-def initialize_size(path: str) -> int:
+def resolve_tile_size(path: str) -> int:
     """
-    Retrieve the number of rows and columns based on image and tile sizes.
+    Tile edge for an image: from the DB, else its _settings.json sidecar, else
+    the configured default.
+
+    Never opens `path` - it may be a synthetic subject path with no image file
+    behind it (see find_convert_subjects), and only its directory and image
+    name are used.
     """
     tile_size = AmfConfig.get("tile_edge")
-    width, height = imagesize.get(path)
 
     image_name = os.path.splitext(os.path.basename(path))[0]
     if AmfConfig.get("use_db"):
@@ -51,14 +52,9 @@ def initialize_size(path: str) -> int:
                 x = json.load(json_file)
                 tile_size = x["tile_edge"]
 
-    global NROWS, NCOLS
     if tile_size is None:
         raise ValueError("Tile size not configured")
-    tile_size_int = cast(int, tile_size)
-    NCOLS = width // tile_size_int
-    NROWS = height // tile_size_int
-
-    return tile_size_int
+    return cast(int, tile_size)
 
 
 def rescale_annot(annotation_path: str | io.StringIO) -> pd.DataFrame:
@@ -502,7 +498,7 @@ def run(input_images: list[str]) -> int:
             sys.exit(11)
 
         for path in input_images:
-            tile_size = initialize_size(path)
+            tile_size = resolve_tile_size(path)
             convert_tile_size(path, tile_size)
 
     except Exception as e:
